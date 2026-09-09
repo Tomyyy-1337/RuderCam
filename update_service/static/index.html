@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Service</title>
+    <link rel="stylesheet" href="style.css">    
+</head>
+<body>
+    <div class="panel">
+        <h4>Update Firmware</h4>
+
+        <p>Aktuelle Firmware Version: <span id="currentVersion">Lade...</span></p>
+
+        <p>Hier können sie eine neue Firmware Version auf das Gerät hochladen.</p>
+        <p>Die neuste Version der Firmware finden Sie unter <a href="https://github.com/Tomyyy-1337/RuderCamTreiber/releases/latest" target="_blank">GitHub Releases</a>.</p>
+        
+        <input type="file" id="firmwareFile" accept=".tar">
+        <button type="button" id="uploadBtn" disabled>Upload Firmware</button>
+
+        <div class="spacer"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

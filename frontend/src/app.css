@@ -1,0 +1,127 @@
+:root {
+  --background: #0f0f0f;
+  --section-background: #1b1b1b;
+  --button-color: #0061c8;
+  --text: #ffffff;
+  --space-md: 0.875rem;
+}
+
+.horizontal_container {
+  display: flex;
+}
+
+h3 {
+    font-size: clamp(1.4rem, 3vw + 0.5rem, 2rem);
+    text-align: center;
+}
+
+html, body {
+  scrollbar-width: none;  /* Firefox */
+}
+
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Edge */
+}
+
+body {
+  background-color: var(--background);
+  font: 1em sans-serif;
+}
+
+button {
+  color: var(--text);
+  background-color: var(--button-color);
+  border: none;
+  padding: 1em 1em;
+  border-radius: 0.5em;
+  cursor: pointer;
+}
+
+.inactive {
+  background-color: #555;
+}
+
+.container {
+  color: var(--text);
+  padding: 0.2em;
+  max-width: 900px;  
+  width: 100%;
+  margin: 0 auto;
+}
+
+section {
+  background-color: var(--section-background);
+  padding: 1em;
+  margin: 1em 0;
+  border-radius: 1em;
+}
+
+article {
+  background-color: var(--background);
+  margin: 1em 0;
+  padding: 0.1em 1em;
+  border-radius: 1em;
+}
+
+.spacer {
+  height: var(--space-md);
+}
+
+input {
+  background-color: var(--section-background);
+  color: var(--text);
+  border: none;
+  padding: 0.5em;
+  border-radius: 0.5em;
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 0.7em;
+}
+
+select {
+  background-color: var(--section-background);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5em;
+  padding: 0.5em 2.25em 0.5em 0.75em;
+  box-sizing: border-box;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text) 50%),
+    linear-gradient(135deg, var(--text) 50%, transparent 50%);
+  background-position: calc(100% - 1.15rem) calc(50% - 0.15rem), calc(100% - 0.85rem) calc(50% - 0.15rem);
+  background-size: 0.35rem 0.35rem, 0.35rem 0.35rem;
+  background-repeat: no-repeat;
+  width: 100%;
+}
+
+
+::selection {
+  background: rgba(0, 97, 200, 0.7);
+  color: var(--text);
+}
+
+nav {
+  display: flex;
+  background-color: var(--section-background);
+  padding: 1em;
+  border-radius: 1em;
+  gap: var(--space-md);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    padding: 4px;
+    font-weight: bold;
+}
+
+td {
+    text-align: right;
+    padding: 4px;
+}

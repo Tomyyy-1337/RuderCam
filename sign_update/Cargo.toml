@@ -1,0 +1,8 @@
+[package]
+name = "sign_update"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sha2 = "0.11.0"
+tar = "0.4"
