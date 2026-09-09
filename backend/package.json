@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "maplibre-gl": "^6.8.0",
-    "pmtiles": "^4.5.0"
-  }
-}
