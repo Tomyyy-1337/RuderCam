@@ -34,7 +34,6 @@
     import Tacho from "./lib/tacho.svelte";
     import { setTheme } from "./lib/setTheme";
     import PageHeadder from "./lib/pageHeadder.svelte";
-    import Map from "./lib/map.svelte";
 
     let fahrtenbuch = writable(new FahrtenbuchStore());
 

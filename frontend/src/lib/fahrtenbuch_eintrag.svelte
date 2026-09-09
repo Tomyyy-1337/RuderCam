@@ -25,12 +25,15 @@
             class="trip-body"
             transition:slide={{ duration: 220 }}
             onintrostart={() => (showMap = false)}
-            onintroend={() => (showMap = true)}
+            onintroend={async () => {
+                showMap = true;
+                await loadMapComponent();
+            }}
         >
             <div class="map-shell">
                 {#if (fahrt.gps_positions && fahrt.gps_positions.length > 0)}
-                    {#if showMap}
-                    <Map waypoints={
+                    {#if showMap && MapComponent}
+                    <MapComponent waypoints={
                         (fahrt.gps_positions ?? []).map((position) => [Number(position.lon), Number(position.lat)])
                     } />
                     {:else}
@@ -85,11 +88,11 @@
 </article>
 
 <script>
-    import Map from "./map.svelte";
     import { slide } from "svelte/transition";
 
     let { fahrt, index, fahrtenbuch } = $props();
 
+    let MapComponent = $state(null);
     let isExpanded = $state(false);
     let showMap = $state(false);
     let minutes = $derived((Math.floor(fahrt.duration_secs / 60)).toString().padStart(2, '0'));
@@ -108,6 +111,15 @@
     
     let average_speed_kmh = $derived(Number(fahrt.average_speed_kmh ?? 0).toFixed(1));
     let average_bpm = $derived(Number(fahrt.average_bpm ?? 0).toFixed(0));
+
+    async function loadMapComponent() {
+        if (MapComponent) {
+            return;
+        }
+
+        const module = await import("./map.svelte");
+        MapComponent = module.default;
+    }
 
     function toggleExpanded() {
         if (isExpanded) {

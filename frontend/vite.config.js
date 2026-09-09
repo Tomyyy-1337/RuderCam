@@ -11,5 +11,19 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../backend/static'),
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('/src/lib/map.svelte') ||
+            id.includes('node_modules/maplibre-gl') ||
+            id.includes('node_modules/pmtiles')
+          ) {
+            return 'map';
+          }
+        },
+      },
+    },
   },
 })

@@ -327,11 +327,16 @@
             setMapInteractionEnabled(false);
             document.addEventListener("fullscreenchange", handleFullscreenChange);
 
-            map.on("load", () => {
+            map.on("style.load", () => {
                 if (normalizedWaypoints.length >= 2) {
                     addWaypointGeometry(map, normalizedWaypoints);
-                    addWaypointMarkers(map, normalizedWaypoints);
                     fitMapToWaypoints(map, normalizedWaypoints);
+                }
+            });
+
+            map.on("load", () => {
+                if (normalizedWaypoints.length >= 2) {
+                    addWaypointMarkers(map, normalizedWaypoints);
                 }
             });
 
@@ -357,14 +362,6 @@
 </div>
 
 <style>
-    :global(html),
-    :global(body) {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-    }
-
     .map-shell {
         width: 100%;
         height: 100%;

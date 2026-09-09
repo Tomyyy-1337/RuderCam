@@ -130,7 +130,6 @@ impl ActiveSession {
             average_speed_kmh,
             // gps_positions: self.gps_position_history,
             gps_positions: vec![ 
-
                 GPSPositionalData { lat: 49.3211515159501, lon: 8.447589581936127, speed_kmh: 10.0 },
                 GPSPositionalData { lat: 49.323002757630334, lon: 8.44853694800425, speed_kmh: 12.0 },
                 GPSPositionalData { lat: 49.32881255443851, lon: 8.452414421410182, speed_kmh: 15.0 }, 
