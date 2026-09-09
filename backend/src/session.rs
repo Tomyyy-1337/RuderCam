@@ -130,10 +130,14 @@ impl ActiveSession {
             average_speed_kmh,
             // gps_positions: self.gps_position_history,
             gps_positions: vec![ 
-                GPSPositionalData { lat: 49.3636910, lon: 8.3724017, speed_kmh: 10.0 },
-                GPSPositionalData { lat: 49.3100000, lon: 8.5000000, speed_kmh: 15.0 },
-                GPSPositionalData { lat: 49.4600000, lon: 8.5200000, speed_kmh: 20.0 },
-                GPSPositionalData { lat: 49.4200000, lon: 8.5700000, speed_kmh: 25.0 },
+
+                GPSPositionalData { lat: 49.3211515159501, lon: 8.447589581936127, speed_kmh: 10.0 },
+                GPSPositionalData { lat: 49.323002757630334, lon: 8.44853694800425, speed_kmh: 12.0 },
+                GPSPositionalData { lat: 49.32881255443851, lon: 8.452414421410182, speed_kmh: 15.0 }, 
+                GPSPositionalData { lat: 49.33533692926359, lon: 8.460190512457913, speed_kmh: 20.0 },
+                GPSPositionalData { lat: 49.341353790023916, lon: 8.471708848852389, speed_kmh: 25.0 },
+                GPSPositionalData { lat: 49.3521822855019, lon: 8.487309631066697, speed_kmh: 30.0 },
+                GPSPositionalData { lat: 49.358397676789295, lon: 8.492992932500439, speed_kmh: 35.0 },
             ]
         }
     }

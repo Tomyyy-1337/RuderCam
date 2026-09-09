@@ -4,7 +4,7 @@
         type="button"
         class="toggle-button"
         aria-expanded={isExpanded}
-        onclick={() => (isExpanded = !isExpanded)}
+        onclick={toggleExpanded}
     >
         <div class="toggle-top">
             <span class="toggle-label">Fahrt am {new Date(fahrt.client_time).toLocaleString()}</span>
@@ -21,12 +21,21 @@
     </button>
 
     {#if isExpanded}
-        <div class="trip-body" transition:slide={{ duration: 220 }}>
+        <div
+            class="trip-body"
+            transition:slide={{ duration: 220 }}
+            onintrostart={() => (showMap = false)}
+            onintroend={() => (showMap = true)}
+        >
             <div class="map-shell">
                 {#if (fahrt.gps_positions && fahrt.gps_positions.length > 0)}
-                <Map waypoints={
-                    (fahrt.gps_positions ?? []).map((position) => [Number(position.lon), Number(position.lat)])
-                } />
+                    {#if showMap}
+                    <Map waypoints={
+                        (fahrt.gps_positions ?? []).map((position) => [Number(position.lon), Number(position.lat)])
+                    } />
+                    {:else}
+                    <div class="map-loading-placeholder" aria-hidden="true"></div>
+                    {/if}
                 {:else}
                 <div class="no-map-placeholder">
                     <span>Keine GPS-Daten verfügbar</span>
@@ -50,9 +59,9 @@
                 </div>
 
                 <div class="stat-card">
-                    <span class="stat-tag">Max. Tempo</span>
-                    <span class="stat-value">{max_speed_kmh}</span>
-                    <span class="stat-unit">km/h</span>
+                    <span class="stat-tag">Ø Splittime</span>
+                    <span class="stat-value">{average_splittime_per_500m}</span>
+                    <span class="stat-unit">sek / 500 m</span>
                 </div>
 
                 <div class="stat-card">
@@ -82,12 +91,33 @@
     let { fahrt, index, fahrtenbuch } = $props();
 
     let isExpanded = $state(false);
+    let showMap = $state(false);
     let minutes = $derived((Math.floor(fahrt.duration_secs / 60)).toString().padStart(2, '0'));
     let seconds = $derived((Math.round(fahrt.duration_secs % 60)).toString().padStart(2, '0'));
     let distance_traveled_km = $derived(Number(fahrt.distance_traveled_km ?? 0).toFixed(2));
-    let max_speed_kmh = $derived(Number(fahrt.max_speed_kmh ?? 0).toFixed(1));
+    let average_splittime_per_500m_seconds = $derived(Number(
+        fahrt.average_speed_kmh > 0
+            ? (500 / (fahrt.average_speed_kmh * 1000 / 3600)).toFixed(1)
+            : '0.0'
+    ));
+    let average_splittime_per_500m = $derived((
+        Math.floor(average_splittime_per_500m_seconds / 60).toString().padStart(2, '0') +
+        ':' +
+        (Math.round(average_splittime_per_500m_seconds % 60)).toString().padStart(2, '0')
+    ));
+    
     let average_speed_kmh = $derived(Number(fahrt.average_speed_kmh ?? 0).toFixed(1));
     let average_bpm = $derived(Number(fahrt.average_bpm ?? 0).toFixed(0));
+
+    function toggleExpanded() {
+        if (isExpanded) {
+            showMap = false;
+            isExpanded = false;
+            return;
+        }
+
+        isExpanded = true;
+    }
 
     function deleteSession(index) {
         fahrtenbuch.update(f => {
@@ -208,7 +238,25 @@
         border-radius: 0.75em;
         overflow: hidden;
         border: 1px solid var(--subtle-border);
-        background-color: var(--background);
+        background-color: #d8e8d0;
+    }
+
+    .map-loading-placeholder,
+    .no-map-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #d8e8d0;
+    }
+
+    .map-loading-placeholder {
+        background:
+            linear-gradient(120deg, transparent 30%, color-mix(in srgb, var(--text) 8%, transparent) 45%, transparent 60%),
+            #d8e8d0;
+        background-size: 220% 100%, 100% 100%;
+        animation: map-placeholder-shimmer 0.9s ease-out 1;
     }
 
     .distance-summary {
@@ -219,6 +267,16 @@
         background-color: var(--background);
         border-radius: 0.75em;
         padding: 0.7rem 0.9rem;
+    }
+
+    @keyframes map-placeholder-shimmer {
+        from {
+            background-position: 100% 0, 0 0;
+        }
+
+        to {
+            background-position: 0 0, 0 0;
+        }
     }
 
     .distance-label {
