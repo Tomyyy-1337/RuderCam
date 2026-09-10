@@ -45,7 +45,7 @@ export function projectGpsCoordinates(
             lon,
             x: Number(x.toFixed(4)),
             y: Number(y.toFixed(4)),
-            speed_kmh: Number(point.speed_kmh ?? 0),
+            speed_kmh: point.speed_kmh,
         };
     });
 }

@@ -42,13 +42,12 @@ export interface OverlaySettings {
 export interface GpsPosition {
     lat: number;
     lon: number;
-    speed_kmh?: number;
+    speed_kmh: number;
 }
 
 export interface ProjectedGpsPosition extends GpsPosition {
     x: number;
     y: number;
-    speed_kmh: number;
 }
 
 export interface SessionJson {
@@ -58,7 +57,7 @@ export interface SessionJson {
     max_speed_kmh: number;
     average_speed_kmh: number;
     average_bpm: number;
-    gps_positions?: GpsPosition[];
+    gps_positions: GpsPosition[];
 }
 
 export interface DeviceStateMessage {
