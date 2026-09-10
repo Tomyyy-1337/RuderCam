@@ -11,7 +11,7 @@
     <div class="spacer"></div>
 </article>
     
-<script>
+<script lang="ts">
     import { onMount } from "svelte";
     import { setTheme } from "./setTheme";
 

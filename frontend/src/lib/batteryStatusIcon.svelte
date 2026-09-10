@@ -7,7 +7,7 @@
     <span>{value}%</span>
 </div>
 
-<script>
+<script lang="ts">
     let { value = 0 } = $props();
 
     let tone = $derived(

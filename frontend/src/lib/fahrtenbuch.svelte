@@ -1,14 +1,10 @@
-<section>
-    <h3>Fahrtenbuch</h3>
-
-    <div class="entries">
-        {#each $fahrtenbuch.getSessions().slice().reverse() as fahrt, index (fahrt)}
-            <FahrtenbuchEintrag {fahrt} {index} {fahrtenbuch}/>
-        {:else}
-            <p>Es wurden noch keine Fahrten aufgezeichnet.</p>
-        {/each}
-    </div>
-</section>
+<div class="entries">
+    {#each $fahrtenbuch.getSessions().slice().reverse() as fahrt, index (fahrt)}
+        <FahrtenbuchEintrag {fahrt} {index} {fahrtenbuch}/>
+    {:else}
+        <p>Es wurden noch keine Fahrten aufgezeichnet.</p>
+    {/each}
+</div>
 
 <script>
     import FahrtenbuchEintrag from "./fahrtenbuch_eintrag.svelte";

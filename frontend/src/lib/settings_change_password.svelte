@@ -1,8 +1,8 @@
 <article>
     <h4>Passwort ändern</h4>
     <p>Aktuelles Passwort: {config.password}</p>
-    <input id="password" placeholder="Neues Passwort" bind:value={passwordInput}>
-    <input id="password-confirm" placeholder="Passwort bestätigen" bind:value={passwordConfirmInput}>
+    <input id="password" name="password" placeholder="Neues Passwort" bind:value={passwordInput}>
+    <input id="password-confirm" name="password-confirm" placeholder="Passwort bestätigen" bind:value={passwordConfirmInput}>
 
     <button 
         style="width:100%;"
@@ -12,7 +12,7 @@
     <div class="spacer"></div>
 </article>
 
-<script>
+<script lang="ts">
     let {config} = $props();
 
     let passwordInput = $state('');
@@ -38,7 +38,7 @@
         passwordConfirmInput = '';
     }
 
-    function isPasswordReasonable(password) {
+    function isPasswordReasonable(password: string): { valid: boolean; message: string } {
         if (password.length > 32) {
             return { valid: false, message: 'Passwort darf maximal 24 Zeichen lang sein' };
         }

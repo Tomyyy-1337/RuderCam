@@ -1,4 +1,6 @@
-export function setTheme(newTheme) {
+import type { Theme } from './types'
+
+export function setTheme(newTheme: Theme): void {
     if (newTheme === 'light') {
         document.documentElement.style.setProperty('--background', '#d3d3d3');
         document.documentElement.style.setProperty('--section-background', '#b7b7b7');
@@ -8,5 +10,6 @@ export function setTheme(newTheme) {
         document.documentElement.style.setProperty('--section-background', '#1b1b1b');
         document.documentElement.style.setProperty('--text', '#ffffff');
     }
+
     localStorage.setItem('theme', newTheme);
 }

@@ -35,7 +35,7 @@ fn main() {
 
 async fn current_version_handler() -> String {
     // Read the current version from a file or return a default value
-    let version_file_path = PathBuf::from("/mnt/data/version.txt");
+    let version_file_path = PathBuf::from("/home/pi/treiber/version.txt");
     match fs::read_to_string(&version_file_path) {
         Ok(version) => version.trim().to_string(),
         Err(_) => "No firmware".to_string(), // Default version if file not found
@@ -59,7 +59,7 @@ async fn update_handler(req: axum::http::Request<Body>) -> StatusCode {
             println!("Checksum is valid, writing archive to disk...");
 
             let result = modify_sd_card(|| async {
-                write_archive_to_disk(&raw_archive, "/mnt/data")
+                write_archive_to_disk(&raw_archive, "/home/pi/treiber")
             }).await;
             
             if let Err(e) = result {
@@ -76,37 +76,21 @@ async fn update_handler(req: axum::http::Request<Body>) -> StatusCode {
 }
 
 async fn modify_sd_card(f: impl AsyncFnOnce() -> Result<(),io::Error>) -> Result<(), io::Error> {
-    const BACKEND_PARTITION_PATH: &str = "/dev/mmcblk0p3";
-
     let _ = tokio::process::Command::new("systemctl")
         .arg("stop")
         .arg("backend.service")
         .status().await;
 
-    tokio::process::Command::new("mount")
-        .arg("-o")
-        .arg("remount,rw")
-        .arg(BACKEND_PARTITION_PATH)
-        .arg("/mnt/data")
-        .status().await?;
-
     tokio::process::Command::new("rm")
         .arg("-rf")
-        .arg("/mnt/data/*")
+        .arg("/home/pi/treiber/*")
         .status().await?;
 
     f().await?;
 
     tokio::process::Command::new("chmod")
         .arg("+x")
-        .arg("/mnt/data/server")
-        .status().await?;
-
-    tokio::process::Command::new("mount")
-        .arg("-o")
-        .arg("remount,ro")
-        .arg(BACKEND_PARTITION_PATH)
-        .arg("/mnt/data")
+        .arg("/home/pi/treiber/server")
         .status().await?;
 
     tokio::process::Command::new("systemctl")

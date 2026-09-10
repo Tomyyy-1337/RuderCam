@@ -9,7 +9,7 @@
     </svg>
 </div>
 
-<script>
+<script lang="ts">
     let { paused = true } = $props();
 </script>
 

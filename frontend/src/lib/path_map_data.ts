@@ -1,6 +1,14 @@
-export function projectGpsCoordinates(points, padding = 8) {
+import type { GpsPosition, ProjectedGpsPosition } from './types'
+
+export function projectGpsCoordinates(
+    points: GpsPosition[],
+    padding = 8,
+): ProjectedGpsPosition[] {
     const validPoints = Array.isArray(points)
-        ? points.filter((point) => point && Number.isFinite(point.lat) && Number.isFinite(point.lon))
+        ? points.filter(
+            (point): point is GpsPosition =>
+                !!point && Number.isFinite(point.lat) && Number.isFinite(point.lon),
+        )
         : [];
 
     if (validPoints.length === 0) {
@@ -42,9 +50,9 @@ export function projectGpsCoordinates(points, padding = 8) {
     });
 }
 
-export function buildSmoothedRoutePath(points) {
+export function buildSmoothedRoutePath(points: ProjectedGpsPosition[]): string {
     if (!Array.isArray(points) || points.length === 0) {
-        return "";
+        return '';
     }
 
     if (points.length === 1) {
@@ -52,7 +60,7 @@ export function buildSmoothedRoutePath(points) {
         return `M ${x} ${y}`;
     }
 
-    const toPathNumber = (value) => Number(Number(value).toFixed(4));
+    const toPathNumber = (value: number) => Number(Number(value).toFixed(4));
     const firstPoint = points[0];
     let path = `M ${toPathNumber(firstPoint.x)} ${toPathNumber(firstPoint.y)}`;
 

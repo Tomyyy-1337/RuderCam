@@ -25,8 +25,6 @@ npm run build
 ## Pi Setup
 
 - Activate i2c in `raspi-config` 
-- Activate overlay filesystem (Last step, install programms first)
-- reboot
 
 ### Disable Swap 
 ```bash 
@@ -171,8 +169,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/pi
-ExecStart=/home/pi/update_service
+WorkingDirectory=/home/pi/update_service
+ExecStart=/home/pi/update_service/update_service
 Restart=always
 RestartSec=5
 User=root
@@ -200,8 +198,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/mnt/data 
-ExecStart=/mnt/data/server
+WorkingDirectory=/home/pi/treiber
+ExecStart=/home/pi/treiber/server
 Restart=always
 RestartSec=5
 User=root

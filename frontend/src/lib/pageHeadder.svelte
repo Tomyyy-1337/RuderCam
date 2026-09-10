@@ -4,7 +4,7 @@
     <div id="Satelien"><SateliteIcon value={satellite_count} /> </div>
 </section>
 
-<script>
+<script lang="ts">
     import BatteryStatusIcon from "./batteryStatusIcon.svelte";
     import SateliteIcon from "./sateliteIcon.svelte";
 

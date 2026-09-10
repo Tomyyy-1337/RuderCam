@@ -20,10 +20,6 @@ pub fn shutdown() {
             .request()
             .expect("Failed to request GPIO line for shutdown");
     }
-
-    std::thread::sleep(std::time::Duration::from_secs(5));
-
-    std::process::exit(0);
 }
 
 /// Reboot the device by executing the reboot command. 

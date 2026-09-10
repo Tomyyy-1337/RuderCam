@@ -1,7 +1,7 @@
 <article>
     <h4>SSID ändern</h4>
     <p>Aktuelle SSID: {config.ssid}</p>
-    <input id="ssid" placeholder="Netzwerkname" bind:value={SSIDInput}>
+    <input id="ssid" name="ssid" placeholder="Netzwerkname" bind:value={SSIDInput}>
     <button 
         style="width:100%;" 
         onclick={handleSSIdChange}
@@ -9,7 +9,7 @@
     <div class="spacer"></div>
 </article>
 
-<script>
+<script lang="ts">
     let {config} = $props();
 
     let SSIDInput = $state('');

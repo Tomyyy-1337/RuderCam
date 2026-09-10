@@ -1,14 +1,14 @@
 <article>
     <h4>Automatisches Herunterfahren</h4>
     <p>Das Gerät fährt nach {config.auto_shutdown_time} Minuten automatisch herunter wenn keine Verbindung zum Smartphone besteht.</p>
-    <input id="shutdown-timer" type="number" placeholder="Zeit in Minuten" bind:value={shutdownTimerInput}>
+    <input id="shutdown-timer" name="shutdown-timer" type="number" placeholder="Zeit in Minuten" bind:value={shutdownTimerInput}>
     <button style="width:100%;" onclick={handleSaveShutdownTimer}>
         Speichern
     </button>
     <div class="spacer"></div>
 </article>
 
-<script>
+<script lang="ts">
     let { config } = $props();
     let shutdownTimerInput = $state('');
 

@@ -33,7 +33,7 @@
 </div>
 {/if}
 
-<script>
+<script lang="ts">
     import { fly } from "svelte/transition";
     import { flip } from "svelte/animate";
     import BatteryStatusIcon from "./batteryStatusIcon.svelte";

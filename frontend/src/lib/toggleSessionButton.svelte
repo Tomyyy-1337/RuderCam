@@ -8,12 +8,22 @@
     </button>
 {/if}
 
-<script>
-    import { Session } from "./fahrtenbuchStore";
+<script lang="ts">
+    import type { Writable } from "svelte/store";
+    import { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
+    import type { ActiveSession, SessionJson } from "./types";
 
-    let { fahrtenbuch, activeSession = $bindable(), variant = "primary" } = $props();
+    let {
+        fahrtenbuch,
+        activeSession = $bindable(),
+        variant = "primary",
+    }: {
+        fahrtenbuch: Writable<FahrtenbuchStore>;
+        activeSession: ActiveSession;
+        variant?: string;
+    } = $props();
 
-    function startSession() {    
+    function startSession(): void {
         activeSession.isActive = true;
         const currentTime = new Date().toISOString();
         activeSession.distance_traveled_km = 0;
@@ -29,28 +39,27 @@
         });
     }
 
-    function endSession() {
+    async function endSession(): Promise<void> {
         activeSession.isActive = false;
         activeSession.end_time = new Date();
 
-        fetch('/api/stop_session', {
+        const response = await fetch('/api/stop_session', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             }
-        }).then(response => {
-            if (response.ok) {
-                return response.json();
-            }
-        }).then(sessionSummary => {
-            if (sessionSummary) {
-                console.log('Session summary received:', sessionSummary);
-                let session = new Session(sessionSummary);
-                fahrtenbuch.update(/** @param {import("./fahrtenbuchStore").FahrtenbuchStore} f */ (f) => {
-                    f.addSession(session);
-                    return f;
-                });
-            }
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const sessionSummary = await response.json() as SessionJson;
+        console.log('Session summary received:', sessionSummary);
+        const session = new Session(sessionSummary);
+        fahrtenbuch.update((store) => {
+            store.addSession(session);
+            return store;
         });
     }
 </script>

@@ -1,7 +1,7 @@
 <article>
     <h4>Overlay Aktivieren/Deaktivieren</h4>
     <p>Overlay in der Vollbildansicht ein- oder ausblenden.</p>
-    <select bind:value={overlay_settings.show_overlay}>
+    <select id="overlay-show-overlay" name="overlay-show-overlay" bind:value={overlay_settings.show_overlay}>
         <option value={true}>Overlay anzeigen</option>
         <option value={false}>Overlay ausblenden</option>
     </select>
@@ -12,7 +12,7 @@
 <article>
     <h4>Overlay Position</h4>
     <p>Position des Overlays in der Vollbildansicht.</p>
-    <select bind:value={overlay_settings.position}>
+    <select id="overlay-position" name="overlay-position" bind:value={overlay_settings.position}>
         <option value="top">Overlay Oben</option>
         <option value="bottom">Overlay Unten</option>
     </select>
@@ -24,32 +24,32 @@
     <p>Verwalten welche Elemente im Overlay angezeigt werden sollen.</p>
 
     <label class:inactive={!overlay_settings.show_speed} class="toggle-card">
-        <input type="checkbox" bind:checked={overlay_settings.show_speed} />
+        <input id="overlay-show-speed" name="overlay-show-speed" type="checkbox" bind:checked={overlay_settings.show_speed} />
         <span>Geschwindigkeit (km/h)</span>
     </label>
 
     <label class:inactive={!overlay_settings.show_split_time} class="toggle-card">
-        <input type="checkbox" bind:checked={overlay_settings.show_split_time} />
+        <input id="overlay-show-split-time" name="overlay-show-split-time" type="checkbox" bind:checked={overlay_settings.show_split_time} />
         <span>500m Split</span>
     </label>
 
     <label class:inactive={!overlay_settings.show_schlagzahl} class="toggle-card">
-        <input type="checkbox" bind:checked={overlay_settings.show_schlagzahl} />
+        <input id="overlay-show-schlagzahl" name="overlay-show-schlagzahl" type="checkbox" bind:checked={overlay_settings.show_schlagzahl} />
         <span>Schlagzahl</span>
     </label>
 
     <label class:inactive={!overlay_settings.show_distanc_per_stroke} class="toggle-card">
-        <input type="checkbox" bind:checked={overlay_settings.show_distanc_per_stroke} />
+        <input id="overlay-show-distance-per-stroke" name="overlay-show-distance-per-stroke" type="checkbox" bind:checked={overlay_settings.show_distanc_per_stroke} />
         <span>Distanz pro Schlag</span>
     </label>
     
     <label class:inactive={!overlay_settings.show_distanz} class="toggle-card">
-        <input type="checkbox" bind:checked={overlay_settings.show_distanz} />
+        <input id="overlay-show-distanz" name="overlay-show-distanz" type="checkbox" bind:checked={overlay_settings.show_distanz} />
         <span>Distanz</span>
     </label>
 
     <label class:inactive={!overlay_settings.show_fahrtzeit} class="toggle-card">
-        <input type="checkbox" bind:checked={overlay_settings.show_fahrtzeit} />
+        <input id="overlay-show-fahrtzeit" name="overlay-show-fahrtzeit" type="checkbox" bind:checked={overlay_settings.show_fahrtzeit} />
         <span>Fahrtzeit</span>
     </label>
 
@@ -57,7 +57,7 @@
 </article>
 {/if}
 
-<script>
+<script lang="ts">
     let { overlay_settings = $bindable() } = $props();
 </script>
 

@@ -10,7 +10,7 @@
     </div>
 </div>
 
-<script>
+<script lang="ts">
     let {label, value, unit = ""} = $props();
 </script>
 

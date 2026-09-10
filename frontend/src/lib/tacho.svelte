@@ -5,7 +5,7 @@
     ]} />
 </section>
 
-<script>
+<script lang="ts">
     import Table from "./table.svelte";
     
     let { deviceStatus } = $props();

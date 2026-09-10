@@ -9,6 +9,6 @@
     </tbody>
 </table>
 
-<script>
+<script lang="ts">
     let { tableColumns } = $props();
 </script>

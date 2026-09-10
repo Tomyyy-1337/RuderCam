@@ -1,28 +1,27 @@
-<section>
-    <h3>Anzeige Einstellungen</h3>
-    <SettingsToggleTheme />
-    <SettingsOverlay bind:overlay_settings />
 
-    <h3>Geräteverwaltung</h3>   
-    
-    <SettingsShutdownTimer {config} />
-    <SettingsPowerButton />
-    
-    <h3>WLAN Einstellungen</h3>
-    
-    <SettingsChangeSsid {config} />
-    <SettingsChangePassword {config} />
+<h3>Anzeige Einstellungen</h3>
+<SettingsToggleTheme />
+<SettingsOverlay bind:overlay_settings />
 
-    <h3>Fahrtenbuch</h3>
-    
-    <SettingsFahrtenbuch {fahrtenbuch} />
+<h3>Geräteverwaltung</h3>   
 
-    <h3>Update</h3>
+<SettingsShutdownTimer {config} />
+<SettingsPowerButton />
 
-    <Update />
-</section>
+<h3>WLAN Einstellungen</h3>
 
-<script>
+<SettingsChangeSsid {config} />
+<SettingsChangePassword {config} />
+
+<h3>Fahrtenbuch</h3>
+
+<SettingsFahrtenbuch {fahrtenbuch} />
+
+<h3>Update</h3>
+
+<Update />
+
+<script lang="ts">
     import { onMount } from "svelte";
     import SettingsChangePassword from "./settings_change_password.svelte";
     import SettingsChangeSsid from "./settings_change_ssid.svelte";
@@ -32,44 +31,59 @@
     import SettingsToggleTheme from "./settings_toggle_theme.svelte";
     import Update from "./update.svelte";
     import SettingsOverlay from "./settings_overlay.svelte";
+    import type { AppConfig, OverlaySettings } from "./types";
 
-    let { fahrtenbuch, overlay_settings = $bindable() } = $props();
-
-    let config = $state({
-        ssid: 'TestSSID',
-        password: 'TestPassword',
+    const defaultConfig: AppConfig = {
+        ssid: "TestSSID",
+        password: "TestPassword",
         auto_shutdown_time: 5,
-    });
+    };
+
+    function toConfig(value: unknown): AppConfig {
+        if (!value || typeof value !== "object") {
+            return defaultConfig;
+        }
+
+        const candidate = value as Partial<AppConfig>;
+
+        return {
+            ssid: candidate.ssid || defaultConfig.ssid,
+            password: candidate.password || defaultConfig.password,
+            auto_shutdown_time: Number(candidate.auto_shutdown_time || defaultConfig.auto_shutdown_time),
+        };
+    }
+
+    let { fahrtenbuch, overlay_settings = $bindable() }: { fahrtenbuch: unknown; overlay_settings: OverlaySettings } = $props();
+
+    let config = $state<AppConfig>(defaultConfig);
 
     onMount(async () => {
-        // Load config from localStorage if available for offline access
-        let storedConfig = localStorage.getItem('config');
+        const storedConfig = localStorage.getItem("config");
         if (storedConfig) {
-            config = JSON.parse(storedConfig);
+            try {
+                config = toConfig(JSON.parse(storedConfig) as unknown);
+            } catch {
+                config = defaultConfig;
+            }
         }
-        // Fetch latest config from backend 
+
         await fetchConfig();
     });
 
     $effect(() => {
-        // Save config to localStorage whenever it changes 
-        localStorage.setItem('config', JSON.stringify(config));
+        localStorage.setItem("config", JSON.stringify(config));
     });
 
-    async function fetchConfig() {
-        const response = await fetch('/api/get_config', {
-            method: 'GET',
+    async function fetchConfig(): Promise<void> {
+        const response = await fetch("/api/get_config", {
+            method: "GET",
             headers: {
-                'Content-Type': 'application/json',
-            }
+                "Content-Type": "application/json",
+            },
         });
+
         if (response.ok) {
-            const config_json = await response.json();
-            config = {
-                ssid: config_json.ssid || '',
-                password: config_json.password || '',
-                auto_shutdown_time: config_json.auto_shutdown_time || 5,
-            };
+            config = toConfig(await response.json() as unknown);
         }
     }
 </script>

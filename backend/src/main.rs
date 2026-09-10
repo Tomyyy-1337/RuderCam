@@ -186,7 +186,7 @@ async fn accelerometer_processing_task(
 /// Continuously read battery status and update shared state
 async fn read_battery_task(
 ) {
-    let mut timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
+    let mut timer = tokio::time::interval(tokio::time::Duration::from_secs(30));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         timer.tick().await;

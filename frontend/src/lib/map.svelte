@@ -1,10 +1,12 @@
-<script>
+<script lang="ts">
     import { onMount } from "svelte";
     import {
         FullscreenControl,
+        type LayerSpecification,
         LngLatBounds,
         Map,
         Marker,
+        type SourceSpecification,
         addProtocol,
         removeProtocol,
         setWorkerUrl
@@ -12,8 +14,9 @@
     import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
     import { PMTiles, Protocol } from "pmtiles";
     import "maplibre-gl/dist/maplibre-gl.css";
+    import type { Waypoint, WaypointInput } from "./types";
 
-    const DEFAULT_CENTER = [8.472401705884762, 49.363691016649035];
+    const DEFAULT_CENTER: Waypoint = [8.472401705884762, 49.363691016649035];
     const PMTILES_MAGIC_NUMBER = 19792;
     const pmtilesFiles = [
         "germany.pmtiles",
@@ -26,9 +29,9 @@
         "luxembourg.pmtiles"
     ];
 
-    let { waypoints = [] } = $props();
+    let { waypoints = [] }: { waypoints?: WaypointInput[] } = $props();
 
-    const normalizeWaypoints = (points) =>
+    const normalizeWaypoints = (points: WaypointInput[]): Waypoint[] =>
         (Array.isArray(points) ? points : []).flatMap((point) => {
             if (
                 Array.isArray(point) &&
@@ -39,7 +42,7 @@
                 return [[Number(point[0]), Number(point[1])]];
             }
 
-            if (point && Number.isFinite(point.lon) && Number.isFinite(point.lat)) {
+            if (!Array.isArray(point) && Number.isFinite(point.lon) && Number.isFinite(point.lat)) {
                 return [[Number(point.lon), Number(point.lat)]];
             }
 
@@ -48,7 +51,7 @@
 
     let normalizedWaypoints = $derived(normalizeWaypoints(waypoints));
 
-    const getWaypointCenter = (points) => {
+    const getWaypointCenter = (points: Waypoint[]): Waypoint => {
         if (!points.length) {
             return DEFAULT_CENTER;
         }
@@ -65,16 +68,23 @@
         return [total.longitude / points.length, total.latitude / points.length];
     };
 
-    const buildSources = (baseUrl, files) =>
+    const buildSources = (baseUrl: string, files: string[]): { [_: string]: SourceSpecification } =>
         Object.fromEntries(
             files.map((filename) => {
                 const sourceName = filename.replace(/\.pmtiles$/, "");
-                return [sourceName, { type: "vector", url: `pmtiles://${baseUrl}/${filename}` }];
+                return [
+                    sourceName,
+                    { type: "vector", url: `pmtiles://${baseUrl}/${filename}` } as SourceSpecification
+                ];
             })
         );
 
-    const buildLayers = (files) => [
-        { id: "background", type: "background", paint: { "background-color": "#d8e8d0" } },
+    const buildLayers = (files: string[]): LayerSpecification[] => [
+        {
+            id: "background",
+            type: "background",
+            paint: { "background-color": "#d8e8d0" }
+        } as LayerSpecification,
         ...files.flatMap((filename) => {
             const sourceName = filename.replace(/\.pmtiles$/, "");
 
@@ -85,14 +95,14 @@
                     source: sourceName,
                     "source-layer": "landuse",
                     paint: { "fill-color": "#d8e8d0" }
-                },
+                } as LayerSpecification,
                 {
                     id: `${sourceName}-water`,
                     type: "fill",
                     source: sourceName,
                     "source-layer": "water",
                     paint: { "fill-color": "#8fc8e8" }
-                },
+                } as LayerSpecification,
                 {
                     id: `${sourceName}-roads`,
                     type: "line",
@@ -102,12 +112,12 @@
                         "line-color": "#ffffff",
                         "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.5, 10, 1.5, 14, 3, 18, 8]
                     }
-                }
+                } as LayerSpecification
             ];
         })
     ];
 
-    const verifyPmtilesFile = async (url) => {
+    const verifyPmtilesFile = async (url: string): Promise<boolean> => {
         try {
             const response = await fetch(url, { headers: { Range: "bytes=0-1" } });
             if (!response.ok) {
@@ -125,7 +135,7 @@
         }
     };
 
-    const discoverPmtilesBaseUrl = async () => {
+    const discoverPmtilesBaseUrl = async (): Promise<{ baseUrl: string; validFiles: string[] }> => {
         const origins = [...new Set([
             window.location.origin,
             `${window.location.protocol}//${window.location.hostname}:3000`
@@ -140,7 +150,7 @@
                         return isValid ? filename : null;
                     })
                 )
-            ).filter(Boolean);
+            ).filter((filename): filename is string => filename !== null);
 
             if (validFiles.length > 0) {
                 return { baseUrl, validFiles };
@@ -150,7 +160,7 @@
         return { baseUrl: `${origins[0]}/maps`, validFiles: [] };
     };
 
-    const addWaypointGeometry = (map, points) => {
+    const addWaypointGeometry = (map: Map, points: Waypoint[]): void => {
         if (points.length < 2) {
             return;
         }
@@ -176,7 +186,7 @@
         });
     };
 
-    const addWaypointMarkers = (map, points) => {
+    const addWaypointMarkers = (map: Map, points: Waypoint[]): void => {
         points.forEach((coordinate, index) => {
             if (!coordinate || (index !== 0 && index !== points.length - 1)) {
                 return;
@@ -188,7 +198,7 @@
         });
     };
 
-    const buildInitialMapOptions = (points) => {
+    const buildInitialMapOptions = (points: Waypoint[]) => {
         if (points.length <= 1) {
             return {
                 center: getWaypointCenter(points),
@@ -212,7 +222,7 @@
         };
     };
 
-    const fitMapToWaypoints = (map, points, options = {}) => {
+    const fitMapToWaypoints = (map: Map, points: Waypoint[], options: { maxZoom?: number; animate?: boolean; duration?: number } = {}): void => {
         if (points.length <= 1) {
             return;
         }
@@ -230,14 +240,11 @@
         });
     };
 
-    /** @type {HTMLElement | undefined} */
-    let mapElement;
-    /** @type {HTMLElement | undefined} */
-    let mapShell;
-    /** @type {Map | undefined} */
-    let mapInstance;
+    let mapElement: HTMLDivElement | undefined;
+    let mapShell: HTMLDivElement | undefined;
+    let mapInstance: Map | undefined;
 
-    const setMapInteractionEnabled = (enabled) => {
+    const setMapInteractionEnabled = (enabled: boolean): void => {
         if (!mapInstance) {
             return;
         }
@@ -263,19 +270,21 @@
         }
     };
 
-    const handleFullscreenChange = () => {
+    const handleFullscreenChange = (): void => {
         if (!mapInstance || !mapElement) {
             return;
         }
+
+        const map = mapInstance;
 
         const isFullscreen = !!document.fullscreenElement;
         setMapInteractionEnabled(isFullscreen);
 
         requestAnimationFrame(() => {
-            mapInstance.resize();
+            map.resize();
 
             if (isFullscreen) {
-                fitMapToWaypoints(mapInstance, normalizedWaypoints, {
+                fitMapToWaypoints(map, normalizedWaypoints, {
                     maxZoom: 17,
                     animate: true,
                     duration: 350
@@ -283,7 +292,7 @@
                 return;
             }
 
-            fitMapToWaypoints(mapInstance, normalizedWaypoints, {
+            fitMapToWaypoints(map, normalizedWaypoints, {
                 maxZoom: 15,
                 animate: true,
                 duration: 350

@@ -7,7 +7,7 @@
         onclick={toggleExpanded}
     >
         <div class="toggle-top">
-            <span class="toggle-label">Fahrt am {new Date(fahrt.client_time).toLocaleString()}</span>
+            <span class="toggle-label">Fahrt am {formattedClientTime}</span>
             <span class="toggle-meta">
                 <span class="toggle-indicator">{isExpanded ? '▾' : '▸'}</span>
                 {isExpanded ? 'Weniger' : 'Mehr'}
@@ -34,7 +34,7 @@
                 {#if (fahrt.gps_positions && fahrt.gps_positions.length > 0)}
                     {#if showMap && MapComponent}
                     <MapComponent waypoints={
-                        (fahrt.gps_positions ?? []).map((position) => [Number(position.lon), Number(position.lat)])
+                        (fahrt.gps_positions ?? []).map((position: any) => [Number(position.lon), Number(position.lat)])
                     } />
                     {:else}
                     <div class="map-loading-placeholder" aria-hidden="true"></div>
@@ -80,21 +80,29 @@
                 </div>
             </div>
 
-            <button class="delete-button" onclick={() => deleteSession(index)}>
-                Fahrt löschen
+            <button class="delete-button" class:confirming={confirmingDelete} onclick={handleDeleteClick}>
+                {confirmingDelete ? 'Löschen bestätigen' : 'Fahrt löschen'}
             </button>
         </div>
     {/if}
 </article>
 
-<script>
+<script lang="ts">
     import { slide } from "svelte/transition";
 
     let { fahrt, index, fahrtenbuch } = $props();
 
-    let MapComponent = $state(null);
+    let MapComponent: any = $state(null);
     let isExpanded = $state(false);
     let showMap = $state(false);
+    let confirmingDelete = $state(false);
+    let formattedClientTime = $derived(new Date(fahrt.client_time).toLocaleString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric'
+    }));
     let minutes = $derived((Math.floor(fahrt.duration_secs / 60)).toString().padStart(2, '0'));
     let seconds = $derived((Math.round(fahrt.duration_secs % 60)).toString().padStart(2, '0'));
     let distance_traveled_km = $derived(Number(fahrt.distance_traveled_km ?? 0).toFixed(2));
@@ -125,14 +133,27 @@
         if (isExpanded) {
             showMap = false;
             isExpanded = false;
+            confirmingDelete = false;
             return;
         }
 
         isExpanded = true;
     }
 
-    function deleteSession(index) {
-        fahrtenbuch.update(f => {
+    function handleDeleteClick() {
+        if (!confirmingDelete) {
+            confirmingDelete = true;
+        } else {
+            deleteSession(index);
+            confirmingDelete = false;
+        }
+    }
+
+    /**
+     * @param {number} index
+     */
+    function deleteSession(index: number) {
+        fahrtenbuch.update((f: any) => {
             f.deleteSession(f.length() - 1 - index);
             return f;
         });
@@ -330,7 +351,7 @@
         align-items: center;
         justify-content: center;
         gap: 0.2rem;
-        min-height: 8rem;
+        min-height: 6rem;
         padding: 0.9rem 0.7rem;
         border-radius: 0.75em;
         background-color: var(--background);
@@ -373,6 +394,14 @@
 
     .delete-button:hover {
         background-color: rgba(239, 68, 68, 0.22);
+    }
+
+    .delete-button.confirming {
+        background-color: rgba(239, 68, 68, 0.25);
+    }
+
+    .delete-button.confirming:hover {
+        background-color: rgba(239, 68, 68, 0.35);
     }
 
     @media (max-width: 520px) {
