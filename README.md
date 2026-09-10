@@ -83,31 +83,6 @@ wifi.powersave = 2
 sudo systemctl restart NetworkManager
 ```
 
-### Camera Setup
-```bash 
-sudo nano /etc/systemd/system/rpicam.service
-```
-
-Insert the following content:
-```
-[Unit]
-Description=Raspberry Pi Camera Streaming
-After=network.target mediamtx.service
-Wants=mediamtx.service
-
-[Service]
-Type=simple
-WorkingDirectory=/home/pi/tmp
-ExecStart=/bin/bash -c '/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --bitrate 2000000 -o - | /usr/bin/ffmpeg -fflags +genpts -flags low_delay -fflags nobuffer -f h264 -i - -c copy -f rtsp -rtsp_transport udp rtsp://127.0.0.1:8554/stream'
-Restart=always
-RestartSec=5
-User=pi
-Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-[Install]
-WantedBy=multi-user.target
-```
-
 ```bash
 nano mediamtx.yml
 ```
@@ -150,9 +125,6 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 sudo systemctl enable mediamtx.service
 sudo systemctl start mediamtx.service
-sudo systemctl daemon-reload
-sudo systemctl enable rpicam.service
-sudo systemctl start rpicam.service
 ```
 
 Stream accessible at: `https://<your-pi-ip>:8889/stream/`

@@ -10,7 +10,7 @@ mod camera_interface;
 
 use std::{sync::Mutex, thread::sleep};
 
-use crate::{bpm_fft::FFTBPMDetector, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, InternalState}}; 
+use crate::{bpm_fft::FFTBPMDetector, camera_interface::CameraInterface, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, InternalState}}; 
 
 use futures::stream::StreamExt;
 use tokio::{pin, runtime::LocalOptions, task, time::MissedTickBehavior};
@@ -22,6 +22,7 @@ static CONFIG: Global<Config> = Global::new(Config::new_uninitialized());
 static SHARED_STATE: Global<DeviceState> = Global::new(DeviceState::default());
 static INTERNAL_STATE: Global<InternalState> = Global::new(InternalState::new());
 static I2C_INTERFACE: I2CInterface = I2CInterface::new_uninitialized();
+static CAMERA_INTERFACE: Global<CameraInterface> = Global::new(CameraInterface::new());
 
 static CURRENT_SESSION: Global<Option<ActiveSession>> = Global::new(None); 
 
@@ -71,6 +72,10 @@ fn initialize_statics() {
             }
         }
     }
+
+    CAMERA_INTERFACE.modify(|camera| camera.start_camera().unwrap_or_else(|e| {
+        println!("Failed to start camera: {}", e);
+    }));
 
     // Initialize Hotspot
     #[cfg(target_os = "linux")]

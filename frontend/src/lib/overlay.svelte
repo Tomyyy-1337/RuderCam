@@ -85,7 +85,6 @@
         width: 100%;
         height: 100%;
         background: transparent;
-        padding: 0 0.75rem;
         box-sizing: border-box;
         pointer-events: none;
     }
@@ -117,6 +116,8 @@
         align-items: center;
         width: 100%;
         background-color: rgba(0, 0, 0, 0.5);
+        padding: 0 0.75rem;
+        box-sizing: border-box;
         min-width: 0;
     }
 
@@ -126,6 +127,8 @@
         align-items: center;
         gap: 0.75rem;
         width: 100%;
+        padding: 0 0.75rem;
+        box-sizing: border-box;
         min-width: 0;
         min-height: 5.4rem;
     }

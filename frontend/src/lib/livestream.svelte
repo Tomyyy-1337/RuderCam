@@ -163,16 +163,13 @@
         border-radius: 0.75rem;
         overflow: hidden;
     }
-    
-    video {
-        transform: scaleX(-1);
-    }
 
     .video-shell video {
         width: 100%;
         height: 100%;
         display: block;
         object-fit: cover;
+        object-position: center;
         background: black;
     }
 
@@ -181,8 +178,11 @@
     }
 
     .video-shell:fullscreen {
-        max-width: 100%;
-        max-height: 100%;
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
+        aspect-ratio: auto;
         place-items: center;
         background: black;
         border-radius: 0;
@@ -190,8 +190,10 @@
     }
 
     .video-shell:fullscreen video {
-        max-height: 100%;
-        max-width: 100%;
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        max-width: 100vw;
         object-fit: contain;
     }
 
@@ -263,5 +265,19 @@
     .video-shell:fullscreen .fullscreen-btn {
         left: 1rem;
         bottom: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        section {
+            padding: 0.75rem;
+        }
+
+        .video-shell {
+            width: 100%;
+        }
+
+        .video-shell video {
+            object-fit: contain;
+        }
     }
 </style>

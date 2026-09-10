@@ -79,6 +79,7 @@
     let activeTab = $state<AppTab>("sessions");
 
     let socket: WebSocket | null = null;
+    let sessionActivityTimeout: number | null = null;
 
     onMount(() => {
         const theme = (localStorage.getItem("theme") as Theme | null) ?? "dark";
@@ -99,6 +100,7 @@
         connectWebSocket();
 
         return () => {
+            clearSessionActivityTimeout();
             socket?.close();
         };
     });
@@ -130,6 +132,8 @@
             if (!activeSession.isActive || Math.abs(Date.parse(payload.client_time) - Date.now()) > 2000) {
                 activeSession.isActive = true;
             }
+
+            scheduleSessionActivityTimeout();
             activeSession.client_time = Date.parse(payload.client_time);
             activeSession.distance_traveled_km = payload.distance_traveled_km;
             activeSession.average_speed_kmh = payload.average_speed_kmh;
@@ -142,8 +146,27 @@
 
     function socketCloseListener(): void {
         deviceStatus.isConnected = false;
-        activeSession.isActive = false;
+        deactivateSession();
         scheduleReconnect();
+    }
+
+    function scheduleSessionActivityTimeout(): void {
+        clearSessionActivityTimeout();
+        sessionActivityTimeout = window.setTimeout(() => {
+            deactivateSession();
+        }, 3000);
+    }
+
+    function clearSessionActivityTimeout(): void {
+        if (sessionActivityTimeout !== null) {
+            clearTimeout(sessionActivityTimeout);
+            sessionActivityTimeout = null;
+        }
+    }
+
+    function deactivateSession(): void {
+        clearSessionActivityTimeout();
+        activeSession.isActive = false;
     }
 
     function scheduleReconnect(): void {
