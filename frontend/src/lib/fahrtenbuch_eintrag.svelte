@@ -312,6 +312,7 @@
         justify-content: space-between;
         gap: 0.5rem;
         background-color: var(--background);
+        border: 1px solid var(--subtle-border);
         border-radius: 0.75em;
         padding: 0.7rem 0.9rem;
     }
