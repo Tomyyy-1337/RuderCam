@@ -33,7 +33,7 @@
                 {#if (fahrt.gps_positions && fahrt.gps_positions.length > 0)}
                     {#if showMap && MapComponent}
                     <MapComponent waypoints={
-                        (fahrt.gps_positions ?? []).map((position) => [Number(position.lon), Number(position.lat)] satisfies Waypoint)
+                        fahrt.gps_positions
                     } />
                     {:else}
                     <div class="map-loading-placeholder" aria-hidden="true"></div>
@@ -91,7 +91,7 @@
     import type { Component } from "svelte";
     import type { Writable } from "svelte/store";
     import type { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
-    import type { Waypoint } from "./types";
+    import type { GpsPosition, Waypoint } from "./types";
 
     let { fahrt, index, fahrtenbuch }: {
         fahrt: Session;
@@ -99,7 +99,7 @@
         fahrtenbuch: Writable<FahrtenbuchStore>;
     } = $props();
 
-    let MapComponent = $state<Component<{ waypoints?: Waypoint[] }> | null>(null);
+    let MapComponent = $state<Component<{ waypoints: GpsPosition[] }>>();
     let isExpanded = $state(false);
     let showMap = $state(false);
     let confirmingDelete = $state(false);

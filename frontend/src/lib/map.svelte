@@ -14,7 +14,7 @@
     import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
     import { PMTiles, Protocol } from "pmtiles";
     import "maplibre-gl/dist/maplibre-gl.css";
-    import type { Waypoint, WaypointInput } from "./types";
+    import type { GpsPosition, Waypoint } from "./types";
 
     const DEFAULT_CENTER: Waypoint = [8.472401705884762, 49.363691016649035];
     const PMTILES_MAGIC_NUMBER = 19792;
@@ -29,25 +29,12 @@
         "luxembourg.pmtiles"
     ];
 
-    let { waypoints = [] }: { waypoints?: WaypointInput[] } = $props();
+    let { waypoints = [] }: { waypoints: GpsPosition[] } = $props();
 
-    const normalizeWaypoints = (points: WaypointInput[]): Waypoint[] =>
-        (Array.isArray(points) ? points : []).flatMap((point) => {
-            if (
-                Array.isArray(point) &&
-                point.length >= 2 &&
-                Number.isFinite(point[0]) &&
-                Number.isFinite(point[1])
-            ) {
-                return [[Number(point[0]), Number(point[1])]];
-            }
-
-            if (!Array.isArray(point) && Number.isFinite(point.lon) && Number.isFinite(point.lat)) {
-                return [[Number(point.lon), Number(point.lat)]];
-            }
-
-            return [];
-        });
+    const normalizeWaypoints = (points: GpsPosition[]): Waypoint[] =>
+        points
+            .map((point) => [point.lon, point.lat] as Waypoint)
+            .filter(([longitude, latitude]) => !isNaN(longitude) && !isNaN(latitude));
 
     let normalizedWaypoints = $derived(normalizeWaypoints(waypoints));
 
