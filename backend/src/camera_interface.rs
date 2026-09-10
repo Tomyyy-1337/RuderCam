@@ -2,9 +2,21 @@ use std::process::{Command, Stdio};
 
 use futures::io;
 
-enum Metering {
+pub struct CameraInterface {
+    metering: Metering,
+    exposure_compensation: i32,   
+    focus_mode: FocusMode,
+    stream_process: Option<std::process::Child>,
+}
+
+pub enum Metering {
     Center,
     Average,
+}
+
+pub enum FocusMode {
+    Auto,
+    Fixed,
 }
 
 impl Metering {
@@ -16,11 +28,13 @@ impl Metering {
     }
 }
 
-pub struct CameraInterface {
-    metering: Metering,
-    exposure_compensation: i32,   
-    autofocus_enabled: bool,
-    stream_process: Option<std::process::Child>,
+impl FocusMode {
+    fn to_arg(&self) -> &str {
+        match self {
+            FocusMode::Auto => "",
+            FocusMode::Fixed => "--lens-position default",
+        }
+    }
 }
 
 impl CameraInterface {
@@ -29,7 +43,7 @@ impl CameraInterface {
             metering: Metering::Average,
             exposure_compensation: 0,
             stream_process: None,
-            autofocus_enabled: false,
+            focus_mode: FocusMode::Fixed,
         }
     }
 
@@ -38,18 +52,12 @@ impl CameraInterface {
             return Ok(());
         }
 
-        let autofocus = if self.autofocus_enabled {
-            ""
-        } else {
-            "--lens-position default"
-        };
-
         let cmd = format!(
             "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --hflip 1 --low-latency 1 --bitrate 2000000 --metering {} --ev {} {} -o - | \
              /usr/bin/ffmpeg -fflags +genpts -flags low_delay -fflags nobuffer -f h264 -i - -c copy -f rtsp -rtsp_transport udp rtsp://127.0.0.1:8554/stream",
             self.metering.to_string(),
             self.exposure_compensation,
-            autofocus
+            self.focus_mode.to_arg()
         );
 
         let child = Command::new("/bin/bash")

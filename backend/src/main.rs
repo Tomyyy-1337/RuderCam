@@ -72,13 +72,13 @@ fn initialize_statics() {
             }
         }
     }
-
-    let _ = CAMERA_INTERFACE.modify(|camera| camera.start_camera());
-
-    // Initialize Hotspot
+    
     #[cfg(target_os = "linux")]
     Hotspot::initialize(&CONFIG.ssid, &CONFIG.password);
-
+    
+    #[cfg(target_os = "linux")]
+    let _ = CAMERA_INTERFACE.modify(|camera| camera.start_camera());
+    
     INTERNAL_STATE.modify(|state| {
         state.set_last_connection_time(std::time::Instant::now());
     });
