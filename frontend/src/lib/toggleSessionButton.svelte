@@ -61,7 +61,6 @@
         }
 
         const sessionSummary: SessionJson = payload;
-        console.log('Session summary received:', sessionSummary);
         const session = new Session(sessionSummary);
         fahrtenbuch.update((store) => {
             store.addSession(session);
@@ -78,14 +77,14 @@
     }
 
     button.green {
-        background-color: transparent;
-        color: #4CAF50;
+        color: #4caf50;
+        background-color: rgba(0, 255, 0, 0.1);
         border: 2px solid #4CAF50;
     }
 
     button.red {
-        background-color: transparent;
         color: #f44336;
+        background-color: rgba(255, 0, 0, 0.04);
         border: 2px solid #f44336;
     }
     
@@ -106,6 +105,5 @@
         white-space: normal;
         word-break: break-word;
         border-radius: 0.6rem; 
-        background-color: rgba(0, 0, 0, 0.45);
     }
 </style>

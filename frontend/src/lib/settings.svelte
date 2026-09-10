@@ -9,7 +9,7 @@
 
     <AccordionSection
         title="Geräteverwaltung"
-        description="Einstellungen für automatisches Herunterfahren und Power-Button"
+        description="Einstellungen für Automatisches Herunterfahren und Neustart"
     >
         <SettingsShutdownTimer {config} />
         <SettingsPowerButton />

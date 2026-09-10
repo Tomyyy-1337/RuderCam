@@ -2,7 +2,9 @@
     {#each $fahrtenbuch.getSessions().slice().reverse() as fahrt, index (fahrt)}
         <FahrtenbuchEintrag {fahrt} {index} {fahrtenbuch}/>
     {:else}
-        <p>Es wurden noch keine Fahrten aufgezeichnet.</p>
+        <div class="no-entries-container">
+            <p>Es wurden noch keine Fahrten aufgezeichnet.</p>
+        </div>
     {/each}
 </div>
 
@@ -18,5 +20,18 @@
     .entries {
         display: grid;
         gap: 0.8em;
+    }
+
+    .no-entries-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        color: var(--text);
+    }
+
+    p {
+        font-size: 1.2em;
+        text-align: center;
     }
 </style>

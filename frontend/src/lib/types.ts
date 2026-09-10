@@ -71,7 +71,7 @@ export interface RunningSessionMessage {
     client_time: string;
     distance_traveled_km: number;
     average_speed_kmh: number;
-    max_speed: number;
+    max_speed_kmh: number;
     average_bpm: number;
     duration_secs: number;
     pausiert: boolean;
@@ -121,7 +121,7 @@ export function isRunningSessionMessage(value: unknown): value is RunningSession
         && typeof value.client_time === 'string'
         && typeof value.distance_traveled_km === 'number'
         && typeof value.average_speed_kmh === 'number'
-        && typeof value.max_speed === 'number'
+    && typeof value.max_speed_kmh === 'number'
         && typeof value.average_bpm === 'number'
         && typeof value.duration_secs === 'number'
         && typeof value.pausiert === 'boolean'

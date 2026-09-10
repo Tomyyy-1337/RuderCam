@@ -22,9 +22,8 @@ impl DeviceState {
 
     pub fn set_schlagzahl(&mut self, schlagzahl: f32) {
         self.schlagzahl = if self.velocity > 0.0 {
-            let old_schlagzahl = self.schlagzahl;
             let new_schlagzahl = schlagzahl.round();
-            if old_schlagzahl - new_schlagzahl >= 0.5 {
+            if schlagzahl - new_schlagzahl >= 0.5 {
                 new_schlagzahl + 0.5
             } else {
                 new_schlagzahl
@@ -35,7 +34,7 @@ impl DeviceState {
     }
 
     pub fn set_velocity(&mut self, velocity: f32) {
-        self.velocity = if velocity >= 2.0 {
+        self.velocity = if velocity >= 1.0 {
             (velocity * 10.0).round() / 10.0
         } else {
             0.0

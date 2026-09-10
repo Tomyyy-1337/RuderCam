@@ -1,13 +1,9 @@
 <div class="stat">
     <p class="stat_label">{label}</p>
-    <div class="value-wrap">
-        <div class="value-row">
-            <p class="stat_value">{value}</p>
-        </div>
-        {#if unit}
-            <span class="stat_unit">{unit}</span>
-        {/if}
-    </div>
+    <p class="stat_value">{value}</p>
+    {#if unit}
+        <span class="stat_unit">{unit}</span>
+    {/if}
 </div>
 
 <script lang="ts">
@@ -44,21 +40,6 @@
         justify-content: center;
     }
 
-    .value-wrap {
-        position: relative;
-        display: inline-flex;
-        align-items: flex-end;
-        justify-content: center;
-        min-height: 1.8em;
-        overflow: visible;
-    }
-
-    .value-row {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-    }
-
     .stat_value {
         font-weight: normal;
         margin: 0;
@@ -67,19 +48,17 @@
         text-align: center;
         color: white;
         white-space: nowrap;
+        display: block;
     }
 
     .stat_unit {
-        position: absolute;
-        right: -0.1rem;
-        bottom: 0.38rem;
-        transform: translateX(100%);
+        display: block;
+        margin-top: 0.15rem;
         font-size: clamp(0.45rem, 0.9vw + 0.25rem, 0.65rem);
         line-height: 1;
         color: white;
         opacity: 0.9;
         white-space: nowrap;
-        z-index: 30;
-        pointer-events: none;
+        text-align: center;
     }
 </style>

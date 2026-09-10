@@ -117,7 +117,7 @@
                     } catch {
                     }
                     reader = null;
-                    retryTimer = window.setTimeout(connectReader, 2000);
+                    retryTimer = window.setTimeout(connectReader, 3000);
                 },
                 onTrack: (evt) => {
                     if (retryTimer !== null) {
@@ -139,7 +139,7 @@
             });
         } catch (err) {
             console.error("connectReader exception:", err);
-            retryTimer = window.setTimeout(connectReader, 1000);
+            retryTimer = window.setTimeout(connectReader, 3000);
         }
     }
 </script>

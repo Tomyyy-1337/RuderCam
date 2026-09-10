@@ -170,17 +170,17 @@
         --soft-text: color-mix(in srgb, var(--text) 84%, transparent);
         --subtle-border: color-mix(in srgb, var(--text) 18%, transparent);
         --chip-bg: color-mix(in srgb, var(--text) 11%, transparent);
-        background-color: var(--section-background);
-        border-radius: 1em;
-        padding: 0.35em;
+        border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+        background: color-mix(in srgb, var(--section-background) 70%, var(--background) 30%);
+        border-radius: 1rem;
+        padding: 0;
         margin: 0;
         overflow: hidden;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-        transition: box-shadow 0.22s ease, transform 0.22s ease;
+        transition: border-color 0.22s ease, transform 0.22s ease;
     }
 
     .expanded {
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+        border-color: color-mix(in srgb, var(--text) 22%, transparent);
         transform: translateY(-1px);
     }
 
@@ -191,10 +191,10 @@
         gap: 0.55em;
         text-align: left;
         width: 100%;
-        padding: 0.85em;
+        padding: 0.85rem 1rem;
         border: none;
-        border-radius: 0.75em;
-        background-color: color-mix(in srgb, var(--background) 82%, white 18%);
+        border-radius: 0;
+        background: transparent;
         color: var(--text);
         font: inherit;
         cursor: pointer;
@@ -202,7 +202,7 @@
     }
 
     .toggle-button:hover {
-        background-color: color-mix(in srgb, var(--background) 74%, white 26%);
+        background-color: color-mix(in srgb, var(--text) 4%, transparent);
         transform: translateY(-1px);
     }
 
@@ -224,15 +224,22 @@
         gap: 0.65rem;
     }
 
+    .toggle-meta,
+    .distance-label,
+    .stat-tag,
+    .distance-unit,
+    .stat-unit {
+        color: var(--muted-text);
+        text-transform: uppercase;
+    }
+
     .toggle-meta {
         display: inline-flex;
         align-items: center;
         gap: 0.45rem;
-        color: var(--muted-text);
         font-size: 0.76rem;
         font-weight: 600;
         letter-spacing: 0.04em;
-        text-transform: uppercase;
         white-space: nowrap;
     }
 
@@ -266,7 +273,7 @@
         display: flex;
         flex-direction: column;
         gap: 0.75em;
-        padding: 0 0.5em 0.5em;
+        padding: 0 1rem 0.75rem;
     }
 
     .map-shell {
@@ -285,6 +292,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    .map-loading-placeholder {
         background-color: #d8e8d0;
     }
 
@@ -319,8 +329,6 @@
     .distance-label {
         font-size: 0.74rem;
         letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--muted-text);
     }
 
     .distance-value-row {
@@ -338,8 +346,6 @@
 
     .distance-unit {
         font-size: 0.9rem;
-        color: var(--muted-text);
-        text-transform: uppercase;
         letter-spacing: 0.08em;
     }
 
@@ -366,8 +372,6 @@
     .stat-tag {
         font-size: 0.68rem;
         letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--muted-text);
     }
 
     .stat-value {
@@ -379,8 +383,6 @@
 
     .stat-unit {
         font-size: 0.8rem;
-        color: var(--muted-text);
-        text-transform: uppercase;
         letter-spacing: 0.08em;
     }
 
@@ -409,10 +411,6 @@
     }
 
     @media (max-width: 520px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        }
-
         .toggle-top {
             align-items: flex-start;
         }
@@ -427,11 +425,6 @@
     }
 
     .no-map-placeholder {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
         background-color: var(--background);
         color: var(--muted-text);
         font-size: 0.9rem;

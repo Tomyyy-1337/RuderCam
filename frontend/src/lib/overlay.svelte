@@ -60,7 +60,7 @@
     let speed_kmh = $derived(deviceStatus.speed_kmh.toFixed(1));
     let schlagzahlValue = $derived(deviceStatus.schlagzahl);
     let schlagzahl = $derived(schlagzahlValue.toFixed(1));
-    let distance_per_stroke_m = $derived((schlagzahlValue > 0 ? (deviceStatus.speed_kmh / 3600) / (schlagzahlValue / 60) * 1000 : 0).toFixed(2));
+    let distance_per_stroke_m = $derived((schlagzahlValue > 0 ? (deviceStatus.speed_kmh / 3600) / (schlagzahlValue / 60) * 1000 : 0).toFixed(1));
 
     let time_per_500m_s = $derived(deviceStatus.speed_kmh > 0 ? (500 / 1000) / (deviceStatus.speed_kmh / 3600) : 0);
     let time_per_500m_formatted = $derived(time_per_500m_s > 0 ? Math.floor(time_per_500m_s / 60) + ":" + String(Math.floor(time_per_500m_s % 60)).padStart(2,'0') : '0:00');

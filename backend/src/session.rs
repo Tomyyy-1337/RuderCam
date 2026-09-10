@@ -77,7 +77,7 @@ impl ActiveSession {
         let last_update_time = self.last_gps_udpate;
         self.last_gps_udpate = std::time::Instant::now();
         
-        self.pausiert = data.speed_kmh < 2.0;
+        self.pausiert = data.speed_kmh < 1.0;
         if !self.pausiert {
             if let Some(last_position) = &self.last_gps_position {
                 self.distance_traveled_km += Self::calculate_distance(last_position.lat, last_position.lon, data.lat, data.lon)

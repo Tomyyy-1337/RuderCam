@@ -110,7 +110,7 @@ async fn read_gps_task() {
         match message {
             gps_interface::GPSMessage::GGA { satellites } => {
                 SHARED_STATE.modify(|state| state.satellite_count = satellites as u8);
-                if satellites < 4 {
+                if satellites < 5 {
                     SHARED_STATE.modify(|state| state.set_velocity(0.0));
                 }
             }

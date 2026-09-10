@@ -2,21 +2,18 @@
     {#if deviceStatus.isConnected}
         <PageHeadder {deviceStatus} />
         <Livestream {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
-        <Tacho {deviceStatus} />
         <Fahrt {fahrtenbuch} bind:activeSession />
     {:else}
         <NotConnected />
     {/if}
 
-    <section>
-        <Navbar bind:activeTab />
-        
-        {#if activeTab === 'settings'}
-            <Settings {fahrtenbuch} bind:overlay_settings />
-        {:else if activeTab === 'sessions'}
-            <Fahrtenbuch {fahrtenbuch} />
-        {/if}
-    </section>
+    <Navbar bind:activeTab />
+    
+    {#if activeTab === 'settings'}
+        <Settings {fahrtenbuch} bind:overlay_settings />
+    {:else if activeTab === 'sessions'}
+        <Fahrtenbuch {fahrtenbuch} />
+    {/if}
 
     <div style="height: 400px;"></div>
 </main>
@@ -33,7 +30,6 @@
     import PageHeadder from "./lib/pageHeadder.svelte";
     import Settings from "./lib/settings.svelte";
     import { setTheme } from "./lib/setTheme";
-    import Tacho from "./lib/tacho.svelte";
     import {
         isDeviceStateMessage,
         isOverlaySettings,
@@ -125,7 +121,6 @@
     function socketEventListener(event: MessageEvent<string>): void {
         const payload: unknown = JSON.parse(event.data);
         deviceStatus.isConnected = true;
-
         if (isDeviceStateMessage(payload)) {
             deviceStatus.battery_percentage = payload.battery_percentage;
             deviceStatus.speed_kmh = payload.velocity;
@@ -138,7 +133,7 @@
             activeSession.client_time = Date.parse(payload.client_time);
             activeSession.distance_traveled_km = payload.distance_traveled_km;
             activeSession.average_speed_kmh = payload.average_speed_kmh;
-            activeSession.max_speed_kmh = payload.max_speed;
+            activeSession.max_speed_kmh = payload.max_speed_kmh;
             activeSession.average_bpm = payload.average_bpm;
             activeSession.duration_secs = payload.duration_secs;
             activeSession.pausiert = payload.pausiert;
