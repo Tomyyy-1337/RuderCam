@@ -122,27 +122,27 @@ impl ActiveSession {
         };
 
         FinishedSession {
+            average_bpm: self.average_bpm(),
             client_time: self.client_time,
-            // average_bpm: self.average_bpm(),
-            // duration_secs: self.active_duration.as_secs_f32(),
-            // distance_traveled_km: self.distance_traveled_km,
-            // max_speed_kmh: self.max_speed,
-            // average_speed_kmh,
-            average_bpm: 40,
-            duration_secs: 120.0,
-            distance_traveled_km: 5.0,
-            max_speed_kmh: 35.0,
-            average_speed_kmh: 15.0,
-            // gps_positions: self.gps_position_history,
-            gps_positions: vec![ 
-                GPSPositionalData { lat: 49.3211515159501, lon: 8.447589581936127, speed_kmh: 10.0 },
-                GPSPositionalData { lat: 49.323002757630334, lon: 8.44853694800425, speed_kmh: 12.0 },
-                GPSPositionalData { lat: 49.32881255443851, lon: 8.452414421410182, speed_kmh: 15.0 }, 
-                GPSPositionalData { lat: 49.33533692926359, lon: 8.460190512457913, speed_kmh: 20.0 },
-                GPSPositionalData { lat: 49.341353790023916, lon: 8.471708848852389, speed_kmh: 25.0 },
-                GPSPositionalData { lat: 49.3521822855019, lon: 8.487309631066697, speed_kmh: 30.0 },
-                GPSPositionalData { lat: 49.358397676789295, lon: 8.492992932500439, speed_kmh: 35.0 },
-            ]
+            duration_secs: self.active_duration.as_secs_f32(),
+            distance_traveled_km: self.distance_traveled_km,
+            max_speed_kmh: self.max_speed,
+            average_speed_kmh,
+            gps_positions: self.gps_position_history,
+            // average_bpm: 40,
+            // duration_secs: 120.0,
+            // distance_traveled_km: 5.0,
+            // max_speed_kmh: 35.0,
+            // average_speed_kmh: 15.0,
+            // gps_positions: vec![ 
+            //     GPSPositionalData { lat: 49.3211515159501, lon: 8.447589581936127, speed_kmh: 10.0 },
+            //     GPSPositionalData { lat: 49.323002757630334, lon: 8.44853694800425, speed_kmh: 12.0 },
+            //     GPSPositionalData { lat: 49.32881255443851, lon: 8.452414421410182, speed_kmh: 15.0 }, 
+            //     GPSPositionalData { lat: 49.33533692926359, lon: 8.460190512457913, speed_kmh: 20.0 },
+            //     GPSPositionalData { lat: 49.341353790023916, lon: 8.471708848852389, speed_kmh: 25.0 },
+            //     GPSPositionalData { lat: 49.3521822855019, lon: 8.487309631066697, speed_kmh: 30.0 },
+            //     GPSPositionalData { lat: 49.358397676789295, lon: 8.492992932500439, speed_kmh: 35.0 },
+            // ]
         }
     }
     
