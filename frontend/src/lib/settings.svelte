@@ -1,8 +1,7 @@
 <div class="settings-page">
     <AccordionSection
         title="Anzeige"
-        description="Einstellungen für theme und Overlay"
-        // defaultOpen={true}
+        description="Einstellungen für Theme und Overlay"
     >
         <SettingsToggleTheme />
         <SettingsOverlay bind:overlay_settings />
