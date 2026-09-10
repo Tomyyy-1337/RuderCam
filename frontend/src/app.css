@@ -58,7 +58,7 @@ section {
 
 article {
   background-color: var(--background);
-  margin: 1em 0;
+  margin: 0.5em 0;
   padding: 0.1em 1em;
   border-radius: 1em;
 }

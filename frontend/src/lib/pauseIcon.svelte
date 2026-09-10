@@ -1,4 +1,4 @@
-<div class="pause-icon {style}" role="status" aria-live="polite" aria-label={paused ? "Session paused" : "Session running"}>
+<div class="pause-icon {style}" role="status" aria-live="polite" aria-label={label}>
     <svg viewBox="0 0 24 24" aria-hidden="true">
         {#if session.isActive}
             {#if paused}
@@ -20,6 +20,7 @@
     let { paused, session }: { paused: boolean, session: ActiveSession } = $props();
 
     let style = $derived(session.isActive ? (paused ? "paused" : "running") : "inactive");
+    let label = $derived(session.isActive ? (paused ? "Session paused" : "Session running") : "Session inactive");
 </script>
 
 <style>

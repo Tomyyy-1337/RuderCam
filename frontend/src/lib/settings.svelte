@@ -1,24 +1,43 @@
-<h3>Anzeige Einstellungen</h3>
-<SettingsToggleTheme />
-<SettingsOverlay bind:overlay_settings />
+<div class="settings-page">
+    <AccordionSection
+        title="Anzeige"
+        description="Einstellungen für theme und Overlay"
+        // defaultOpen={true}
+    >
+        <SettingsToggleTheme />
+        <SettingsOverlay bind:overlay_settings />
+    </AccordionSection>
 
-<h3>Geräteverwaltung</h3>   
+    <AccordionSection
+        title="Geräteverwaltung"
+        description="Einstellungen für automatisches Herunterfahren und Power-Button"
+    >
+        <SettingsShutdownTimer {config} />
+        <SettingsPowerButton />
+    </AccordionSection>
 
-<SettingsShutdownTimer {config} />
-<SettingsPowerButton />
+    <AccordionSection
+        title="WLAN"
+        description="SSID und Passwort des Geräts verwalten"
+    >
+        <SettingsChangeSsid {config} />
+        <SettingsChangePassword {config} />
+    </AccordionSection>
 
-<h3>WLAN Einstellungen</h3>
+    <AccordionSection
+        title="Fahrtenbuch"
+        description="Gespeicherte Fahrten verwalten"
+    >
+        <SettingsFahrtenbuch {fahrtenbuch} />
+    </AccordionSection>
 
-<SettingsChangeSsid {config} />
-<SettingsChangePassword {config} />
-
-<h3>Fahrtenbuch</h3>
-
-<SettingsFahrtenbuch {fahrtenbuch} />
-
-<h3>Update</h3>
-
-<Update />
+    <AccordionSection
+        title="Update"
+        description="Neue Versionen auf das Gerät übertragen"
+    >
+        <Update />
+    </AccordionSection>
+</div>
 
 <script lang="ts">
     import { onMount } from "svelte";
@@ -31,6 +50,7 @@
     import SettingsFahrtenbuch from "./settings_fahrtenbuch.svelte";
     import SettingsToggleTheme from "./settings_toggle_theme.svelte";
     import Update from "./update.svelte";
+    import AccordionSection from "./accordion_section.svelte";
     import SettingsOverlay from "./settings_overlay.svelte";
     import { isAppConfig } from "./types";
     import type { AppConfig, OverlaySettings } from "./types";
@@ -92,3 +112,11 @@
         }
     }
 </script>
+
+<style>
+    .settings-page {
+        display: grid;
+        gap: 1rem;
+        width: 100%;
+    }
+</style>
