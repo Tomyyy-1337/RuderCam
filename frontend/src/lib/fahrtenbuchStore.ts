@@ -1,4 +1,4 @@
-import type { GpsPosition, SessionJson } from './types'
+import { isSessionJson, type GpsPosition, type SessionJson } from './types'
 
 function parseStoredSessions(): SessionJson[] {
     const raw = localStorage.getItem('fahrtenbuch')
@@ -8,8 +8,8 @@ function parseStoredSessions(): SessionJson[] {
     }
 
     try {
-        const parsed = JSON.parse(raw)
-        return Array.isArray(parsed) ? parsed as SessionJson[] : []
+        const parsed: unknown = JSON.parse(raw)
+        return Array.isArray(parsed) ? parsed.filter(isSessionJson) : []
     } catch {
         return []
     }

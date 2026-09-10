@@ -1,4 +1,3 @@
-
 <h3>Anzeige Einstellungen</h3>
 <SettingsToggleTheme />
 <SettingsOverlay bind:overlay_settings />
@@ -23,6 +22,8 @@
 
 <script lang="ts">
     import { onMount } from "svelte";
+    import type { Writable } from "svelte/store";
+    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
     import SettingsChangePassword from "./settings_change_password.svelte";
     import SettingsChangeSsid from "./settings_change_ssid.svelte";
     import SettingsPowerButton from "./settings_power_button.svelte";
@@ -31,6 +32,7 @@
     import SettingsToggleTheme from "./settings_toggle_theme.svelte";
     import Update from "./update.svelte";
     import SettingsOverlay from "./settings_overlay.svelte";
+    import { isAppConfig } from "./types";
     import type { AppConfig, OverlaySettings } from "./types";
 
     const defaultConfig: AppConfig = {
@@ -40,20 +42,21 @@
     };
 
     function toConfig(value: unknown): AppConfig {
-        if (!value || typeof value !== "object") {
+        if (!isAppConfig(value)) {
             return defaultConfig;
         }
 
-        const candidate = value as Partial<AppConfig>;
-
         return {
-            ssid: candidate.ssid || defaultConfig.ssid,
-            password: candidate.password || defaultConfig.password,
-            auto_shutdown_time: Number(candidate.auto_shutdown_time || defaultConfig.auto_shutdown_time),
+            ssid: value.ssid || defaultConfig.ssid,
+            password: value.password || defaultConfig.password,
+            auto_shutdown_time: Number(value.auto_shutdown_time || defaultConfig.auto_shutdown_time),
         };
     }
 
-    let { fahrtenbuch, overlay_settings = $bindable() }: { fahrtenbuch: unknown; overlay_settings: OverlaySettings } = $props();
+    let { fahrtenbuch, overlay_settings = $bindable() }: {
+        fahrtenbuch: Writable<FahrtenbuchStore>;
+        overlay_settings: OverlaySettings;
+    } = $props();
 
     let config = $state<AppConfig>(defaultConfig);
 
@@ -61,7 +64,8 @@
         const storedConfig = localStorage.getItem("config");
         if (storedConfig) {
             try {
-                config = toConfig(JSON.parse(storedConfig) as unknown);
+                const parsedConfig: unknown = JSON.parse(storedConfig);
+                config = toConfig(parsedConfig);
             } catch {
                 config = defaultConfig;
             }
@@ -83,7 +87,8 @@
         });
 
         if (response.ok) {
-            config = toConfig(await response.json() as unknown);
+            const parsedConfig: unknown = await response.json();
+            config = toConfig(parsedConfig);
         }
     }
 </script>

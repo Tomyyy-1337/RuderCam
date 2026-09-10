@@ -122,12 +122,17 @@ impl ActiveSession {
         };
 
         FinishedSession {
-            average_bpm: self.average_bpm(),
-            duration_secs: self.active_duration.as_secs_f32(),
-            distance_traveled_km: self.distance_traveled_km,
-            max_speed_kmh: self.max_speed,
             client_time: self.client_time,
-            average_speed_kmh,
+            // average_bpm: self.average_bpm(),
+            // duration_secs: self.active_duration.as_secs_f32(),
+            // distance_traveled_km: self.distance_traveled_km,
+            // max_speed_kmh: self.max_speed,
+            // average_speed_kmh,
+            average_bpm: 40,
+            duration_secs: 120.0,
+            distance_traveled_km: 5.0,
+            max_speed_kmh: 35.0,
+            average_speed_kmh: 15.0,
             // gps_positions: self.gps_position_history,
             gps_positions: vec![ 
                 GPSPositionalData { lat: 49.3211515159501, lon: 8.447589581936127, speed_kmh: 10.0 },

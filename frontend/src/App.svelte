@@ -34,39 +34,18 @@
     import Settings from "./lib/settings.svelte";
     import { setTheme } from "./lib/setTheme";
     import Tacho from "./lib/tacho.svelte";
+    import {
+        isDeviceStateMessage,
+        isOverlaySettings,
+        isRunningSessionMessage,
+    } from "./lib/types";
     import type {
         ActiveSession,
-        DeviceStateMessage,
+        AppTab,
         DeviceStatus,
         OverlaySettings,
-        RunningSessionMessage,
         Theme,
     } from "./lib/types";
-
-    function isOverlaySettings(value: unknown): value is OverlaySettings {
-        return !!value && typeof value === "object" && "show_overlay" in value && "position" in value;
-    }
-
-    function isDeviceState(message: unknown): message is DeviceStateMessage {
-        return !!message
-            && typeof message === "object"
-            && "velocity" in message
-            && "satellite_count" in message
-            && "schlagzahl" in message
-            && "battery_percentage" in message;
-    }
-
-    function isRunningSession(message: unknown): message is RunningSessionMessage {
-        return !!message
-            && typeof message === "object"
-            && "client_time" in message
-            && "distance_traveled_km" in message
-            && "average_speed_kmh" in message
-            && "max_speed" in message
-            && "average_bpm" in message
-            && "duration_secs" in message
-            && "pausiert" in message;
-    }
 
     let fahrtenbuch: Writable<FahrtenbuchStore> = writable(new FahrtenbuchStore());
 
@@ -101,7 +80,7 @@
         show_distanc_per_stroke: true,
     });
 
-    let activeTab = $state("sessions");
+    let activeTab = $state<AppTab>("sessions");
 
     let socket: WebSocket | null = null;
 
@@ -112,7 +91,7 @@
         const storedOverlaySettings = localStorage.getItem("overlay_settings");
         if (storedOverlaySettings) {
             try {
-                const parsedSettings = JSON.parse(storedOverlaySettings) as unknown;
+                const parsedSettings: unknown = JSON.parse(storedOverlaySettings);
                 if (isOverlaySettings(parsedSettings)) {
                     overlay_settings = parsedSettings;
                 }
@@ -144,15 +123,15 @@
     }
 
     function socketEventListener(event: MessageEvent<string>): void {
-        const payload = JSON.parse(event.data) as unknown;
+        const payload: unknown = JSON.parse(event.data);
         deviceStatus.isConnected = true;
 
-        if (isDeviceState(payload)) {
+        if (isDeviceStateMessage(payload)) {
             deviceStatus.battery_percentage = payload.battery_percentage;
             deviceStatus.speed_kmh = payload.velocity;
             deviceStatus.schlagzahl = payload.schlagzahl;
             deviceStatus.satellite_count = payload.satellite_count;
-        } else if (isRunningSession(payload)) {
+        } else if (isRunningSessionMessage(payload)) {
             if (!activeSession.isActive || Math.abs(Date.parse(payload.client_time) - Date.now()) > 2000) {
                 activeSession.isActive = true;
             }

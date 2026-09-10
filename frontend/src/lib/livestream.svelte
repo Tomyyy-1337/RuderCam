@@ -26,7 +26,7 @@
     import type { Writable } from "svelte/store";
     import type { FahrtenbuchStore } from "./fahrtenbuchStore";
 
-    let videoShell: HTMLDivElement | undefined;
+    let videoShell: HTMLDivElement | null = null;
     let reader: MediaMTXWebRTCReader | null = null;
     let retryTimer: number | null = null;
 
@@ -88,7 +88,10 @@
             await videoShell.requestFullscreen();
 
             try {
-                await screen.orientation?.lock?.("landscape");
+                const orientation = screen.orientation as ScreenOrientation & {
+                    lock?: (value: string) => Promise<void>;
+                };
+                await orientation.lock?.("landscape");
             } catch (err) {
                 console.warn("Could not lock orientation to landscape", err);
             }

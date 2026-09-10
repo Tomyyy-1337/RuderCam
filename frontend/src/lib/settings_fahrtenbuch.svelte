@@ -7,14 +7,17 @@
     <div class="spacer"></div>
 </article>
 
-<script>
-    let {fahrtenbuch = $bindable()} = $props();
+<script lang="ts">
+    import type { Writable } from "svelte/store";
+    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
 
-    function deleteFahrtenbuch() {
+    let { fahrtenbuch = $bindable() }: { fahrtenbuch: Writable<FahrtenbuchStore> } = $props();
+
+    function deleteFahrtenbuch(): void {
         if (confirm('Möchten Sie wirklich alle Fahrten löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-            fahrtenbuch.update(f => {
-                f.clearHistory();
-                return f;
+            fahrtenbuch.update((store) => {
+                store.clearHistory();
+                return store;
             });
         }
     }

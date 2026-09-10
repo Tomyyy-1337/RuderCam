@@ -1,4 +1,3 @@
-
 <article class:expanded={isExpanded} class="trip-card">
     <button
         type="button"
@@ -34,7 +33,7 @@
                 {#if (fahrt.gps_positions && fahrt.gps_positions.length > 0)}
                     {#if showMap && MapComponent}
                     <MapComponent waypoints={
-                        (fahrt.gps_positions ?? []).map((position: any) => [Number(position.lon), Number(position.lat)])
+                        (fahrt.gps_positions ?? []).map((position) => [Number(position.lon), Number(position.lat)] satisfies Waypoint)
                     } />
                     {:else}
                     <div class="map-loading-placeholder" aria-hidden="true"></div>
@@ -89,10 +88,18 @@
 
 <script lang="ts">
     import { slide } from "svelte/transition";
+    import type { Component } from "svelte";
+    import type { Writable } from "svelte/store";
+    import type { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
+    import type { Waypoint } from "./types";
 
-    let { fahrt, index, fahrtenbuch } = $props();
+    let { fahrt, index, fahrtenbuch }: {
+        fahrt: Session;
+        index: number;
+        fahrtenbuch: Writable<FahrtenbuchStore>;
+    } = $props();
 
-    let MapComponent: any = $state(null);
+    let MapComponent = $state<Component<{ waypoints?: Waypoint[] }> | null>(null);
     let isExpanded = $state(false);
     let showMap = $state(false);
     let confirmingDelete = $state(false);
@@ -149,13 +156,10 @@
         }
     }
 
-    /**
-     * @param {number} index
-     */
     function deleteSession(index: number) {
-        fahrtenbuch.update((f: any) => {
-            f.deleteSession(f.length() - 1 - index);
-            return f;
+        fahrtenbuch.update((store) => {
+            store.deleteSession(store.length() - 1 - index);
+            return store;
         });
     }
 </script>

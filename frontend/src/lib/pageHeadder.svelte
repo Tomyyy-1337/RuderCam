@@ -7,8 +7,9 @@
 <script lang="ts">
     import BatteryStatusIcon from "./batteryStatusIcon.svelte";
     import SateliteIcon from "./sateliteIcon.svelte";
+    import type { DeviceStatus } from "./types";
 
-    let {deviceStatus} = $props();
+    let { deviceStatus }: { deviceStatus: DeviceStatus } = $props();
 
     let battery_percentage = $derived(deviceStatus.battery_percentage);
     let satellite_count = $derived(deviceStatus.satellite_count);

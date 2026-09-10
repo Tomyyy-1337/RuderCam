@@ -10,5 +10,7 @@
 </table>
 
 <script lang="ts">
-    let { tableColumns } = $props();
+    import type { TableColumn } from "./types";
+
+    let { tableColumns }: { tableColumns: TableColumn[] } = $props();
 </script>

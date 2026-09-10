@@ -1,14 +1,15 @@
 {
+  "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
     "moduleResolution": "bundler",
     "target": "ESNext",
     "module": "ESNext",
+    "types": ["node"],
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
     "sourceMap": true,
     "esModuleInterop": true,
-    "types": ["vite/client", "svelte"],
     "skipLibCheck": true,
     "allowJs": false,
     "checkJs": false

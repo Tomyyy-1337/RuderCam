@@ -10,7 +10,7 @@
 </div>
 
 <script lang="ts">
-    let { paused = true } = $props();
+    let { paused = true }: { paused?: boolean } = $props();
 </script>
 
 <style>

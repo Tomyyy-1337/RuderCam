@@ -9,10 +9,12 @@
 </article>
 
 <script lang="ts">
-    let { config } = $props();
+    import type { AppConfig } from "./types";
+
+    let { config }: { config: AppConfig } = $props();
     let shutdownTimerInput = $state('');
 
-    async function handleSaveShutdownTimer() {
+    async function handleSaveShutdownTimer(): Promise<void> {
         const minutes = parseInt(shutdownTimerInput);
         shutdownTimerInput = '';
         if (isNaN(minutes) || minutes <= 0) {

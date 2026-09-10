@@ -6,10 +6,12 @@
     {/each}
 </div>
 
-<script>
+<script lang="ts">
     import FahrtenbuchEintrag from "./fahrtenbuch_eintrag.svelte";
+    import type { Writable } from "svelte/store";
+    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
 
-    let { fahrtenbuch } = $props();
+    let { fahrtenbuch }: { fahrtenbuch: Writable<FahrtenbuchStore> } = $props();
 </script>
 
 <style>

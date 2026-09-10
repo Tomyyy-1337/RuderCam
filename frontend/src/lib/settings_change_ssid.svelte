@@ -10,11 +10,13 @@
 </article>
 
 <script lang="ts">
-    let {config} = $props();
+    import type { AppConfig } from "./types";
+
+    let { config }: { config: AppConfig } = $props();
 
     let SSIDInput = $state('');
 
-    async function handleSSIdChange() {
+    async function handleSSIdChange(): Promise<void> {
         if (SSIDInput.trim() === '') {
             alert('Bitte geben Sie eine gültige SSID ein.');
             return;

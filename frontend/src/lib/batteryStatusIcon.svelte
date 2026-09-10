@@ -8,7 +8,7 @@
 </div>
 
 <script lang="ts">
-    let { value = 0 } = $props();
+    let { value = 0 }: { value: number } = $props();
 
     let tone = $derived(
         value <= 15 ? "red" :

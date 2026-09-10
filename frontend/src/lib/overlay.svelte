@@ -41,16 +41,30 @@
     import PauseIcon from "./pauseIcon.svelte";
     import SateliteIcon from "./sateliteIcon.svelte";
     import ToggleSessionButton from "./toggleSessionButton.svelte";
+    import type { Writable } from "svelte/store";
+    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
+    import type { ActiveSession, DeviceStatus, OverlaySettings } from "./types";
 
-    let {deviceStatus, activeSession = $bindable(), fahrtenbuch, overlay_settings} = $props();
+    let {
+        deviceStatus,
+        activeSession = $bindable(),
+        fahrtenbuch,
+        overlay_settings,
+    }: {
+        deviceStatus: DeviceStatus;
+        activeSession: ActiveSession;
+        fahrtenbuch: Writable<FahrtenbuchStore>;
+        overlay_settings: OverlaySettings;
+    } = $props();
 
     let fahrtzeit = $derived(activeSession.isActive ? Math.floor(activeSession.duration_secs / 60) + ":" + String(Math.floor(activeSession.duration_secs % 60)).padStart(2,'0') : '--:--');
     let distanz = $derived(activeSession.isActive ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
     let battery_percentage = $derived(deviceStatus.battery_percentage);
     let satellite_count = $derived(deviceStatus.satellite_count);
     let speed_kmh = $derived(deviceStatus.speed_kmh.toFixed(1));
-    let schlagzahl = $derived(deviceStatus.schlagzahl.toFixed(1));
-    let distance_per_stroke_m = $derived((schlagzahl > 0 ? (deviceStatus.speed_kmh / 3600) / (schlagzahl / 60) * 1000 : 0).toFixed(2));
+    let schlagzahlValue = $derived(deviceStatus.schlagzahl);
+    let schlagzahl = $derived(schlagzahlValue.toFixed(1));
+    let distance_per_stroke_m = $derived((schlagzahlValue > 0 ? (deviceStatus.speed_kmh / 3600) / (schlagzahlValue / 60) * 1000 : 0).toFixed(2));
 
     let time_per_500m_s = $derived(deviceStatus.speed_kmh > 0 ? (500 / 1000) / (deviceStatus.speed_kmh / 3600) : 0);
     let time_per_500m_formatted = $derived(time_per_500m_s > 0 ? Math.floor(time_per_500m_s / 60) + ":" + String(Math.floor(time_per_500m_s % 60)).padStart(2,'0') : '0:00');

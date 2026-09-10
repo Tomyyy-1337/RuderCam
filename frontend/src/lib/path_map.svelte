@@ -2,7 +2,7 @@
     import { buildSmoothedRoutePath, projectGpsCoordinates } from "./path_map_data";
     import type { GpsPosition } from "./types";
 
-    let { fahrt }: { fahrt?: { gps_positions?: GpsPosition[] } } = $props();
+    let { fahrt }: { fahrt: { gps_positions: GpsPosition[] } } = $props();
 
     let routePoints = $derived(projectGpsCoordinates(fahrt?.gps_positions ?? []));
     let routePath = $derived(buildSmoothedRoutePath(routePoints));

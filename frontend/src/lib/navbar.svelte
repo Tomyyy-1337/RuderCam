@@ -1,5 +1,7 @@
 <script lang="ts">
-    let { activeTab = $bindable() } = $props();
+    import type { AppTab } from "./types";
+
+    let { activeTab = $bindable() }: { activeTab: AppTab } = $props();
 </script>
 
 <nav aria-label="Navigation" class="tabbar">

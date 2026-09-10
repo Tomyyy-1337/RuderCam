@@ -11,11 +11,20 @@
 
 </section>
     
-<script>
+<script lang="ts">
     import Table from "./table.svelte";
     import ToggleSessionButton from "./toggleSessionButton.svelte";
+    import type { Writable } from "svelte/store";
+    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
+    import type { ActiveSession } from "./types";
 
-    let { fahrtenbuch = $bindable(), activeSession = $bindable() } = $props();
+    let {
+        fahrtenbuch = $bindable(),
+        activeSession = $bindable(),
+    }: {
+        fahrtenbuch: Writable<FahrtenbuchStore>;
+        activeSession: ActiveSession;
+    } = $props();
 
     let duration_secs = $derived(activeSession.isActive ? String(Math.floor(Math.round(activeSession.duration_secs) % 60)).padStart(2,'0') : '--');
     let duration_mins = $derived(activeSession.isActive ? String(Math.floor(Math.round(activeSession.duration_secs) / 60)).padStart(2,'0') : '--');

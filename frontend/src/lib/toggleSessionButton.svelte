@@ -11,7 +11,8 @@
 <script lang="ts">
     import type { Writable } from "svelte/store";
     import { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
-    import type { ActiveSession, SessionJson } from "./types";
+    import { isSessionJson } from "./types";
+    import type { ActiveSession, SessionButtonVariant, SessionJson } from "./types";
 
     let {
         fahrtenbuch,
@@ -20,7 +21,7 @@
     }: {
         fahrtenbuch: Writable<FahrtenbuchStore>;
         activeSession: ActiveSession;
-        variant?: string;
+        variant?: SessionButtonVariant;
     } = $props();
 
     function startSession(): void {
@@ -54,7 +55,12 @@
             return;
         }
 
-        const sessionSummary = await response.json() as SessionJson;
+        const payload: unknown = await response.json();
+        if (!isSessionJson(payload)) {
+            return;
+        }
+
+        const sessionSummary: SessionJson = payload;
         console.log('Session summary received:', sessionSummary);
         const session = new Session(sessionSummary);
         fahrtenbuch.update((store) => {

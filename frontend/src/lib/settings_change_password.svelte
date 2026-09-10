@@ -13,12 +13,14 @@
 </article>
 
 <script lang="ts">
-    let {config} = $props();
+    import type { AppConfig } from "./types";
+
+    let { config }: { config: AppConfig } = $props();
 
     let passwordInput = $state('');
     let passwordConfirmInput = $state('');
 
-    async function handlePasswordChange() {
+    async function handlePasswordChange(): Promise<void> {
         const validation = isPasswordReasonable(passwordInput);
         if (passwordInput !== passwordConfirmInput) {
             alert('Die Passwörter stimmen nicht überein.');

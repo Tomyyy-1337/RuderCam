@@ -14,14 +14,15 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { setTheme } from "./setTheme";
+    import type { Theme } from "./types";
 
-    let theme = $state('light');
+    let theme = $state<Theme>('light');
 
     onMount(() => {
-        theme = localStorage.getItem('theme') || 'light';
+        theme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
     });
 
-    function toggleTheme() {
+    function toggleTheme(): void {
         theme = theme === 'dark' ? 'light' : 'dark';
         setTheme(theme);
     }

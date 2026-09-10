@@ -10,14 +10,14 @@
     <div class="spacer"></div>
 </article>
 
-<script>
-    async function handleShutdown() {
+<script lang="ts">
+    async function handleShutdown(): Promise<void> {
         if (confirm('Möchten Sie das Gerät wirklich herunterfahren?')) {
             await fetch('/api/shutdown', { method: 'GET' });
         }
     }
 
-    async function handleReboot() {
+    async function handleReboot(): Promise<void> {
         if (confirm('Möchten Sie das Gerät wirklich neustarten?')) {
             await fetch('/api/reboot', { method: 'GET' });
         }

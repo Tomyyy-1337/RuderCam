@@ -421,7 +421,7 @@ class MediaMTXWebRTCReader {
       });
   }
 
-  #authHeader() {
+  #authHeader(): Record<string, string> {
     if (this.#conf.user !== undefined && this.#conf.user !== '') {
       const credentials = btoa(`${this.#conf.user}:${this.#conf.pass}`);
       return { Authorization: `Basic ${credentials}` };
@@ -444,10 +444,7 @@ class MediaMTXWebRTCReader {
       throw new Error('closed');
     }
 
-    this.#pc = new RTCPeerConnection({
-      iceServers,
-      sdpSemantics: 'unified-plan',
-    });
+    this.#pc = new RTCPeerConnection({ iceServers });
 
     const direction = 'recvonly';
     this.#pc.addTransceiver('video', { direction });

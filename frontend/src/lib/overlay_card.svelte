@@ -11,7 +11,7 @@
 </div>
 
 <script lang="ts">
-    let {label, value, unit = ""} = $props();
+    let { label, value, unit = "" }: { label: string; value: string | number; unit?: string } = $props();
 </script>
 
 <style>

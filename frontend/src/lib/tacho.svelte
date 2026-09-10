@@ -7,6 +7,7 @@
 
 <script lang="ts">
     import Table from "./table.svelte";
+    import type { DeviceStatus } from "./types";
     
-    let { deviceStatus } = $props();
+    let { deviceStatus }: { deviceStatus: DeviceStatus } = $props();
 </script>
