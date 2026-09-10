@@ -54,7 +54,7 @@
         min-height: 6rem;
         padding: 0.9rem 0.85rem;
         border-radius: 0.75rem;
-        background-color: var(--background);
+        background-color: color-mix(in srgb, var(--section-background) 70%, var(--background) 30%);
         border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
     }
 
