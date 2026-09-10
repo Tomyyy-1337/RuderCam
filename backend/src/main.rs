@@ -73,9 +73,7 @@ fn initialize_statics() {
         }
     }
 
-    CAMERA_INTERFACE.modify(|camera| camera.start_camera().unwrap_or_else(|e| {
-        println!("Failed to start camera: {}", e);
-    }));
+    let _ = CAMERA_INTERFACE.modify(|camera| camera.start_camera());
 
     // Initialize Hotspot
     #[cfg(target_os = "linux")]
