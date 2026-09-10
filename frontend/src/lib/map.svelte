@@ -228,7 +228,6 @@
     };
 
     let mapElement: HTMLDivElement | undefined;
-    let mapShell: HTMLDivElement | undefined;
     let mapInstance: Map | undefined;
 
     const setMapInteractionEnabled = (enabled: boolean): void => {
@@ -353,7 +352,7 @@
     });
 </script>
 
-<div bind:this={mapShell} class="map-shell">
+<div class="map-shell">
     <div bind:this={mapElement} class="map"></div>
 </div>
 
