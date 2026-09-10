@@ -41,32 +41,9 @@
 
 <style>
     .accordion-section {
-        position: relative;
-        overflow: clip;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
         border-radius: 1.35rem;
-        background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
-            rgba(20, 20, 20, 0.92);
-        box-shadow:
-            0 18px 48px rgba(0, 0, 0, 0.28),
-            inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        backdrop-filter: blur(14px);
-    }
-
-    .accordion-section::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        padding: 1px;
-        background: linear-gradient(135deg, rgba(0, 97, 200, 0.5), rgba(255, 255, 255, 0.06));
-        mask:
-            linear-gradient(#000 0 0) content-box,
-            linear-gradient(#000 0 0);
-        mask-composite: exclude;
-        pointer-events: none;
-        opacity: 0.75;
+        background: color-mix(in srgb, var(--section-background) 70%, var(--background) 30%);
     }
 
     .accordion-summary {
@@ -98,7 +75,7 @@
     }
 
     .description {
-        color: rgba(255, 255, 255, 0.72);
+        color: color-mix(in srgb, var(--text) 72%, transparent);
         font-size: 0.9rem;
         line-height: 1.3;
     }
@@ -107,8 +84,8 @@
         flex: 0 0 auto;
         width: 0.9rem;
         height: 0.9rem;
-        border-right: 2px solid rgba(255, 255, 255, 0.72);
-        border-bottom: 2px solid rgba(255, 255, 255, 0.72);
+        border-right: 2px solid color-mix(in srgb, var(--text) 72%, transparent);
+        border-bottom: 2px solid color-mix(in srgb, var(--text) 72%, transparent);
         transform: rotate(45deg);
         transition: transform 180ms ease, border-color 180ms ease;
     }
