@@ -14,3 +14,21 @@
 
     let { tableColumns }: { tableColumns: TableColumn[] } = $props();
 </script>
+
+<style>
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    padding: 4px;
+    font-weight: bold;
+}
+
+td {
+    text-align: right;
+    padding: 4px;
+}
+</style>

@@ -20,11 +20,7 @@
             <div class="icon-container">
                 <BatteryStatusIcon value={battery_percentage} />
                 <SateliteIcon value={satellite_count} />
-                {#if activeSession.isActive}
-                    <div class="status-icon" in:fly={{ x: 24, duration: 500 }} out:fly={{ x: -24, duration: 500 }}>
-                        <PauseIcon paused={activeSession.pausiert} />
-                    </div>
-                {/if}
+                <PauseIcon paused={activeSession.pausiert} session={activeSession} />
             </div>
 
             <ToggleSessionButton {fahrtenbuch} bind:activeSession variant="overlay" />

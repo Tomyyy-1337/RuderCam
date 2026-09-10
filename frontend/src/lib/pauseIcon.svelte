@@ -1,16 +1,25 @@
-<div class="pause-icon {paused ? 'paused' : 'running'}" role="status" aria-live="polite" aria-label={paused ? "Session paused" : "Session running"}>
+<div class="pause-icon {style}" role="status" aria-live="polite" aria-label={paused ? "Session paused" : "Session running"}>
     <svg viewBox="0 0 24 24" aria-hidden="true">
-        {#if paused}
-            <rect x="7" y="5" width="3" height="14" rx="1.2" />
-            <rect x="14" y="5" width="3" height="14" rx="1.2" />
+        {#if session.isActive}
+            {#if paused}
+                <rect x="7" y="5" width="3" height="14" rx="1.2" />
+                <rect x="14" y="5" width="3" height="14" rx="1.2" />
+            {:else}
+                <polygon points="7,5 19,12 7,19" />
+            {/if}
         {:else}
-            <polygon points="7,5 19,12 7,19" />
+            <rect x="6" y="6" width="12" height="12" rx="2" />
         {/if}
+        
     </svg>
 </div>
 
 <script lang="ts">
-    let { paused = true }: { paused?: boolean } = $props();
+    import type { ActiveSession } from "./types";
+
+    let { paused, session }: { paused: boolean, session: ActiveSession } = $props();
+
+    let style = $derived(session.isActive ? (paused ? "paused" : "running") : "inactive");
 </script>
 
 <style>
@@ -23,7 +32,7 @@
     height: 1.7rem;
     padding: 0.22rem 0.4rem;
     border-radius: 999px;
-    color: #fdd835;
+    background-color: rgba(0,0,0,0);
     flex: 0 0 auto;
     position: relative;
     left: -0.5rem;
@@ -36,6 +45,10 @@
 
 .pause-icon.running {
     color: #4CAF50;
+}
+
+.pause-icon.inactive {
+    color: #AE1E1E;
 }
 
 .pause-icon svg {
