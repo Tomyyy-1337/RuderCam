@@ -42,7 +42,7 @@
 <style>
     .accordion-section {
         border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
-        border-radius: 1.35rem;
+        border-radius: 1rem;
         background: color-mix(in srgb, var(--section-background) 70%, var(--background) 30%);
     }
 
@@ -92,7 +92,7 @@
 
     .accordion-section[open] .chevron {
         transform: rotate(225deg);
-        border-color: var(--button-color);
+        border-color: var(--text);
     }
 
     .accordion-section[open] .accordion-summary {
