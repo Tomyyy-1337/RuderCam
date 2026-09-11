@@ -32,11 +32,11 @@
             <div class="map-shell">
                 {#if (fahrt.gps_positions && fahrt.gps_positions.length > 0)}
                     {#if showMap && MapComponent}
-                    <MapComponent waypoints={
-                        fahrt.gps_positions
-                    } />
+                        <MapComponent waypoints={
+                            fahrt.gps_positions
+                        } />
                     {:else}
-                    <div class="map-loading-placeholder" aria-hidden="true"></div>
+                        <div class="map-loading-placeholder" aria-hidden="true"></div>
                     {/if}
                 {:else}
                 <div class="no-map-placeholder">

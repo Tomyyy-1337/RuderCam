@@ -55,8 +55,8 @@
         return [total.longitude / points.length, total.latitude / points.length];
     };
 
-    const buildSources = (baseUrl: string, files: string[]): { [_: string]: SourceSpecification } =>
-        Object.fromEntries(
+    const buildSources = (baseUrl: string, files: string[]): { [_: string]: SourceSpecification } => {
+        const pmtilesSources = Object.fromEntries(
             files.map((filename) => {
                 const sourceName = filename.replace(/\.pmtiles$/, "");
                 return [
@@ -66,11 +66,25 @@
             })
         );
 
+        // Add GeoJSON source for waypoint path (always present, even without map data)
+        return {
+            ...pmtilesSources,
+            "waypoint-path": {
+                type: "geojson",
+                data: {
+                    type: "Feature",
+                    geometry: { type: "LineString", coordinates: [] },
+                    properties: {}
+                }
+            } as SourceSpecification
+        };
+    };
+
     const buildLayers = (files: string[]): LayerSpecification[] => [
         {
             id: "background",
             type: "background",
-            paint: { "background-color": "#d8e8d0" }
+            paint: { "background-color": "#e0e0e0" }
         } as LayerSpecification,
         ...files.flatMap((filename) => {
             const sourceName = filename.replace(/\.pmtiles$/, "");
@@ -81,27 +95,192 @@
                     type: "fill",
                     source: sourceName,
                     "source-layer": "landuse",
-                    paint: { "fill-color": "#d8e8d0" }
+                    paint: {
+                        "fill-color": [
+                            "match",
+                            ["get", "class"],
+                            "residential", "#d9d6cf",
+                            "suburb", "#d3d0c9",
+                            "neighbourhood", "#d3d0c9",
+                            "commercial", "#ccc9c2",
+                            "retail", "#ccc9c2",
+                            "industrial", "#b8b2ab",
+                            "hospital", "#e8c8b8",
+                            "military", "#a8a8a8",
+                            "quarry", "#959595",
+                            "theme_park", "#6ba86b",
+                            "cemetery", "#a8c8a8",
+                            "track", "#c8b89c",
+                            "#c8c8c8"
+                        ],
+                        "fill-opacity": 1
+                    }
                 } as LayerSpecification,
                 {
                     id: `${sourceName}-water`,
                     type: "fill",
                     source: sourceName,
                     "source-layer": "water",
-                    paint: { "fill-color": "#8fc8e8" }
+                    paint: {
+                        "fill-color": "#5da8d4",
+                        "fill-opacity": 0.95
+                    }
                 } as LayerSpecification,
                 {
-                    id: `${sourceName}-roads`,
+                    id: `${sourceName}-water-outline`,
+                    type: "line",
+                    source: sourceName,
+                    "source-layer": "water",
+                    paint: {
+                        "line-color": "#3a7fa0",
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.5, 8, 0.5, 14, 1.5]
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-motorway`,
                     type: "line",
                     source: sourceName,
                     "source-layer": "transportation",
+                    filter: ["==", ["get", "class"], "motorway"],
+                    layout: {
+                        "line-join": "round",
+                        "line-cap": "round"
+                    },
+                    paint: {
+                        "line-color": "#888888",
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.5, 10, 2, 14, 4, 18, 10]
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-trunk`,
+                    type: "line",
+                    source: sourceName,
+                    "source-layer": "transportation",
+                    filter: ["==", ["get", "class"], "trunk"],
+                    layout: {
+                        "line-join": "round",
+                        "line-cap": "round"
+                    },
+                    paint: {
+                        "line-color": "#999999",
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.4, 10, 1.5, 14, 3, 18, 8]
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-primary`,
+                    type: "line",
+                    source: sourceName,
+                    "source-layer": "transportation",
+                    filter: ["==", ["get", "class"], "primary"],
+                    layout: {
+                        "line-join": "round",
+                        "line-cap": "round"
+                    },
+                    paint: {
+                        "line-color": "#a0a0a0",
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.5, 12, 1.5, 16, 3]
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-secondary`,
+                    type: "line",
+                    source: sourceName,
+                    "source-layer": "transportation",
+                    filter: ["==", ["get", "class"], "secondary"],
+                    layout: {
+                        "line-join": "round",
+                        "line-cap": "round"
+                    },
                     paint: {
                         "line-color": "#ffffff",
-                        "line-width": ["interpolate", ["linear"], ["zoom"], 5, 0.5, 10, 1.5, 14, 3, 18, 8]
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.5, 14, 1.5, 18, 4]
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-roads-other`,
+                    type: "line",
+                    source: sourceName,
+                    "source-layer": "transportation",
+                    filter: ["all", ["!=", ["get", "class"], "motorway"], ["!=", ["get", "class"], "trunk"], ["!=", ["get", "class"], "primary"], ["!=", ["get", "class"], "secondary"]],
+                    paint: {
+                        "line-color": "#ffffff",
+                        "line-width": ["interpolate", ["linear"], ["zoom"], 12, 0.3, 16, 0.8, 18, 2],
+                        "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.3, 14, 0.7]
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-places-capital`,
+                    type: "symbol",
+                    source: sourceName,
+                    "source-layer": "place",
+                    filter: ["==", ["get", "class"], "city"],
+                    layout: {
+                        "text-field": ["get", "name"],
+                        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+                        "text-size": ["interpolate", ["linear"], ["zoom"], 5, 12, 10, 16, 15, 22],
+                        "text-offset": [0, 2],
+                        "text-anchor": "top",
+                        "text-max-width": 10
+                    },
+                    paint: {
+                        "text-color": "#000000",
+                        "text-halo-color": "#e8e8e8",
+                        "text-halo-width": 2.5
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-places-town`,
+                    type: "symbol",
+                    source: sourceName,
+                    "source-layer": "place",
+                    filter: ["==", ["get", "class"], "town"],
+                    layout: {
+                        "text-field": ["get", "name"],
+                        "text-font": ["Open Sans SemiBold", "Arial Unicode MS Bold"],
+                        "text-size": ["interpolate", ["linear"], ["zoom"], 8, 10, 12, 14, 16, 18],
+                        "text-offset": [0, 1.5],
+                        "text-anchor": "top",
+                        "text-max-width": 8
+                    },
+                    paint: {
+                        "text-color": "#0a0a0a",
+                        "text-halo-color": "#e8e8e8",
+                        "text-halo-width": 2
+                    }
+                } as LayerSpecification,
+                {
+                    id: `${sourceName}-places-village`,
+                    type: "symbol",
+                    source: sourceName,
+                    "source-layer": "place",
+                    filter: ["==", ["get", "class"], "village"],
+                    layout: {
+                        "text-field": ["get", "name"],
+                        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+                        "text-size": ["interpolate", ["linear"], ["zoom"], 10, 9, 14, 12, 18, 14],
+                        "text-offset": [0, 1],
+                        "text-anchor": "top",
+                        "text-max-width": 7
+                    },
+                    paint: {
+                        "text-color": "#1a1a1a",
+                        "text-halo-color": "#e8e8e8",
+                        "text-halo-width": 1.5
                     }
                 } as LayerSpecification
             ];
-        })
+        }),
+        // Waypoint path layer (rendered on top of all other layers)
+        {
+            id: "waypoint-path",
+            type: "line",
+            source: "waypoint-path",
+            paint: {
+                "line-color": "#e53935",
+                "line-width": 5,
+                "line-opacity": 0.9
+            }
+        } as LayerSpecification
     ];
 
     const verifyPmtilesFile = async (url: string): Promise<boolean> => {
@@ -152,25 +331,14 @@
             return;
         }
 
-        map.addSource("waypoint-path", {
-            type: "geojson",
-            data: {
+        const source = map.getSource("waypoint-path");
+        if (source && "setData" in source) {
+            (source as any).setData({
                 type: "Feature",
                 geometry: { type: "LineString", coordinates: points },
                 properties: {}
-            }
-        });
-
-        map.addLayer({
-            id: "waypoint-path",
-            type: "line",
-            source: "waypoint-path",
-            paint: {
-                "line-color": "#e53935",
-                "line-width": 5,
-                "line-opacity": 0.9
-            }
-        });
+            });
+        }
     };
 
     const addWaypointMarkers = (map: Map, points: Waypoint[]): void => {
@@ -324,14 +492,18 @@
 
             map.on("style.load", () => {
                 if (normalizedWaypoints.length >= 2) {
+                    // Update waypoint path data immediately when style loads
                     addWaypointGeometry(map, normalizedWaypoints);
+                    // Add markers immediately
+                    addWaypointMarkers(map, normalizedWaypoints);
                     fitMapToWaypoints(map, normalizedWaypoints);
                 }
             });
 
             map.on("load", () => {
+                // Ensure path stays visible even if style reloads
                 if (normalizedWaypoints.length >= 2) {
-                    addWaypointMarkers(map, normalizedWaypoints);
+                    addWaypointGeometry(map, normalizedWaypoints);
                 }
             });
 
@@ -360,12 +532,14 @@
     .map-shell {
         width: 100%;
         height: 100%;
-        background: #d8e8d0;
+        background: linear-gradient(135deg, #d0d0d0 0%, #d8d8d8 100%);
+        overflow: hidden;
     }
 
     .map {
         width: 100%;
         height: 100%;
-        background: #d8e8d0;
+        background: linear-gradient(135deg, #d0d0d0 0%, #d8d8d8 100%);
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.05);
     }
 </style>
