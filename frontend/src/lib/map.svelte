@@ -395,8 +395,10 @@
         });
     };
 
+    let mapShellElement: HTMLDivElement | undefined;
     let mapElement: HTMLDivElement | undefined;
     let mapInstance: Map | undefined;
+    let resizeObserver: ResizeObserver | undefined;
 
     const setMapInteractionEnabled = (enabled: boolean): void => {
         if (!mapInstance) {
@@ -424,41 +426,47 @@
         }
     };
 
-    const handleFullscreenChange = (): void => {
-        if (!mapInstance || !mapElement) {
+    const syncMapViewport = (): void => {
+        if (!mapInstance) {
             return;
         }
 
         const map = mapInstance;
+        const center = map.getCenter();
 
-        const isFullscreen = !!document.fullscreenElement;
-        setMapInteractionEnabled(isFullscreen);
+        map.resize();
+        map.jumpTo({
+            center: [center.lng, center.lat],
+            zoom: map.getZoom(),
+            bearing: map.getBearing(),
+            pitch: map.getPitch()
+        });
+    };
+
+    const handleFullscreenChange = (): void => {
+        if (!mapInstance || !mapShellElement) {
+            return;
+        }
+
+        const fullscreenElement = document.fullscreenElement;
+        const isMapFullscreen = !!fullscreenElement
+            && (fullscreenElement === mapShellElement || mapShellElement.contains(fullscreenElement));
+
+        setMapInteractionEnabled(isMapFullscreen);
 
         requestAnimationFrame(() => {
-            map.resize();
-
-            if (isFullscreen) {
-                fitMapToWaypoints(map, normalizedWaypoints, {
-                    maxZoom: 17,
-                    animate: true,
-                    duration: 350
-                });
-                return;
-            }
-
-            fitMapToWaypoints(map, normalizedWaypoints, {
-                maxZoom: 15,
-                animate: true,
-                duration: 350
+            requestAnimationFrame(() => {
+                syncMapViewport();
             });
         });
     };
 
     onMount(() => {
-        if (!mapElement) {
+        if (!mapElement || !mapShellElement) {
             return undefined;
         }
 
+        const mapShell = mapShellElement;
         setWorkerUrl(workerUrl);
         let cancelled = false;
 
@@ -486,9 +494,15 @@
             });
 
             mapInstance = map;
-            map.addControl(new FullscreenControl(), "top-right");
+            map.addControl(new FullscreenControl({ container: mapShell }), "top-right");
             setMapInteractionEnabled(false);
             document.addEventListener("fullscreenchange", handleFullscreenChange);
+            resizeObserver = new ResizeObserver(() => {
+                requestAnimationFrame(() => {
+                    syncMapViewport();
+                });
+            });
+            resizeObserver.observe(mapShell);
 
             map.on("style.load", () => {
                 if (normalizedWaypoints.length >= 2) {
@@ -517,6 +531,8 @@
         return () => {
             cancelled = true;
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            resizeObserver?.disconnect();
+            resizeObserver = undefined;
             mapInstance?.remove();
             mapInstance = undefined;
             removeProtocol("pmtiles");
@@ -524,7 +540,7 @@
     });
 </script>
 
-<div class="map-shell">
+<div bind:this={mapShellElement} class="map-shell">
     <div bind:this={mapElement} class="map"></div>
 </div>
 
