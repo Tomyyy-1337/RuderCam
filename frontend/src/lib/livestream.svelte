@@ -30,6 +30,7 @@
     let videoElement: HTMLVideoElement | null = null;
     let reader: MediaMTXWebRTCReader | null = null;
     let retryTimer: number | null = null;
+    let playRetryTimer: number | null = null;
 
     let fullscreen = $state(false);
     let {
@@ -58,6 +59,12 @@
         const handleBeforeUnload = () => {
             if (retryTimer !== null) {
                 clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+
+            if (playRetryTimer !== null) {
+                clearTimeout(playRetryTimer);
+                playRetryTimer = null;
             }
 
             if (reader !== null) {
@@ -69,7 +76,24 @@
             }
         };
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState !== "visible") {
+                return;
+            }
+
+            // A connection left running while the tab was hidden can end up
+            // stale or badly delayed (browsers throttle/pause hidden tabs).
+            // Force a fresh, low-latency reconnect instead of resuming it.
+            handleBeforeUnload();
+            if (videoElement !== null) {
+                videoElement.pause();
+                videoElement.srcObject = null;
+            }
+            connectReader();
+        };
+
         document.addEventListener("fullscreenchange", handleFullscreenChange);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
         window.addEventListener("beforeunload", handleBeforeUnload);
 
         const video = document.getElementById("myvideo");
@@ -79,6 +103,7 @@
 
         return () => {
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
             window.removeEventListener("beforeunload", handleBeforeUnload);
             handleBeforeUnload();
         };
@@ -118,6 +143,16 @@
                         videoElement.srcObject = null;
                     }
 
+                    // Transient errors ("...retrying in some seconds") are already
+                    // scheduled for a fast internal retry by the reader itself;
+                    // tearing it down here would only replace that fast retry with
+                    // a much slower one below. Only recreate the reader when it
+                    // failed permanently (e.g. during startup) and won't retry on
+                    // its own.
+                    if (err.includes("retrying in some seconds")) {
+                        return;
+                    }
+
                     try {
                         reader?.close();
                     } catch {
@@ -131,11 +166,35 @@
                         retryTimer = null;
                     }
 
+                    const stream = evt.streams[0] ?? null;
+
                     if (videoElement !== null) {
-                        videoElement.srcObject = evt.streams[0] ?? null;
-                        videoElement.play().catch(() => {
-                            // Autoplay can still fail on some browsers; the next retry will reattach the stream.
-                        });
+                        videoElement.srcObject = stream;
+
+                        const attemptPlay = () => {
+                            if (playRetryTimer !== null) {
+                                clearTimeout(playRetryTimer);
+                                playRetryTimer = null;
+                            }
+
+                            videoElement?.play().catch(() => {
+                                // Autoplay can be blocked (e.g. tab was backgrounded);
+                                // keep retrying instead of leaving the video frozen.
+                                playRetryTimer = window.setTimeout(attemptPlay, 1000);
+                            });
+                        };
+                        attemptPlay();
+                    }
+
+                    // If a track ends unexpectedly (e.g. the camera stream drops)
+                    // without the peer connection itself failing, reconnect rather
+                    // than leaving a frozen frame that requires a page reload.
+                    for (const track of stream?.getTracks() ?? []) {
+                        track.onended = () => {
+                            if (retryTimer === null) {
+                                retryTimer = window.setTimeout(connectReader, 1000);
+                            }
+                        };
                     }
                 },
                 onDataChannel: (evt) => {
