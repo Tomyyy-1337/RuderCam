@@ -2,7 +2,7 @@
     <div class="video-shell" bind:this={videoShell}>
         <video id="myvideo" bind:this={videoElement} controls muted autoplay playsinline></video>
         {#if fullscreen}
-           <Overlay {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
+            <Overlay {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
         {:else}
             <button
                 onclick={activateFullscreen}
@@ -31,8 +31,10 @@
     let reader: MediaMTXWebRTCReader | null = null;
     let retryTimer: number | null = null;
     let playRetryTimer: number | null = null;
+    let reconnectGeneration = 0;
 
     let fullscreen = $state(false);
+
     let {
         deviceStatus,
         activeSession = $bindable(),
@@ -57,6 +59,8 @@
         };
 
         const handleBeforeUnload = () => {
+            reconnectGeneration++;
+
             if (retryTimer !== null) {
                 clearTimeout(retryTimer);
                 retryTimer = null;
@@ -67,13 +71,8 @@
                 playRetryTimer = null;
             }
 
-            if (reader !== null) {
-                try {
-                    reader.close();
-                } catch {
-                }
-                reader = null;
-            }
+            destroyReader();
+            resetVideo();
         };
 
         const handleVisibilityChange = () => {
@@ -81,15 +80,8 @@
                 return;
             }
 
-            // A connection left running while the tab was hidden can end up
-            // stale or badly delayed (browsers throttle/pause hidden tabs).
-            // Force a fresh, low-latency reconnect instead of resuming it.
-            handleBeforeUnload();
-            if (videoElement !== null) {
-                videoElement.pause();
-                videoElement.srcObject = null;
-            }
-            connectReader();
+            // A hidden tab can leave WebRTC/video in a stale state.
+            hardReconnect(0);
         };
 
         document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -97,6 +89,7 @@
         window.addEventListener("beforeunload", handleBeforeUnload);
 
         const video = document.getElementById("myvideo");
+
         if (video instanceof HTMLVideoElement) {
             video.removeAttribute("controls");
         }
@@ -117,6 +110,7 @@
                 const orientation = screen.orientation as ScreenOrientation & {
                     lock?: (value: string) => Promise<void>;
                 };
+
                 await orientation.lock?.("landscape");
             } catch (err) {
                 console.warn("Could not lock orientation to landscape", err);
@@ -124,92 +118,221 @@
         }
     };
 
-    async function connectReader(): Promise<void> {
+    function resetVideo() {
+        if (videoElement === null) {
+            return;
+        }
+
+        if (playRetryTimer !== null) {
+            clearTimeout(playRetryTimer);
+            playRetryTimer = null;
+        }
+
+        try {
+            videoElement.pause();
+        } catch {
+        }
+
+        // This is important. Do not just assign another MediaStream.
+        // Completely detach the old media pipeline.
+        videoElement.srcObject = null;
+        videoElement.removeAttribute("src");
+
+        try {
+            videoElement.load();
+        } catch {
+        }
+
+        videoElement.currentTime = 0;
+    }
+
+    function destroyReader() {
+        if (reader !== null) {
+            try {
+                reader.close();
+            } catch {
+            }
+
+            reader = null;
+        }
+    }
+
+    function hardReconnect(delay = 500) {
+        reconnectGeneration++;
+
+        const generation = reconnectGeneration;
+
         if (retryTimer !== null) {
             clearTimeout(retryTimer);
             retryTimer = null;
         }
 
+        if (playRetryTimer !== null) {
+            clearTimeout(playRetryTimer);
+            playRetryTimer = null;
+        }
+
+        destroyReader();
+        resetVideo();
+
+        window.setTimeout(() => {
+            if (generation !== reconnectGeneration) {
+                return;
+            }
+
+            if (document.visibilityState !== "visible") {
+                return;
+            }
+
+            connectReader(generation);
+        }, delay);
+    }
+
+    async function connectReader(expectedGeneration = reconnectGeneration): Promise<void> {
+        if (expectedGeneration !== reconnectGeneration) {
+            return;
+        }
+
+        if (retryTimer !== null) {
+            clearTimeout(retryTimer);
+            retryTimer = null;
+        }
+
+        destroyReader();
+
+        const generation = expectedGeneration;
+
         try {
-            reader = new MediaMTXWebRTCReader({
+            const newReader = new MediaMTXWebRTCReader({
                 url: "http://192.168.50.1:8889/stream/whep",
                 user: "",
                 pass: "",
                 token: "",
+
                 onError: (err) => {
                     console.error("MediaMTX error:", err);
-                    if (videoElement !== null) {
-                        videoElement.pause();
-                        videoElement.srcObject = null;
+
+                    if (generation !== reconnectGeneration) {
+                        return;
                     }
 
-                    // Transient errors ("...retrying in some seconds") are already
-                    // scheduled for a fast internal retry by the reader itself;
-                    // tearing it down here would only replace that fast retry with
-                    // a much slower one below. Only recreate the reader when it
-                    // failed permanently (e.g. during startup) and won't retry on
-                    // its own.
+                    resetVideo();
+
+                    // The reader itself normally retries runtime failures.
+                    // For a high-latency reconnect we deliberately perform a
+                    // complete browser-side reset instead.
+                    if (err.includes("video latency too high")) {
+                        hardReconnect(500);
+                        return;
+                    }
+
                     if (err.includes("retrying in some seconds")) {
                         return;
                     }
 
-                    try {
-                        reader?.close();
-                    } catch {
-                    }
-                    reader = null;
-                    retryTimer = window.setTimeout(connectReader, 3000);
+                    hardReconnect(3000);
                 },
+
                 onTrack: (evt) => {
-                    if (retryTimer !== null) {
-                        clearTimeout(retryTimer);
-                        retryTimer = null;
+                    if (generation !== reconnectGeneration) {
+                        return;
                     }
 
-                    const stream = evt.streams[0] ?? null;
+                    const track = evt.track;
 
-                    if (videoElement !== null) {
+                    console.log("[WebRTC] track:", track.kind, track.id);
+
+                    if (videoElement === null) {
+                        return;
+                    }
+
+                    // Build our own MediaStream instead of blindly using
+                    // evt.streams[0]. This guarantees that the new connection
+                    // gets its own fresh stream object.
+                    let stream = videoElement.srcObject instanceof MediaStream
+                        ? videoElement.srcObject
+                        : null;
+
+                    if (stream === null || stream.getTracks().some((t) => t.id === track.id) === false) {
+                        stream = new MediaStream();
+
+                        for (const existingTrack of evt.streams[0]?.getTracks() ?? []) {
+                            stream.addTrack(existingTrack);
+                        }
+
+                        if (stream.getTracks().some((t) => t.id === track.id) === false) {
+                            stream.addTrack(track);
+                        }
+
                         videoElement.srcObject = stream;
-
-                        const attemptPlay = () => {
-                            if (playRetryTimer !== null) {
-                                clearTimeout(playRetryTimer);
-                                playRetryTimer = null;
-                            }
-
-                            videoElement?.play().catch(() => {
-                                // Autoplay can be blocked (e.g. tab was backgrounded);
-                                // keep retrying instead of leaving the video frozen.
-                                playRetryTimer = window.setTimeout(attemptPlay, 1000);
-                            });
-                        };
-                        attemptPlay();
                     }
 
-                    // If a track ends unexpectedly (e.g. the camera stream drops)
-                    // without the peer connection itself failing, reconnect rather
-                    // than leaving a frozen frame that requires a page reload.
-                    for (const track of stream?.getTracks() ?? []) {
-                        track.onended = () => {
-                            if (retryTimer === null) {
-                                retryTimer = window.setTimeout(connectReader, 1000);
-                            }
-                        };
-                    }
+                    const attemptPlay = () => {
+                        if (generation !== reconnectGeneration) {
+                            return;
+                        }
+
+                        if (videoElement === null) {
+                            return;
+                        }
+
+                        if (playRetryTimer !== null) {
+                            clearTimeout(playRetryTimer);
+                            playRetryTimer = null;
+                        }
+
+                        videoElement.play().catch(() => {
+                            playRetryTimer = window.setTimeout(attemptPlay, 500);
+                        });
+                    };
+
+                    attemptPlay();
+
+                    track.onended = () => {
+                        if (generation !== reconnectGeneration) {
+                            return;
+                        }
+
+                        console.warn("[WebRTC] track ended");
+
+                        hardReconnect(250);
+                    };
                 },
+
                 onDataChannel: (evt) => {
+                    if (generation !== reconnectGeneration) {
+                        return;
+                    }
+
                     evt.channel.binaryType = "arraybuffer";
+
                     evt.channel.onmessage = (messageEvent) => {
                         console.log("data channel message", messageEvent.data);
                     };
                 },
             });
+
+            if (generation !== reconnectGeneration) {
+                newReader.close();
+                return;
+            }
+
+            reader = newReader;
         } catch (err) {
             console.error("connectReader exception:", err);
-            retryTimer = window.setTimeout(connectReader, 3000);
+
+            if (generation !== reconnectGeneration) {
+                return;
+            }
+
+            retryTimer = window.setTimeout(() => {
+                retryTimer = null;
+                connectReader(generation);
+            }, 3000);
         }
     }
 </script>
+
 
 <style>
     section {
