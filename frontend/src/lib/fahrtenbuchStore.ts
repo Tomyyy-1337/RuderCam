@@ -63,6 +63,10 @@ export class FahrtenbuchStore {
     }
 
     addSession(session: Session): void {
+        if (session.duration_secs <= 3) {
+            return
+        }
+
         this.sessionHistory.push(session)
         if (this.sessionHistory.length > 20) {
             this.sessionHistory.shift()

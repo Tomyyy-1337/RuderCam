@@ -11,7 +11,27 @@
         {#if focusMode === "Auto"}
             Die Kamera passt den Fokus automatisch an.
         {:else}
-            Die Kamera bleibt auf eine feste Entfernung eingestellt.
+            Die Kamera bleibt auf Hyperfokalpunkt eingestellt. Nahe Objekte können unscharf erscheinen.
+        {/if}
+    </p>
+
+    <div class="spacer"></div>
+</article>
+
+<article>
+    <h4>Kamera Messung</h4>
+    <p>Belichtungsmessung für den Videostream auswählen.</p>
+
+    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={meteringMode} onchange={saveMeteringMode}>
+        <option value="Average">Durchschnitt</option>
+        <option value="Center">Mitte</option>
+    </select>
+
+    <p class="hint">
+        {#if meteringMode === "Average"}
+            Die Kamera misst die Helligkeit über das gesamte Bild.
+        {:else}
+            Die Kamera gewichtet die Bildmitte stärker.
         {/if}
     </p>
 
@@ -19,42 +39,20 @@
 </article>
 
 <script lang="ts">
-    import { onMount } from "svelte";
+    import type { AppConfig, FocusMode, MeteringMode } from "./types";
 
-    type FocusMode = "Auto" | "Fixed";
-
-    interface FocusModeMessage {
-        focus_mode: FocusMode;
-    }
+    let { config }: { config: AppConfig } = $props();
 
     let focusMode = $state<FocusMode>("Fixed");
+    let meteringMode = $state<MeteringMode>("Average");
 
-    onMount(() => {
-        void fetchFocusMode();
+    $effect(() => {
+        focusMode = config.focus_mode;
+        meteringMode = config.metering_mode;
     });
 
-    async function fetchFocusMode(): Promise<void> {
-        try {
-            const response = await fetch("/api/get_focus_mode", {
-                method: "GET",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-            });
-
-            if (!response.ok) {
-                return;
-            }
-
-            const payload: unknown = await response.json();
-            if (isFocusModeMessage(payload)) {
-                focusMode = payload.focus_mode;
-            }
-        } catch {
-        }
-    }
-
     async function saveFocusMode(): Promise<void> {
+        config.focus_mode = focusMode;
         try {
             await fetch("/api/set_focus_mode", {
                 method: "POST",
@@ -67,11 +65,18 @@
         }
     }
 
-    function isFocusModeMessage(value: unknown): value is FocusModeMessage {
-        return typeof value === "object"
-            && value !== null
-            && "focus_mode" in value
-            && ((value as FocusModeMessage).focus_mode === "Auto" || (value as FocusModeMessage).focus_mode === "Fixed");
+    async function saveMeteringMode(): Promise<void> {
+        config.metering_mode = meteringMode;
+        try {
+            await fetch("/api/set_metering_mode", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ metering_mode: meteringMode }),
+            });
+        } catch {
+        }
     }
 </script>
 

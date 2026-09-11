@@ -1,7 +1,7 @@
 <div class="settings-page">
     <AccordionSection
         title="Anzeige"
-        description="Einstellungen für Theme und Overlay"
+        description="Einstellungen für Theme und das Livestream Overlay"
     >
         <SettingsToggleTheme />
         <SettingsOverlay bind:overlay_settings />
@@ -9,9 +9,9 @@
 
     <AccordionSection
         title="Kamera"
-        description="Fokus der Kamera verwalten"
+        description="Einstellungen für Fokus und Belichtungsmessung"
     >
-        <SettingsCamera />
+        <SettingsCamera {config} />
     </AccordionSection>
 
     <AccordionSection
@@ -66,6 +66,8 @@
         ssid: "TestSSID",
         password: "TestPassword",
         auto_shutdown_time: 5,
+        focus_mode: "Fixed",
+        metering_mode: "Average",
     };
 
     function toConfig(value: unknown): AppConfig {
@@ -77,6 +79,8 @@
             ssid: value.ssid || defaultConfig.ssid,
             password: value.password || defaultConfig.password,
             auto_shutdown_time: Number(value.auto_shutdown_time || defaultConfig.auto_shutdown_time),
+            focus_mode: value.focus_mode || defaultConfig.focus_mode,
+            metering_mode: value.metering_mode || defaultConfig.metering_mode,
         };
     }
 

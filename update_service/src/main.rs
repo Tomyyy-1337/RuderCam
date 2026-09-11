@@ -83,7 +83,7 @@ async fn modify_sd_card(f: impl AsyncFnOnce() -> Result<(),io::Error>) -> Result
 
     tokio::process::Command::new("rm")
         .arg("-rf")
-        .arg("/home/pi/treiber/*")
+        .arg("/home/pi/treiber/static")
         .status().await?;
 
     f().await?;

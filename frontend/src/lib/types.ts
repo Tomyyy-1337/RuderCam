@@ -77,10 +77,15 @@ export interface RunningSessionMessage {
     pausiert: boolean;
 }
 
+export type FocusMode = 'Auto' | 'Fixed'
+export type MeteringMode = 'Average' | 'Center'
+
 export interface AppConfig {
     ssid: string;
     password: string;
     auto_shutdown_time: number;
+    focus_mode: FocusMode;
+    metering_mode: MeteringMode;
 }
 
 export type Waypoint = [number, number]
@@ -144,4 +149,6 @@ export function isAppConfig(value: unknown): value is AppConfig {
         && typeof value.ssid === 'string'
         && typeof value.password === 'string'
         && typeof value.auto_shutdown_time === 'number'
+        && (value.focus_mode === undefined || value.focus_mode === 'Auto' || value.focus_mode === 'Fixed')
+        && (value.metering_mode === undefined || value.metering_mode === 'Average' || value.metering_mode === 'Center')
 }

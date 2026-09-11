@@ -7,7 +7,7 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 
 use std::{net::SocketAddr, time::{Duration}};
 
-use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::FocusMode, hotspot::Hotspot, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
+use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, hotspot::Hotspot, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
 
 lazy_static!(
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9!@#$%^&*()_+\-=?]*$").expect("Failed to compile password regex");
@@ -39,7 +39,7 @@ pub async fn start_server() {
         .route("/api/start_session", post(start_session_handler))
         .route("/api/stop_session", post(stop_session_handler))
         .route("/api/set_focus_mode", post(change_focus_mode))
-        .route("/api/get_focus_mode", get(get_focus_mode))
+        .route("/api/set_metering_mode", post(change_metering_mode))
         .route("/ws", get(websocket_handler))
         .nest_service("/maps", get_service(ServeDir::new("./maps")))
         .fallback_service(ServeDir::new("./static"))
@@ -60,22 +60,31 @@ pub async fn start_server() {
     let _ = axum::serve(listener, app).await;
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
-struct FocusModeMessage {
-    focus_mode: FocusMode,
+#[derive(serde::Deserialize)]
+struct MeteringModeMessage {
+    metering_mode: Metering,
 }
 
-async fn get_focus_mode() -> Json<FocusModeMessage> {
-    let focus_mode = CONFIG.focus_mode;
-    Json(FocusModeMessage { focus_mode })
+async fn change_metering_mode(
+    Json(payload): Json<MeteringModeMessage>,
+) -> StatusCode {
+    CONFIG.modify(|cfg| cfg.metering_mode = payload.metering_mode);
+    I2C_INTERFACE.write_config_to_eeprom().await;
+    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
+    StatusCode::OK
+}
+
+#[derive(serde::Deserialize)]
+struct FocusModeMessage {
+    focus_mode: FocusMode,
 }
 
 async fn change_focus_mode(
     Json(payload): Json<FocusModeMessage>,
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.focus_mode = payload.focus_mode);
-    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
     I2C_INTERFACE.write_config_to_eeprom().await;
+    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
     StatusCode::OK
 }
 

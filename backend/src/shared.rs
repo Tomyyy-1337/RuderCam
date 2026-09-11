@@ -1,6 +1,6 @@
 use std::{cell::UnsafeCell, mem::MaybeUninit, ops::Deref};
 
-use crate::camera_interface::FocusMode;
+use crate::camera_interface::{FocusMode, Metering};
 
 
 /// Data that is send to the frontend periodically
@@ -53,6 +53,7 @@ pub struct Config {
     pub password: String,
     pub auto_shutdown_time: u64, // in minutes
     pub focus_mode: FocusMode,
+    pub metering_mode: Metering,
 }
 
 impl Config {
@@ -62,6 +63,7 @@ impl Config {
             password: String::new(),
             auto_shutdown_time: 30, // default to 30 minutes
             focus_mode: FocusMode::Fixed,
+            metering_mode: Metering::Average,
         }
     }
 
@@ -69,6 +71,8 @@ impl Config {
         self.ssid = String::from("Ruder Cam Beta");
         self.password = String::from("bootkamera");
         self.auto_shutdown_time = 30;
+        self.focus_mode = FocusMode::Fixed;
+        self.metering_mode = Metering::Average;
     } 
 }
 
