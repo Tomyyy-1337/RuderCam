@@ -66,15 +66,16 @@ struct FocusModeMessage {
 }
 
 async fn get_focus_mode() -> Json<FocusModeMessage> {
-    let focus_mode = CAMERA_INTERFACE.modify(|camera| camera.get_focus_mode());
+    let focus_mode = CONFIG.focus_mode;
     Json(FocusModeMessage { focus_mode })
 }
 
 async fn change_focus_mode(
     Json(payload): Json<FocusModeMessage>,
-
 ) -> StatusCode {
-    CAMERA_INTERFACE.modify(|camera| camera.set_focus_mode(payload.focus_mode));
+    CONFIG.modify(|cfg| cfg.focus_mode = payload.focus_mode);
+    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
+    I2C_INTERFACE.write_config_to_eeprom().await;
     StatusCode::OK
 }
 

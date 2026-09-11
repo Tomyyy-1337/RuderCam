@@ -6,9 +6,10 @@ use std::os::unix::process::CommandExt;
 use futures::io;
 use serde::{Deserialize, Serialize};
 
+use crate::CONFIG;
+
 pub struct CameraInterface {
     metering: Metering, 
-    focus_mode: FocusMode,
     stream_process: Option<std::process::Child>,
 }
 
@@ -46,7 +47,6 @@ impl CameraInterface {
         CameraInterface {
             metering: Metering::Average,
             stream_process: None,
-            focus_mode: FocusMode::Fixed,
         }
     }
 
@@ -61,7 +61,7 @@ impl CameraInterface {
             "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --hflip 1 --low-latency 1 --bitrate 2000000 --metering {} {} -o - | \
              /usr/bin/ffmpeg -fflags +genpts -flags low_delay -fflags nobuffer -f h264 -i - -c copy -f rtsp -rtsp_transport udp rtsp://127.0.0.1:8554/stream",
             self.metering.to_string(),
-            self.focus_mode.to_arg()
+            CONFIG.focus_mode.to_arg()
         );
 
         let child = unsafe {
@@ -107,19 +107,5 @@ impl CameraInterface {
     pub fn restart_camera(&mut self) {
         let _ = self.stop_camera();
         let _ = self.start_camera();
-    }
-
-    pub fn set_metering(&mut self, metering: Metering) {
-        self.metering = metering;
-        self.restart_camera();
-    }
-
-    pub fn set_focus_mode(&mut self, focus_mode: FocusMode) {
-        self.focus_mode = focus_mode;
-        self.restart_camera();
-    }
-
-    pub fn get_focus_mode(&self) -> FocusMode {
-        self.focus_mode
     }
 }

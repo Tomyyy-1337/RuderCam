@@ -1,5 +1,7 @@
 use std::{cell::UnsafeCell, mem::MaybeUninit, ops::Deref};
 
+use crate::camera_interface::FocusMode;
+
 
 /// Data that is send to the frontend periodically
 #[derive(serde::Serialize, Clone)]
@@ -50,6 +52,7 @@ pub struct Config {
     pub ssid: String,
     pub password: String,
     pub auto_shutdown_time: u64, // in minutes
+    pub focus_mode: FocusMode,
 }
 
 impl Config {
@@ -58,6 +61,7 @@ impl Config {
             ssid: String::new(),
             password: String::new(),
             auto_shutdown_time: 30, // default to 30 minutes
+            focus_mode: FocusMode::Fixed,
         }
     }
 
