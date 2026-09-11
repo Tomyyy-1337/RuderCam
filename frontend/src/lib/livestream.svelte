@@ -1,6 +1,6 @@
 <section>
     <div class="video-shell" bind:this={videoShell}>
-        <video id="myvideo" controls muted autoplay playsinline></video>
+        <video id="myvideo" bind:this={videoElement} controls muted autoplay playsinline></video>
         {#if fullscreen}
            <Overlay {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
         {:else}
@@ -27,6 +27,7 @@
     import type { FahrtenbuchStore } from "./fahrtenbuchStore";
 
     let videoShell: HTMLDivElement | null = null;
+    let videoElement: HTMLVideoElement | null = null;
     let reader: MediaMTXWebRTCReader | null = null;
     let retryTimer: number | null = null;
 
@@ -112,6 +113,11 @@
                 token: "",
                 onError: (err) => {
                     console.error("MediaMTX error:", err);
+                    if (videoElement !== null) {
+                        videoElement.pause();
+                        videoElement.srcObject = null;
+                    }
+
                     try {
                         reader?.close();
                     } catch {
@@ -125,9 +131,11 @@
                         retryTimer = null;
                     }
 
-                    const video = document.getElementById("myvideo");
-                    if (video instanceof HTMLVideoElement) {
-                        video.srcObject = evt.streams[0] ?? null;
+                    if (videoElement !== null) {
+                        videoElement.srcObject = evt.streams[0] ?? null;
+                        videoElement.play().catch(() => {
+                            // Autoplay can still fail on some browsers; the next retry will reattach the stream.
+                        });
                     }
                 },
                 onDataChannel: (evt) => {

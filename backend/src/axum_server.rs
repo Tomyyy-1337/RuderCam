@@ -1,12 +1,13 @@
 use axum::{Json, Router, extract::ws::{WebSocket, WebSocketUpgrade}, http::StatusCode, routing::{get, get_service, post}};
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::Serialize;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
 
 use std::{net::SocketAddr, time::{Duration}};
 
-use crate::{CONFIG, CURRENT_SESSION, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, hotspot::Hotspot, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
+use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::FocusMode, hotspot::Hotspot, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
 
 lazy_static!(
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9!@#$%^&*()_+\-=?]*$").expect("Failed to compile password regex");
@@ -37,6 +38,8 @@ pub async fn start_server() {
         .route("/api/reboot", get(reboot_handler))
         .route("/api/start_session", post(start_session_handler))
         .route("/api/stop_session", post(stop_session_handler))
+        .route("/api/set_focus_mode", post(change_focus_mode))
+        .route("/api/get_focus_mode", get(get_focus_mode))
         .route("/ws", get(websocket_handler))
         .nest_service("/maps", get_service(ServeDir::new("./maps")))
         .fallback_service(ServeDir::new("./static"))
@@ -55,6 +58,24 @@ pub async fn start_server() {
         }
     };
     let _ = axum::serve(listener, app).await;
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+struct FocusModeMessage {
+    focus_mode: FocusMode,
+}
+
+async fn get_focus_mode() -> Json<FocusModeMessage> {
+    let focus_mode = CAMERA_INTERFACE.modify(|camera| camera.get_focus_mode());
+    Json(FocusModeMessage { focus_mode })
+}
+
+async fn change_focus_mode(
+    Json(payload): Json<FocusModeMessage>,
+
+) -> StatusCode {
+    CAMERA_INTERFACE.modify(|camera| camera.set_focus_mode(payload.focus_mode));
+    StatusCode::OK
 }
 
 #[derive(serde::Deserialize)]

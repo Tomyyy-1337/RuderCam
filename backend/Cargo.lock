@@ -110,6 +110,7 @@ dependencies = [
  "futures",
  "gpiocdev",
  "lazy_static",
+ "libc",
  "linux-embedded-hal",
  "regex",
  "rustfft",

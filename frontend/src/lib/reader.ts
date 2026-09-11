@@ -22,11 +22,13 @@ type ReaderState = 'getting_codecs' | 'running' | 'restarting' | 'failed' | 'clo
 type CandidateBuckets = Record<number, RTCIceCandidate[]>
 
 class MediaMTXWebRTCReader {
-  static #RETRY_PAUSE = 2000;
+  static #RETRY_PAUSE = 500;
+  static #DISCONNECTED_RETRY_PAUSE = 1000;
 
   #conf: ReaderConfig;
   #state: ReaderState = 'getting_codecs';
   #restartTimeout: number | null = null;
+  #disconnectTimeout: number | null = null;
   #pc: RTCPeerConnection | null = null;
   #offerData: OfferData | null = null;
   #sessionUrl: string | null = null;
@@ -40,6 +42,11 @@ class MediaMTXWebRTCReader {
 
   close() {
     this.#state = 'closed';
+
+    if (this.#disconnectTimeout !== null) {
+      clearTimeout(this.#disconnectTimeout);
+      this.#disconnectTimeout = null;
+    }
 
     if (this.#pc !== null) {
       this.#pc.close();
@@ -348,6 +355,11 @@ class MediaMTXWebRTCReader {
   }
 
   #handleError(err: string) {
+    if (this.#disconnectTimeout !== null) {
+      clearTimeout(this.#disconnectTimeout);
+      this.#disconnectTimeout = null;
+    }
+
     if (this.#state === 'running') {
       if (this.#pc !== null) {
         this.#pc.close();
@@ -380,6 +392,10 @@ class MediaMTXWebRTCReader {
 
   #restart() {
     this.#restartTimeout = null;
+    if (this.#disconnectTimeout !== null) {
+      clearTimeout(this.#disconnectTimeout);
+      this.#disconnectTimeout = null;
+    }
     this.#state = 'running';
     this.#start();
   }
@@ -571,6 +587,27 @@ class MediaMTXWebRTCReader {
 
   #onConnectionState() {
     if (this.#state !== 'running' || this.#pc === null) {
+      return;
+    }
+
+    if (this.#pc.connectionState === 'connected' || this.#pc.connectionState === 'connecting') {
+      if (this.#disconnectTimeout !== null) {
+        clearTimeout(this.#disconnectTimeout);
+        this.#disconnectTimeout = null;
+      }
+      return;
+    }
+
+    if (this.#pc.connectionState === 'disconnected') {
+      if (this.#disconnectTimeout === null) {
+        this.#disconnectTimeout = window.setTimeout(() => {
+          this.#disconnectTimeout = null;
+
+          if (this.#state === 'running' && this.#pc?.connectionState === 'disconnected') {
+            this.#handleError('peer connection disconnected');
+          }
+        }, MediaMTXWebRTCReader.#DISCONNECTED_RETRY_PAUSE);
+      }
       return;
     }
 

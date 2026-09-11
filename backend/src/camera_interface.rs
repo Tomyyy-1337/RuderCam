@@ -1,10 +1,13 @@
 use std::process::{Command, Stdio};
 
+#[cfg(target_os = "linux")]
+use std::os::unix::process::CommandExt;
+
 use futures::io;
+use serde::{Deserialize, Serialize};
 
 pub struct CameraInterface {
-    metering: Metering,
-    exposure_compensation: i32,   
+    metering: Metering, 
     focus_mode: FocusMode,
     stream_process: Option<std::process::Child>,
 }
@@ -14,6 +17,7 @@ pub enum Metering {
     Average,
 }
 
+#[derive(Deserialize, Serialize, Debug, Copy, Clone)]
 pub enum FocusMode {
     Auto,
     Fixed,
@@ -31,7 +35,7 @@ impl Metering {
 impl FocusMode {
     fn to_arg(&self) -> &str {
         match self {
-            FocusMode::Auto => "",
+            FocusMode::Auto => "--autofocus-mode continuous",
             FocusMode::Fixed => "--lens-position default",
         }
     }
@@ -41,43 +45,61 @@ impl CameraInterface {
     pub const fn new() -> Self {
         CameraInterface {
             metering: Metering::Average,
-            exposure_compensation: 0,
             stream_process: None,
             focus_mode: FocusMode::Fixed,
         }
     }
 
     pub fn start_camera(&mut self) -> io::Result<()> {
+        #[cfg(target_os = "linux")]
+        {
         if self.stream_process.is_some() {
             return Ok(());
         }
 
         let cmd = format!(
-            "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --hflip 1 --low-latency 1 --bitrate 2000000 --metering {} --ev {} {} -o - | \
+            "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --hflip 1 --low-latency 1 --bitrate 2000000 --metering {} {} -o - | \
              /usr/bin/ffmpeg -fflags +genpts -flags low_delay -fflags nobuffer -f h264 -i - -c copy -f rtsp -rtsp_transport udp rtsp://127.0.0.1:8554/stream",
             self.metering.to_string(),
-            self.exposure_compensation,
             self.focus_mode.to_arg()
         );
 
-        let child = Command::new("/bin/bash")
-            .arg("-c")
-            .arg(cmd)
-            .current_dir("/home/pi/tmp")
-            .env("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::inherit())
-            .spawn()?;
+        let child = unsafe {
+            Command::new("/bin/bash")
+                .arg("-c")
+                .arg(cmd)
+                .current_dir("/home/pi/tmp")
+                .env("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::inherit())
+                .pre_exec(|| {
+                    if libc::setsid() == -1 {
+                        return Err(std::io::Error::last_os_error());
+                    }
+
+                    Ok(())
+                })
+                .spawn()?
+        };
 
         self.stream_process = Some(child);
+        }
         Ok(())
     }
 
     pub fn stop_camera(&mut self) -> io::Result<()> {
+        #[cfg(target_os = "linux")]
+        {
         if let Some(mut child) = self.stream_process.take() {
-            let _ = child.kill();
+            let pid = child.id() as i32;
+
+            unsafe {
+                libc::kill(-pid, libc::SIGKILL);
+            }
+
             let _ = child.wait();
+        }
         }
         Ok(())
     }
@@ -92,8 +114,12 @@ impl CameraInterface {
         self.restart_camera();
     }
 
-    pub fn set_exposure_compensation(&mut self, compensation: i32) {
-        self.exposure_compensation = compensation;
+    pub fn set_focus_mode(&mut self, focus_mode: FocusMode) {
+        self.focus_mode = focus_mode;
         self.restart_camera();
+    }
+
+    pub fn get_focus_mode(&self) -> FocusMode {
+        self.focus_mode
     }
 }

@@ -8,6 +8,13 @@
     </AccordionSection>
 
     <AccordionSection
+        title="Kamera"
+        description="Fokus der Kamera verwalten"
+    >
+        <SettingsCamera />
+    </AccordionSection>
+
+    <AccordionSection
         title="Geräteverwaltung"
         description="Einstellungen für Automatisches Herunterfahren und Neustart"
     >
@@ -44,6 +51,7 @@
     import type { FahrtenbuchStore } from "./fahrtenbuchStore";
     import SettingsChangePassword from "./settings_change_password.svelte";
     import SettingsChangeSsid from "./settings_change_ssid.svelte";
+    import SettingsCamera from "./settings_camera.svelte";
     import SettingsPowerButton from "./settings_power_button.svelte";
     import SettingsShutdownTimer from "./settings_shutdown_timer.svelte";
     import SettingsFahrtenbuch from "./settings_fahrtenbuch.svelte";
