@@ -399,6 +399,7 @@
     let mapElement: HTMLDivElement | undefined;
     let mapInstance: Map | undefined;
     let resizeObserver: ResizeObserver | undefined;
+    let isMapFullscreen = false;
 
     const setMapInteractionEnabled = (enabled: boolean): void => {
         if (!mapInstance) {
@@ -426,38 +427,34 @@
         }
     };
 
-    const syncMapViewport = (): void => {
-        if (!mapInstance) {
-            return;
-        }
-
-        const map = mapInstance;
-        const center = map.getCenter();
-
-        map.resize();
-        map.jumpTo({
-            center: [center.lng, center.lat],
-            zoom: map.getZoom(),
-            bearing: map.getBearing(),
-            pitch: map.getPitch()
-        });
-    };
-
     const handleFullscreenChange = (): void => {
         if (!mapInstance || !mapShellElement) {
             return;
         }
 
         const fullscreenElement = document.fullscreenElement;
-        const isMapFullscreen = !!fullscreenElement
+        const isNowMapFullscreen = !!fullscreenElement
             && (fullscreenElement === mapShellElement || mapShellElement.contains(fullscreenElement));
+
+        if (isNowMapFullscreen === isMapFullscreen) {
+            // The fullscreen change was caused by something else (e.g. the
+            // livestream), not the map itself, so its size hasn't changed.
+            return;
+        }
+        isMapFullscreen = isNowMapFullscreen;
 
         setMapInteractionEnabled(isMapFullscreen);
 
+        // Wait a frame for the container to take on its new size, then resize
+        // the map and zoom the path to fit the newly available space.
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                syncMapViewport();
-            });
+            const map = mapInstance;
+            if (!map) {
+                return;
+            }
+
+            map.resize();
+            fitMapToWaypoints(map, normalizedWaypoints, { animate: true, duration: 300 });
         });
     };
 
@@ -498,9 +495,7 @@
             setMapInteractionEnabled(false);
             document.addEventListener("fullscreenchange", handleFullscreenChange);
             resizeObserver = new ResizeObserver(() => {
-                requestAnimationFrame(() => {
-                    syncMapViewport();
-                });
+                requestAnimationFrame(() => map.resize());
             });
             resizeObserver.observe(mapShell);
 
