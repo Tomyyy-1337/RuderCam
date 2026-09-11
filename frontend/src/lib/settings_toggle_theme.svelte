@@ -1,13 +1,10 @@
 <article>
     <h4>Color Theme</h4>
     <p>Wechseln zwischen hellem und dunklem Design.</p>
-    <button onclick={toggleTheme} style="width:100%;">
-        {#if theme === 'dark'}
-            Helles Design aktivieren
-        {:else}
-            Dunkles Design aktivieren
-        {/if}
-    </button>
+    <select id="theme-selector" name="theme-selector" bind:value={theme} onchange={handleThemeChange}>
+        <option value="light">Helles Design</option>
+        <option value="dark">Dunkles Design</option>
+    </select>
     <div class="spacer"></div>
 </article>
     
@@ -22,14 +19,8 @@
         theme = localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
     });
 
-    function toggleTheme(): void {
-        theme = theme === 'dark' ? 'light' : 'dark';
+    function handleThemeChange(event: Event): void {
+        theme = (event.currentTarget as HTMLSelectElement).value as Theme;
         setTheme(theme);
     }
 </script>
-
-<style>
-    button {
-        margin-left: auto;
-    }
-</style>
