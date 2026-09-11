@@ -218,8 +218,8 @@
                         "text-field": ["get", "name"],
                         "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
                         "text-size": ["interpolate", ["linear"], ["zoom"], 5, 12, 10, 16, 15, 22],
-                        "text-offset": [0, 2],
-                        "text-anchor": "top",
+                        "text-offset": [0, 0.5],
+                        "text-anchor": "center",
                         "text-max-width": 10
                     },
                     paint: {
@@ -238,8 +238,8 @@
                         "text-field": ["get", "name"],
                         "text-font": ["Open Sans SemiBold", "Arial Unicode MS Bold"],
                         "text-size": ["interpolate", ["linear"], ["zoom"], 8, 10, 12, 14, 16, 18],
-                        "text-offset": [0, 1.5],
-                        "text-anchor": "top",
+                        "text-offset": [0, 0.3],
+                        "text-anchor": "center",
                         "text-max-width": 8
                     },
                     paint: {
@@ -258,8 +258,8 @@
                         "text-field": ["get", "name"],
                         "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
                         "text-size": ["interpolate", ["linear"], ["zoom"], 10, 9, 14, 12, 18, 14],
-                        "text-offset": [0, 1],
-                        "text-anchor": "top",
+                        "text-offset": [0, 0.2],
+                        "text-anchor": "center",
                         "text-max-width": 7
                     },
                     paint: {

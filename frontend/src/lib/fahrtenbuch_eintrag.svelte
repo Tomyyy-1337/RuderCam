@@ -39,9 +39,9 @@
                         <div class="map-loading-placeholder" aria-hidden="true"></div>
                     {/if}
                 {:else}
-                <div class="no-map-placeholder">
-                    <span>Keine GPS-Daten verfügbar</span>
-                </div>
+                    <div class="no-map-placeholder">
+                        <span>Keine GPS-Daten verfügbar</span>
+                    </div>
                 {/if}
             </div>
 

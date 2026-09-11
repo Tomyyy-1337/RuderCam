@@ -53,11 +53,9 @@
 
     .stat_unit {
         display: block;
-        margin-top: 0.15rem;
-        font-size: clamp(0.45rem, 0.9vw + 0.25rem, 0.65rem);
+        font-size: clamp(0.65rem, 1.2vw + 0.45rem, 0.95rem);
         line-height: 1;
-        color: white;
-        opacity: 0.9;
+        color: lightgray;
         white-space: nowrap;
         text-align: center;
     }
