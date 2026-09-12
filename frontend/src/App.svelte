@@ -15,7 +15,7 @@
         <Settings {fahrtenbuch} bind:overlay_settings />
     {/if}
 
-    <div style="height: 300px;"></div>
+    <div style="height: 500px;"></div>
 </main>
 
 <script lang="ts">
