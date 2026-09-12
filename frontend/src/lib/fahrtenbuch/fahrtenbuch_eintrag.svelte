@@ -281,7 +281,7 @@
         border-radius: 0.75em;
         overflow: hidden;
         border: 1px solid var(--subtle-border);
-        background-color: #d8e8d0;
+        background-color: var(--background);
     }
 
     .map-loading-placeholder,
@@ -294,13 +294,9 @@
     }
 
     .map-loading-placeholder {
-        background-color: #d8e8d0;
-    }
-
-    .map-loading-placeholder {
         background:
             linear-gradient(120deg, transparent 30%, color-mix(in srgb, var(--text) 8%, transparent) 45%, transparent 60%),
-            #d8e8d0;
+            var(--section-background);
         background-size: 220% 100%, 100% 100%;
         animation: map-placeholder-shimmer 0.9s ease-out 1;
     }

@@ -1,4 +1,5 @@
 import type { Theme } from '../types'
+import { currentTheme } from './themeStore'
 
 export function setTheme(newTheme: Theme): void {
     if (newTheme === 'light') {
@@ -12,4 +13,5 @@ export function setTheme(newTheme: Theme): void {
     }
 
     localStorage.setItem('theme', newTheme);
+    currentTheme.set(newTheme);
 }
