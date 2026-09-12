@@ -35,6 +35,7 @@
         description="Gespeicherte Fahrten verwalten"
     >
         <SettingsFahrtenbuch {fahrtenbuch} />
+        <SettingsDeveloper {fahrtenbuch} />
     </AccordionSection>
 
     <AccordionSection
@@ -42,6 +43,13 @@
         description="Neue Versionen auf das Gerät übertragen"
     >
         <SettingsUpdate />
+    </AccordionSection>
+
+    <AccordionSection
+        title="Entwickleroptionen"
+        description="Optionen für Entwickler"
+    >
+        <SettingsDeveloper {fahrtenbuch} />
     </AccordionSection>
 </div>
 
@@ -60,6 +68,7 @@
     import SettingsChangeSsid from "./settings_change_ssid.svelte";
     import SettingsChangePassword from "./settings_change_password.svelte";
     import SettingsFahrtenbuch from "./settings_fahrtenbuch.svelte";
+    import SettingsDeveloper from "./settings_developer.svelte";
     import SettingsUpdate from "./settings_update.svelte";
 
     const defaultConfig: AppConfig = {
