@@ -5,20 +5,33 @@
     <button style="width:100%;" onclick={handleSaveShutdownTimer}>
         Speichern
     </button>
+    <Dialog
+        bind:open={alertOpen}
+        title={alertTitle}
+        message={alertMessage}
+        confirmLabel="OK"
+        showCancel={false}
+        tone="warning"
+    />
     <div class="spacer"></div>
 </article>
 
 <script lang="ts">
+    import Dialog from "../components/dialog.svelte";
     import type { AppConfig } from "../types";
 
     let { config }: { config: AppConfig } = $props();
     let shutdownTimerInput = $state('');
+    let alertOpen = $state(false);
+    let alertTitle = $state('Ungültige Eingabe');
+    let alertMessage = $state('');
 
     async function handleSaveShutdownTimer(): Promise<void> {
         const minutes = parseInt(shutdownTimerInput);
         shutdownTimerInput = '';
         if (isNaN(minutes) || minutes <= 0) {
-            alert('Bitte geben Sie eine gültige positive Zahl ein.');
+            alertMessage = 'Bitte geben Sie eine gültige positive Zahl ein.';
+            alertOpen = true;
             return;
         }
         config.auto_shutdown_time = minutes;

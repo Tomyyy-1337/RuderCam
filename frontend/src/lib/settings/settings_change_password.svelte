@@ -9,25 +9,40 @@
         onclick={handlePasswordChange}
     > Speichern </button>
 
+    <Dialog
+        bind:open={alertOpen}
+        title={alertTitle}
+        message={alertMessage}
+        confirmLabel="OK"
+        showCancel={false}
+        tone="warning"
+    />
+
     <div class="spacer"></div>
 </article>
 
 <script lang="ts">
+    import Dialog from "../components/dialog.svelte";
     import type { AppConfig } from "../types";
 
     let { config }: { config: AppConfig } = $props();
 
     let passwordInput = $state('');
     let passwordConfirmInput = $state('');
+    let alertOpen = $state(false);
+    let alertTitle = $state('Passwort ungültig');
+    let alertMessage = $state('');
 
     async function handlePasswordChange(): Promise<void> {
         const validation = isPasswordReasonable(passwordInput);
         if (passwordInput !== passwordConfirmInput) {
-            alert('Die Passwörter stimmen nicht überein.');
+            alertMessage = 'Die Passwörter stimmen nicht überein.';
+            alertOpen = true;
             return;
         }
         if (!validation.valid) {
-            alert(validation.message);
+            alertMessage = validation.message;
+            alertOpen = true;
             return;
         }
         config.password = passwordInput;
