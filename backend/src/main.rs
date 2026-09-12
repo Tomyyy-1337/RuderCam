@@ -32,7 +32,7 @@ fn main() {
     initialize_statics();
     
     tokio::runtime::Builder::new_current_thread()
-        .max_blocking_threads(2)
+        .max_blocking_threads(4)
         .enable_all()
         .build_local(LocalOptions::default())
         .unwrap()

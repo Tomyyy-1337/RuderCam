@@ -30,6 +30,7 @@ body {
 }
 
 button {
+  -webkit-tap-highlight-color: transparent;
   color: color-mix(in srgb, var(--text) 84%, transparent);
   background: color-mix(in srgb, var(--button-color) 18%, var(--section-background));
   border: 1px solid color-mix(in srgb, var(--button-color) 48%, var(--text) 10%);
@@ -48,6 +49,10 @@ button:hover {
   color: var(--text);
   background: color-mix(in srgb, var(--button-color) 24%, var(--section-background));
   border-color: color-mix(in srgb, var(--button-color) 58%, var(--text) 12%);
+}
+
+button:focus {
+  outline: none;
 }
 
 button:focus-visible {

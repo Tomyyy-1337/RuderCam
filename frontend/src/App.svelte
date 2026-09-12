@@ -8,14 +8,14 @@
     {/if}
 
     <Navbar bind:activeTab />
-    
-    {#if activeTab === 'settings'}
-        <Settings {fahrtenbuch} bind:overlay_settings />
-    {:else if activeTab === 'sessions'}
+
+    {#if activeTab === "sessions"}
         <Fahrtenbuch {fahrtenbuch} />
+    {:else if activeTab === "settings"}
+        <Settings {fahrtenbuch} bind:overlay_settings />
     {/if}
 
-    <div style="height: 400px;"></div>
+    <div style="height: 300px;"></div>
 </main>
 
 <script lang="ts">

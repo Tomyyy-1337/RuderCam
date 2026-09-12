@@ -181,7 +181,6 @@
 
     .expanded {
         border-color: color-mix(in srgb, var(--text) 22%, transparent);
-        transform: translateY(-1px);
     }
 
     .toggle-button {

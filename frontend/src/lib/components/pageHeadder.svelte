@@ -21,6 +21,7 @@
         flex-direction: row;
         justify-content: space-between;
         padding: 0.5rem;
+        margin-top: 0;
     }
 
     #Akkustand, #Satelien {
