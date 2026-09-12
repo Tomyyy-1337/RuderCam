@@ -21,19 +21,31 @@ interface OfferData {
 type ReaderState = 'getting_codecs' | 'running' | 'restarting' | 'failed' | 'closed';
 type CandidateBuckets = Record<number, RTCIceCandidate[]>;
 
+interface VideoStatsSnapshot {
+    timestamp: number;
+    jitterBufferDelay: number;
+    jitterBufferEmittedCount: number;
+    framesDecoded: number;
+    bytesReceived: number;
+}
+
 class MediaMTXWebRTCReader {
     static #RETRY_PAUSE = 500;
     static #DISCONNECTED_RETRY_PAUSE = 1000;
 
     // WebRTC statistics.
-    static #STATS_INTERVAL = 1000;
+    static #STATS_INTERVAL = 750;
 
-    // Reconnect if the receiver has sustained >1.5s of jitter-buffer delay.
-    static #HIGH_LATENCY_THRESHOLD = 1.5;
-    static #HIGH_LATENCY_DURATION = 3000;
+    // Reconnect if interval latency stays above this value for too long.
+    static #HIGH_LATENCY_THRESHOLD = 0.9;
+    static #HIGH_LATENCY_DURATION = 1800;
 
-    // Reconnect immediately if the jitter buffer reaches 3 seconds.
-    static #CRITICAL_LATENCY_THRESHOLD = 3;
+    // Reconnect immediately on critical interval latency.
+    static #CRITICAL_LATENCY_THRESHOLD = 1.7;
+
+    // If no decode/network progress is observed while connected, reconnect quickly.
+    static #NO_PROGRESS_DURATION = 1500;
+    static #MIN_PROGRESS_BYTES = 1024;
 
     #conf: ReaderConfig;
     #state: ReaderState = 'getting_codecs';
@@ -46,7 +58,9 @@ class MediaMTXWebRTCReader {
     #queuedCandidates: RTCIceCandidate[] = [];
     #nonAdvertisedCodecs: string[] = [];
 
+    #lastVideoStats: VideoStatsSnapshot | null = null;
     #highLatencySince: number | null = null;
+    #noProgressSince: number | null = null;
     #reconnectInProgress = false;
 
     constructor(conf: ReaderConfig) {
@@ -412,6 +426,7 @@ class MediaMTXWebRTCReader {
 
             try {
                 const stats = await this.#pc.getStats();
+                let videoReportFound = false;
 
                 for (const report of stats.values()) {
                     if (report.type !== 'inbound-rtp') {
@@ -424,29 +439,67 @@ class MediaMTXWebRTCReader {
                         continue;
                     }
 
+                    videoReportFound = true;
+
                     const emittedCount = report.jitterBufferEmittedCount;
                     const jitterBufferDelay = report.jitterBufferDelay;
 
-                    if (
-                        typeof emittedCount !== 'number' ||
-                        typeof jitterBufferDelay !== 'number' ||
-                        emittedCount <= 0
-                    ) {
-                        continue;
+                    const currentSnapshot: VideoStatsSnapshot = {
+                        timestamp: typeof report.timestamp === 'number' ? report.timestamp : performance.now(),
+                        jitterBufferDelay: typeof jitterBufferDelay === 'number' ? jitterBufferDelay : 0,
+                        jitterBufferEmittedCount: typeof emittedCount === 'number' ? emittedCount : 0,
+                        framesDecoded: typeof report.framesDecoded === 'number' ? report.framesDecoded : 0,
+                        bytesReceived: typeof report.bytesReceived === 'number' ? report.bytesReceived : 0,
+                    };
+
+                    const previousSnapshot = this.#lastVideoStats;
+                    this.#lastVideoStats = currentSnapshot;
+
+                    if (previousSnapshot === null) {
+                        break;
                     }
 
-                    const averageJitterBufferDelay = jitterBufferDelay / emittedCount;
+                    const deltaEmittedCount =
+                        currentSnapshot.jitterBufferEmittedCount - previousSnapshot.jitterBufferEmittedCount;
+                    const deltaJitterBufferDelay =
+                        currentSnapshot.jitterBufferDelay - previousSnapshot.jitterBufferDelay;
+                    const deltaFramesDecoded =
+                        currentSnapshot.framesDecoded - previousSnapshot.framesDecoded;
+                    const deltaBytesReceived =
+                        currentSnapshot.bytesReceived - previousSnapshot.bytesReceived;
+
+                    const intervalJitterBufferDelay =
+                        deltaEmittedCount > 0 && deltaJitterBufferDelay >= 0
+                            ? deltaJitterBufferDelay / deltaEmittedCount
+                            : null;
+
+                    const hasDecodeProgress = deltaFramesDecoded > 0;
+                    const hasNetworkProgress = deltaBytesReceived > MediaMTXWebRTCReader.#MIN_PROGRESS_BYTES;
+                    const hasProgress = hasDecodeProgress || hasNetworkProgress;
+
+                    const isConnected = this.#pc?.connectionState === 'connected';
+
+                    if (isConnected && !hasProgress) {
+                        if (this.#noProgressSince === null) {
+                            this.#noProgressSince = performance.now();
+                        }
+
+                        const noProgressDuration = performance.now() - this.#noProgressSince;
+
+                        if (noProgressDuration >= MediaMTXWebRTCReader.#NO_PROGRESS_DURATION) {
+                            this.#handleError(
+                                `video stalled (${Math.round(noProgressDuration)}ms without progress)`,
+                            );
+                            return;
+                        }
+                    } else {
+                        this.#noProgressSince = null;
+                    }
 
                     console.debug('[WebRTC]', {
-                        jitterBufferDelay: averageJitterBufferDelay,
-                        jitterBufferTargetDelay:
-                            typeof report.jitterBufferTargetDelay === 'number'
-                                ? report.jitterBufferTargetDelay / emittedCount
-                                : undefined,
-                        jitterBufferMinimumDelay:
-                            typeof report.jitterBufferMinimumDelay === 'number'
-                                ? report.jitterBufferMinimumDelay / emittedCount
-                                : undefined,
+                        intervalJitterBufferDelay,
+                        deltaFramesDecoded,
+                        deltaBytesReceived,
                         jitter: report.jitter,
                         packetsLost: report.packetsLost,
                         packetsDiscarded: report.packetsDiscarded,
@@ -454,14 +507,20 @@ class MediaMTXWebRTCReader {
                         framesPerSecond: report.framesPerSecond,
                     });
 
-                    if (averageJitterBufferDelay >= MediaMTXWebRTCReader.#CRITICAL_LATENCY_THRESHOLD) {
+                    if (
+                        intervalJitterBufferDelay !== null &&
+                        intervalJitterBufferDelay >= MediaMTXWebRTCReader.#CRITICAL_LATENCY_THRESHOLD
+                    ) {
                         this.#handleError(
-                            `video latency too high (${averageJitterBufferDelay.toFixed(2)}s)`,
+                            `video latency too high (${intervalJitterBufferDelay.toFixed(2)}s)`,
                         );
                         return;
                     }
 
-                    if (averageJitterBufferDelay >= MediaMTXWebRTCReader.#HIGH_LATENCY_THRESHOLD) {
+                    if (
+                        intervalJitterBufferDelay !== null &&
+                        intervalJitterBufferDelay >= MediaMTXWebRTCReader.#HIGH_LATENCY_THRESHOLD
+                    ) {
                         if (this.#highLatencySince === null) {
                             this.#highLatencySince = performance.now();
                         }
@@ -470,7 +529,7 @@ class MediaMTXWebRTCReader {
 
                         if (duration >= MediaMTXWebRTCReader.#HIGH_LATENCY_DURATION) {
                             this.#handleError(
-                                `video latency too high (${averageJitterBufferDelay.toFixed(2)}s for ${Math.round(duration)}ms)`,
+                                `video latency too high (${intervalJitterBufferDelay.toFixed(2)}s for ${Math.round(duration)}ms)`,
                             );
                             return;
                         }
@@ -479,6 +538,12 @@ class MediaMTXWebRTCReader {
                     }
 
                     break;
+                }
+
+                if (!videoReportFound) {
+                    this.#lastVideoStats = null;
+                    this.#noProgressSince = null;
+                    this.#highLatencySince = null;
                 }
             } catch (err) {
                 console.warn('[WebRTC] getStats failed:', err);
@@ -501,7 +566,9 @@ class MediaMTXWebRTCReader {
             this.#statsTimeout = null;
         }
 
+        this.#lastVideoStats = null;
         this.#highLatencySince = null;
+        this.#noProgressSince = null;
     }
 
     #handleError(err: string) {
@@ -543,6 +610,11 @@ class MediaMTXWebRTCReader {
             this.#state = 'restarting';
 
             this.#conf.onError?.(`${err}, retrying in some seconds`);
+
+            if (this.#restartTimeout !== null) {
+                clearTimeout(this.#restartTimeout);
+                this.#restartTimeout = null;
+            }
 
             this.#restartTimeout = window.setTimeout(
                 () => this.#restart(),

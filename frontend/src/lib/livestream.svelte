@@ -31,7 +31,23 @@
     let reader: MediaMTXWebRTCReader | null = null;
     let retryTimer: number | null = null;
     let playRetryTimer: number | null = null;
+    let healthTimer: number | null = null;
     let reconnectGeneration = 0;
+
+    let reconnectAttempts = 0;
+    let lastProgressAt = 0;
+    let lastObservedVideoTime = 0;
+    let waitingSince: number | null = null;
+    let stablePlaybackSince: number | null = null;
+    let streamAttachedAt = 0;
+
+    const MAX_RECONNECT_DELAY_MS = 4000;
+    const PLAY_RETRY_DELAY_MS = 250;
+    const HEALTH_CHECK_INTERVAL_MS = 400;
+    const STARTUP_GRACE_MS = 1200;
+    const FREEZE_NO_PROGRESS_MS = 1400;
+    const WAITING_TIMEOUT_MS = 1000;
+    const STABLE_RECOVERY_MS = 2500;
 
     let fullscreen = $state(false);
 
@@ -48,6 +64,7 @@
     } = $props();
 
     onMount(() => {
+        setupVideoWatchdog();
         connectReader();
 
         const handleFullscreenChange = () => {
@@ -60,17 +77,7 @@
 
         const handleBeforeUnload = () => {
             reconnectGeneration++;
-
-            if (retryTimer !== null) {
-                clearTimeout(retryTimer);
-                retryTimer = null;
-            }
-
-            if (playRetryTimer !== null) {
-                clearTimeout(playRetryTimer);
-                playRetryTimer = null;
-            }
-
+            clearAllTimers();
             destroyReader();
             resetVideo();
         };
@@ -80,12 +87,27 @@
                 return;
             }
 
-            // A hidden tab can leave WebRTC/video in a stale state.
-            hardReconnect(0);
+            hardReconnect(0, "tab-visible");
         };
+
+        const handleOnline = () => {
+            hardReconnect(0, "network-online");
+        };
+
+        const handleOffline = () => {
+            hardReconnect(100, "network-offline");
+        };
+
+        let cleanupVideoListeners: (() => void) | null = null;
+
+        if (videoElement !== null) {
+            cleanupVideoListeners = attachVideoEventListeners(videoElement);
+        }
 
         document.addEventListener("fullscreenchange", handleFullscreenChange);
         document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("online", handleOnline);
+        window.addEventListener("offline", handleOffline);
         window.addEventListener("beforeunload", handleBeforeUnload);
 
         const video = document.getElementById("myvideo");
@@ -97,7 +119,10 @@
         return () => {
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
             document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("online", handleOnline);
+            window.removeEventListener("offline", handleOffline);
             window.removeEventListener("beforeunload", handleBeforeUnload);
+            cleanupVideoListeners?.();
             handleBeforeUnload();
         };
     });
@@ -128,6 +153,12 @@
             playRetryTimer = null;
         }
 
+        waitingSince = null;
+        streamAttachedAt = 0;
+        stablePlaybackSince = null;
+        lastObservedVideoTime = 0;
+        lastProgressAt = 0;
+
         try {
             videoElement.pause();
         } catch {
@@ -146,6 +177,23 @@
         videoElement.currentTime = 0;
     }
 
+    function clearAllTimers() {
+        if (retryTimer !== null) {
+            clearTimeout(retryTimer);
+            retryTimer = null;
+        }
+
+        if (playRetryTimer !== null) {
+            clearTimeout(playRetryTimer);
+            playRetryTimer = null;
+        }
+
+        if (healthTimer !== null) {
+            clearTimeout(healthTimer);
+            healthTimer = null;
+        }
+    }
+
     function destroyReader() {
         if (reader !== null) {
             try {
@@ -157,7 +205,123 @@
         }
     }
 
-    function hardReconnect(delay = 500) {
+    function nextReconnectDelay(baseDelayMs: number): number {
+        const exponent = Math.min(reconnectAttempts, 4);
+        const delay = Math.min(baseDelayMs * 2 ** exponent, MAX_RECONNECT_DELAY_MS);
+        reconnectAttempts += 1;
+        return delay;
+    }
+
+    function markPlaybackProgress() {
+        const now = performance.now();
+
+        lastProgressAt = now;
+        waitingSince = null;
+
+        if (stablePlaybackSince === null) {
+            stablePlaybackSince = now;
+            return;
+        }
+
+        if (now - stablePlaybackSince >= STABLE_RECOVERY_MS) {
+            reconnectAttempts = 0;
+        }
+    }
+
+    function scheduleHealthCheck() {
+        if (healthTimer !== null) {
+            clearTimeout(healthTimer);
+            healthTimer = null;
+        }
+
+        healthTimer = window.setTimeout(() => {
+            healthTimer = null;
+
+            const video = videoElement;
+
+            if (video === null || document.visibilityState !== "visible") {
+                scheduleHealthCheck();
+                return;
+            }
+
+            if (video.srcObject instanceof MediaStream && !video.paused && !video.ended) {
+                const now = performance.now();
+                const mediaAge = streamAttachedAt === 0 ? 0 : now - streamAttachedAt;
+
+                if (video.currentTime > lastObservedVideoTime + 0.02) {
+                    lastObservedVideoTime = video.currentTime;
+                    markPlaybackProgress();
+                } else if (
+                    mediaAge > STARTUP_GRACE_MS &&
+                    lastProgressAt !== 0 &&
+                    now - lastProgressAt > FREEZE_NO_PROGRESS_MS
+                ) {
+                    hardReconnect(nextReconnectDelay(150), "video-no-progress");
+                    return;
+                }
+
+                if (
+                    waitingSince !== null &&
+                    mediaAge > STARTUP_GRACE_MS &&
+                    now - waitingSince > WAITING_TIMEOUT_MS
+                ) {
+                    hardReconnect(nextReconnectDelay(150), "video-waiting");
+                    return;
+                }
+            }
+
+            scheduleHealthCheck();
+        }, HEALTH_CHECK_INTERVAL_MS);
+    }
+
+    function setupVideoWatchdog() {
+        scheduleHealthCheck();
+    }
+
+    function attachVideoEventListeners(video: HTMLVideoElement) {
+        const onTimeUpdate = () => {
+            if (video.currentTime > lastObservedVideoTime + 0.01) {
+                lastObservedVideoTime = video.currentTime;
+                markPlaybackProgress();
+            }
+        };
+
+        const onPlaying = () => {
+            markPlaybackProgress();
+        };
+
+        const onWaiting = () => {
+            if (waitingSince === null) {
+                waitingSince = performance.now();
+            }
+        };
+
+        const onStalled = () => {
+            if (waitingSince === null) {
+                waitingSince = performance.now();
+            }
+        };
+
+        const onEnded = () => {
+            hardReconnect(nextReconnectDelay(100), "video-ended");
+        };
+
+        video.addEventListener("timeupdate", onTimeUpdate);
+        video.addEventListener("playing", onPlaying);
+        video.addEventListener("waiting", onWaiting);
+        video.addEventListener("stalled", onStalled);
+        video.addEventListener("ended", onEnded);
+
+        return () => {
+            video.removeEventListener("timeupdate", onTimeUpdate);
+            video.removeEventListener("playing", onPlaying);
+            video.removeEventListener("waiting", onWaiting);
+            video.removeEventListener("stalled", onStalled);
+            video.removeEventListener("ended", onEnded);
+        };
+    }
+
+    function hardReconnect(delay = 500, reason = "unspecified") {
         reconnectGeneration++;
 
         const generation = reconnectGeneration;
@@ -172,10 +336,16 @@
             playRetryTimer = null;
         }
 
+        waitingSince = null;
+
         destroyReader();
         resetVideo();
 
-        window.setTimeout(() => {
+        console.warn("[WebRTC] reconnect", { reason, delay, reconnectAttempts });
+
+        retryTimer = window.setTimeout(() => {
+            retryTimer = null;
+
             if (generation !== reconnectGeneration) {
                 return;
             }
@@ -200,6 +370,14 @@
 
         destroyReader();
 
+        if (!navigator.onLine) {
+            retryTimer = window.setTimeout(() => {
+                retryTimer = null;
+                connectReader(expectedGeneration);
+            }, nextReconnectDelay(400));
+            return;
+        }
+
         const generation = expectedGeneration;
 
         try {
@@ -216,21 +394,24 @@
                         return;
                     }
 
-                    resetVideo();
+                    const lowered = err.toLowerCase();
 
-                    // The reader itself normally retries runtime failures.
-                    // For a high-latency reconnect we deliberately perform a
-                    // complete browser-side reset instead.
-                    if (err.includes("video latency too high")) {
-                        hardReconnect(500);
+                    if (lowered.includes("stream not found")) {
+                        hardReconnect(nextReconnectDelay(1200), "stream-not-found");
                         return;
                     }
 
-                    if (err.includes("retrying in some seconds")) {
+                    if (lowered.includes("latency too high") || lowered.includes("video stalled")) {
+                        hardReconnect(nextReconnectDelay(120), "reader-health");
                         return;
                     }
 
-                    hardReconnect(3000);
+                    if (lowered.includes("retrying in some seconds")) {
+                        hardReconnect(nextReconnectDelay(300), "reader-retrying");
+                        return;
+                    }
+
+                    hardReconnect(nextReconnectDelay(500), "reader-error");
                 },
 
                 onTrack: (evt) => {
@@ -267,6 +448,12 @@
                         videoElement.srcObject = stream;
                     }
 
+                    streamAttachedAt = performance.now();
+                    stablePlaybackSince = null;
+                    lastObservedVideoTime = 0;
+                    lastProgressAt = streamAttachedAt;
+                    waitingSince = null;
+
                     const attemptPlay = () => {
                         if (generation !== reconnectGeneration) {
                             return;
@@ -281,8 +468,10 @@
                             playRetryTimer = null;
                         }
 
-                        videoElement.play().catch(() => {
-                            playRetryTimer = window.setTimeout(attemptPlay, 500);
+                        videoElement.play().then(() => {
+                            markPlaybackProgress();
+                        }).catch(() => {
+                            playRetryTimer = window.setTimeout(attemptPlay, PLAY_RETRY_DELAY_MS);
                         });
                     };
 
@@ -295,7 +484,7 @@
 
                         console.warn("[WebRTC] track ended");
 
-                        hardReconnect(250);
+                        hardReconnect(nextReconnectDelay(100), "track-ended");
                     };
                 },
 
@@ -328,7 +517,7 @@
             retryTimer = window.setTimeout(() => {
                 retryTimer = null;
                 connectReader(generation);
-            }, 3000);
+            }, nextReconnectDelay(500));
         }
     }
 </script>
