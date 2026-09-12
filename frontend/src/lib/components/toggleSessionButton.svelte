@@ -10,9 +10,9 @@
 
 <script lang="ts">
     import type { Writable } from "svelte/store";
-    import { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
-    import { isSessionJson } from "./types";
-    import type { ActiveSession, SessionButtonVariant, SessionJson } from "./types";
+    import { FahrtenbuchStore, Session } from "../fahrtenbuch/fahrtenbuchStore";
+    import { isSessionJson } from "../types";
+    import type { ActiveSession, SessionButtonVariant, SessionJson } from "../types";
 
     let {
         fahrtenbuch,

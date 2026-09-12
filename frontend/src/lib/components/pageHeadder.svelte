@@ -5,9 +5,9 @@
 </section>
 
 <script lang="ts">
-    import BatteryStatusIcon from "./batteryStatusIcon.svelte";
-    import SateliteIcon from "./sateliteIcon.svelte";
-    import type { DeviceStatus } from "./types";
+    import BatteryStatusIcon from "../icons/batteryStatusIcon.svelte";
+    import SateliteIcon from "../icons/sateliteIcon.svelte";
+    import type { DeviceStatus } from "../types";
 
     let { deviceStatus }: { deviceStatus: DeviceStatus } = $props();
 

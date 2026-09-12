@@ -13,7 +13,7 @@
 </article>
 
 <script lang="ts">
-    import type { AppConfig } from "./types";
+    import type { AppConfig } from "../types";
 
     let { config }: { config: AppConfig } = $props();
 

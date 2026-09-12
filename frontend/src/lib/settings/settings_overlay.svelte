@@ -58,7 +58,7 @@
 {/if}
 
 <script lang="ts">
-    import type { OverlaySettings } from "./types";
+    import type { OverlaySettings } from "../types";
 
     let { overlay_settings = $bindable() }: { overlay_settings: OverlaySettings } = $props();
 </script>

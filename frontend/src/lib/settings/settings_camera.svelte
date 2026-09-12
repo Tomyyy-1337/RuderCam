@@ -39,7 +39,7 @@
 </article>
 
 <script lang="ts">
-    import type { AppConfig, FocusMode, MeteringMode } from "./types";
+    import type { AppConfig, FocusMode, MeteringMode } from "../types";
 
     let { config }: { config: AppConfig } = $props();
 

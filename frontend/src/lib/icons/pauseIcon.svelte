@@ -15,7 +15,7 @@
 </div>
 
 <script lang="ts">
-    import type { ActiveSession } from "./types";
+    import type { ActiveSession } from "../types";
 
     let { paused, session }: { paused: boolean, session: ActiveSession } = $props();
 

@@ -1,4 +1,4 @@
-import { isSessionJson, type GpsPosition, type SessionJson } from './types'
+import { isSessionJson, type GpsPosition, type SessionJson } from '../types'
 
 function parseStoredSessions(): SessionJson[] {
     const raw = localStorage.getItem('fahrtenbuch')

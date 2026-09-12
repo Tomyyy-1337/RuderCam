@@ -11,7 +11,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { setTheme } from "./setTheme";
-    import type { Theme } from "./types";
+    import type { Theme } from "../types";
 
     let theme = $state<Theme>('light');
 

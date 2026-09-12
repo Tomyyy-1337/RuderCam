@@ -91,7 +91,7 @@
     import type { Component } from "svelte";
     import type { Writable } from "svelte/store";
     import type { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
-    import type { GpsPosition } from "./types";
+    import type { GpsPosition } from "../types";
 
     let { fahrt, index, fahrtenbuch }: {
         fahrt: Session;

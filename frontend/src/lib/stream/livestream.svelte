@@ -22,9 +22,9 @@
     import { onMount } from "svelte";
     import Overlay from "./overlay.svelte";
     import { MediaMTXWebRTCReader } from "./reader";
-    import type { ActiveSession, DeviceStatus, OverlaySettings } from "./types";
+    import type { ActiveSession, DeviceStatus, OverlaySettings } from "../types";
     import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
+    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
 
     let videoShell: HTMLDivElement | null = null;
     let videoElement: HTMLVideoElement | null = null;

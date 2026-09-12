@@ -21,15 +21,15 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { writable, type Writable } from "svelte/store";
-    import Fahrt from "./lib/fahrt.svelte";
-    import Fahrtenbuch from "./lib/fahrtenbuch.svelte";
-    import { FahrtenbuchStore } from "./lib/fahrtenbuchStore";
-    import Livestream from "./lib/livestream.svelte";
-    import Navbar from "./lib/navbar.svelte";
-    import NotConnected from "./lib/not_connected.svelte";
-    import PageHeadder from "./lib/pageHeadder.svelte";
-    import Settings from "./lib/settings.svelte";
-    import { setTheme } from "./lib/setTheme";
+    import Fahrt from "./lib/components/aktuelle_fahrt.svelte";
+    import Fahrtenbuch from "./lib/fahrtenbuch/fahrtenbuch.svelte";
+    import { FahrtenbuchStore } from "./lib/fahrtenbuch/fahrtenbuchStore";
+    import Livestream from "./lib/stream/livestream.svelte";
+    import Navbar from "./lib/components/navbar.svelte";
+    import NotConnected from "./lib/components/not_connected.svelte";
+    import PageHeadder from "./lib/components/pageHeadder.svelte";
+    import Settings from "./lib/settings/settings.svelte";
+    import { setTheme } from "./lib/settings/setTheme";
     import {
         isDeviceStateMessage,
         isOverlaySettings,

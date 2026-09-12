@@ -41,26 +41,26 @@
         title="Update"
         description="Neue Versionen auf das Gerät übertragen"
     >
-        <Update />
+        <SettingsUpdate />
     </AccordionSection>
 </div>
 
 <script lang="ts">
     import { onMount } from "svelte";
     import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
-    import SettingsChangePassword from "./settings_change_password.svelte";
-    import SettingsChangeSsid from "./settings_change_ssid.svelte";
-    import SettingsCamera from "./settings_camera.svelte";
-    import SettingsPowerButton from "./settings_power_button.svelte";
-    import SettingsShutdownTimer from "./settings_shutdown_timer.svelte";
-    import SettingsFahrtenbuch from "./settings_fahrtenbuch.svelte";
-    import SettingsToggleTheme from "./settings_toggle_theme.svelte";
-    import Update from "./update.svelte";
+    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
+    import { isAppConfig } from "../types";
+    import type { AppConfig, OverlaySettings } from "../types";
     import AccordionSection from "./accordion_section.svelte";
+    import SettingsToggleTheme from "./settings_toggle_theme.svelte";
     import SettingsOverlay from "./settings_overlay.svelte";
-    import { isAppConfig } from "./types";
-    import type { AppConfig, OverlaySettings } from "./types";
+    import SettingsCamera from "./settings_camera.svelte";
+    import SettingsShutdownTimer from "./settings_shutdown_timer.svelte";
+    import SettingsPowerButton from "./settings_power_button.svelte";
+    import SettingsChangeSsid from "./settings_change_ssid.svelte";
+    import SettingsChangePassword from "./settings_change_password.svelte";
+    import SettingsFahrtenbuch from "./settings_fahrtenbuch.svelte";
+    import SettingsUpdate from "./settings_update.svelte";
 
     const defaultConfig: AppConfig = {
         ssid: "TestSSID",

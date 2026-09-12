@@ -9,7 +9,7 @@
 
 <script lang="ts">
     import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
+    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
 
     let { fahrtenbuch = $bindable() }: { fahrtenbuch: Writable<FahrtenbuchStore> } = $props();
 

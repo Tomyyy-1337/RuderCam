@@ -14,7 +14,7 @@
     import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
     import { PMTiles, Protocol } from "pmtiles";
     import "maplibre-gl/dist/maplibre-gl.css";
-    import type { GpsPosition, Waypoint } from "./types";
+    import type { GpsPosition, Waypoint } from "../types";
 
     const DEFAULT_CENTER: Waypoint = [8.472401705884762, 49.363691016649035];
     const PMTILES_MAGIC_NUMBER = 19792;

@@ -32,14 +32,14 @@
 <script lang="ts">
     import { fly } from "svelte/transition";
     import { flip } from "svelte/animate";
-    import BatteryStatusIcon from "./batteryStatusIcon.svelte";
+    import BatteryStatusIcon from "../icons/batteryStatusIcon.svelte";
     import OverlayCard from "./overlay_card.svelte";
-    import PauseIcon from "./pauseIcon.svelte";
-    import SateliteIcon from "./sateliteIcon.svelte";
-    import ToggleSessionButton from "./toggleSessionButton.svelte";
+    import PauseIcon from "../icons/pauseIcon.svelte";
+    import SateliteIcon from "../icons/sateliteIcon.svelte";
+    import ToggleSessionButton from "../components/toggleSessionButton.svelte";
     import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
-    import type { ActiveSession, DeviceStatus, OverlaySettings } from "./types";
+    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
+    import type { ActiveSession, DeviceStatus, OverlaySettings } from "../types";
 
     let {
         deviceStatus,

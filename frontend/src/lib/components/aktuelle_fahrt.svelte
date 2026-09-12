@@ -22,8 +22,8 @@
 <script lang="ts">
     import ToggleSessionButton from "./toggleSessionButton.svelte";
     import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
-    import type { ActiveSession } from "./types";
+    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
+    import type { ActiveSession } from "../types";
 
     let {
         fahrtenbuch = $bindable(),

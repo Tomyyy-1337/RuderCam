@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { AppTab } from "./types";
+    import type { AppTab } from "../types";
 
     let { activeTab = $bindable() }: { activeTab: AppTab } = $props();
 </script>
