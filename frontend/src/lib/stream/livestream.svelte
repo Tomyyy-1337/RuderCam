@@ -406,11 +406,6 @@
                         return;
                     }
 
-                    if (lowered.includes("retrying in some seconds")) {
-                        hardReconnect(nextReconnectDelay(300), "reader-retrying");
-                        return;
-                    }
-
                     hardReconnect(nextReconnectDelay(500), "reader-error");
                 },
 
