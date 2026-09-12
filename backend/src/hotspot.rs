@@ -21,25 +21,41 @@ impl Hotspot{
         }
     }
 
+    fn nmcli_get(setting: &str) -> Option<String> {
+        let output = Command::new("nmcli")
+            .args(["-t", "-s", "-g", setting, "connection", "show", Self::HOTSPOT_PROFILE_NAME])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .ok()?;
 
-    fn disable_wifi_client() {
-        let _ = Self::nmcli(&[
-            "connection",
-            "modify",
-            "netplan-wlan0-Internetz 2.4 GHz",
-            "connection.autoconnect",
-            "no",
-        ]);
+        if !output.status.success() {
+            return None;
+        }
 
-        let _ = Self::nmcli(&["connection", "down", "netplan-wlan0-Internetz 2.4 GHz"]);
-
-        let _ = Self::nmcli(&["device", "set", Self::HOTSPOT_IFACE, "autoconnect", "no"]);
+        String::from_utf8(output.stdout)
+            .ok()
+            .map(|s| s.trim().to_string())
     }
 
-    fn ensure_hotspot_profile(
-        ssid: &str,
-        password: &str,
-    ) {
+    fn profile_matches(ssid: &str, password: &str) -> bool {
+        let existing_ssid = Self::nmcli_get("802-11-wireless.ssid");
+        let existing_password = Self::nmcli_get("802-11-wireless-security.psk");
+
+        matches!(
+            (existing_ssid, existing_password),
+            (Some(existing_ssid), Some(existing_password))
+                if existing_ssid == ssid && existing_password == password
+        )
+    }
+
+    pub fn initialize(ssid: &str, password: &str) {
+        if Self::profile_matches(ssid, password) {
+            return;
+        }
+
+        let _ = Self::nmcli(&["connection", "down", Self::HOTSPOT_PROFILE_NAME]);
+
         let _ = Self::nmcli(&["connection", "delete", Self::HOTSPOT_PROFILE_NAME]);
 
         let _ = Self::nmcli(&[
@@ -76,38 +92,8 @@ impl Hotspot{
             "wifi-sec.psk",
             password,
         ]);
-    }
-
-    fn start_hotspot() {
+        
         let _ = Self::nmcli(&["connection", "up", Self::HOTSPOT_PROFILE_NAME]);
-    }
-
-    pub fn update_hotspot_credentials(
-        new_ssid: &str,
-        new_password: &str,
-    ) -> Result<(), ()> {
-        Self::nmcli(&[
-            "connection",
-            "modify",
-            Self::HOTSPOT_PROFILE_NAME,
-            "802-11-wireless.ssid",
-            new_ssid,
-            "wifi-sec.psk",
-            new_password,
-        ])?;
-
-        let _ = Self::nmcli(&["connection", "down", Self::HOTSPOT_PROFILE_NAME]);
-        Self::nmcli(&["connection", "up", Self::HOTSPOT_PROFILE_NAME])?;
-
-        Ok(())
-    }
-
-    pub fn initialize(ssid: &str, password: &str) {
-        Self::disable_wifi_client();
-
-        Self::ensure_hotspot_profile(ssid, password);
-
-        Self::start_hotspot();
     }
 
 }

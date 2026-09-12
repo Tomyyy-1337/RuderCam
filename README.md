@@ -166,7 +166,7 @@ sudo systemctl start backend.service
 ```
 
 
-## Optimize boot
+## Optimize boot (after first treiber run)
 ```bash
 sudo systemctl disable --now bluetooth.service
 sudo systemctl disable --now NetworkManager-wait-online.service
@@ -178,4 +178,7 @@ sudo systemctl disable --now cloud-final.service
 
 sudo nmcli connection modify "netplan-wlan0-Internetz 2.4 GHz" connection.autoconnect no
 sudo nmcli connection modify "netplan-eth0" connection.autoconnect no
+
+sudo nmcli connection modify treiber_hotspot connection.autoconnect yes
+sudo nmcli connection modify treiber_hotspot connection.autoconnect-priority 100
 ```
