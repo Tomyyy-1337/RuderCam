@@ -1,6 +1,6 @@
 <article>
-    <h4>Kamera Fokus</h4>
-    <p>Autofokus oder festen Fokus für den Videostream auswählen.</p>
+    <h4>Fokusmodus</h4>
+    <p>Autofokus oder festen Fokus für die Kamera auswählen.</p>
 
     <select id="camera-focus-mode" name="camera-focus-mode" bind:value={focusMode} onchange={saveFocusMode}>
         <option value="Auto">Autofokus</option>
@@ -19,8 +19,8 @@
 </article>
 
 <article>
-    <h4>Kamera Messung</h4>
-    <p>Belichtungsmessung für den Videostream auswählen.</p>
+    <h4>Belichtungsmessung</h4>
+    <p>Belichtungsmessung für die Kamera auswählen.</p>
 
     <select id="camera-metering-mode" name="camera-metering-mode" bind:value={meteringMode} onchange={saveMeteringMode}>
         <option value="Average">Durchschnitt</option>
