@@ -26,8 +26,11 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100%;
+        height: 12em;
         color: var(--text);
+        background-color: var(--section-background);
+        border-radius: 1em;
+        border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
     }
 
     p {
