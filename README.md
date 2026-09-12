@@ -35,29 +35,6 @@ sudo nano /etc/rpi/swap.conf
 Mechanism=none
 ```
 
-### Mount parition
-```bash
-sudo mkdir -p /mnt/data
-```
-
-Find uuid
-```bash
-lsblk -f
-sudo blkid
-```
-
-Add an entry to /etc/fstab
-```bash
-UUID=your-uuid-here  /mnt/data  ext4  defaults,nofail  0  2
-```
-
-Test mount
-```bash
-sudo mount -a
-systemctl daemon-reload
-df -h
-```
-
 ### Install dependencies:
 ```bash
 sudo apt update
@@ -66,6 +43,7 @@ wget https://github.com/bluenviron/mediamtx/releases/download/v1.17.0/mediamtx_v
 tar -xvzf mediamtx_v1.17.0_linux_arm64.tar.gz
 mkdir tmp
 ```
+
 
 ### Disable WIFI power savings mode
 ```bash

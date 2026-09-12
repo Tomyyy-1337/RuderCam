@@ -4,7 +4,7 @@ use tar::{Builder};
 use std::fs::File;
 
 // This will be displayed to the User as the current version of the Firmware. 
-const VERSION_NUMBER: &str = "0.1.5";
+const VERSION_NUMBER: &str = "0.2.0";
 
 const STATIC_DIR: &str = "../backend/static";
 const BACKEND_CODE_PATH: &str = "../backend";
