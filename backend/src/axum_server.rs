@@ -40,6 +40,7 @@ pub async fn start_server() {
         .route("/api/stop_session", post(stop_session_handler))
         .route("/api/set_focus_mode", post(change_focus_mode))
         .route("/api/set_metering_mode", post(change_metering_mode))
+        .route("/api/get_firmware_version", get(get_current_firmware_version))
         .route("/ws", get(websocket_handler))
         .nest_service("/maps", get_service(ServeDir::new("./maps")))
         .fallback_service(ServeDir::new("./static"))
@@ -58,6 +59,14 @@ pub async fn start_server() {
         }
     };
     let _ = axum::serve(listener, app).await;
+}
+
+async fn get_current_firmware_version() -> String {
+    let version = match std::fs::read_to_string("./version.txt") {
+        Ok(content) => content.trim().to_string(),
+        Err(_) => "No Version".to_string(),
+    };
+    version
 }
 
 #[derive(serde::Deserialize)]
