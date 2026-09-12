@@ -165,3 +165,17 @@ sudo systemctl enable backend.service
 sudo systemctl start backend.service
 ```
 
+
+## Optimize boot
+```bash
+sudo systemctl disable --now bluetooth.service
+sudo systemctl disable --now NetworkManager-wait-online.service
+
+sudo touch /etc/cloud/cloud-init.disabled
+sudo systemctl disable --now cloud-init-local.service
+sudo systemctl disable --now cloud-config.service
+sudo systemctl disable --now cloud-final.service
+
+sudo nmcli connection modify "netplan-wlan0-Internetz 2.4 GHz" connection.autoconnect no
+sudo nmcli connection modify "netplan-eth0" connection.autoconnect no
+```

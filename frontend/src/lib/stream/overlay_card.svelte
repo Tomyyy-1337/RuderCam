@@ -17,7 +17,8 @@
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        padding: 0.05rem 0.2rem 0;
+        gap: 0.02rem;
+        padding: 0 0.15rem;
         width: 100%;
         min-width: 7.5rem;
         box-sizing: border-box;
@@ -29,8 +30,8 @@
     .stat_label {
         font-weight: bold;
         font-size: clamp(0.7rem, 1.5vw + 0.2rem, 0.85rem);
-        line-height: 1.1;
-        min-height: 1.8em;
+        line-height: 1;
+        min-height: 1.25em;
         margin: 0;
         color: white;
         text-align: center;
@@ -44,7 +45,7 @@
         font-weight: normal;
         margin: 0;
         font-size: clamp(1.6rem, 4.3vw + 0.5rem, 4rem);
-        line-height: 1.1;
+        line-height: 1;
         text-align: center;
         color: white;
         white-space: nowrap;
@@ -55,6 +56,7 @@
         display: block;
         font-size: clamp(0.65rem, 1.2vw + 0.45rem, 0.95rem);
         line-height: 1;
+        margin-top: -0.08rem;
         color: lightgray;
         white-space: nowrap;
         text-align: center;
