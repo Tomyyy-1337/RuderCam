@@ -3,6 +3,12 @@
 
     <p>Aktuelle Version: {currentVersion}</p>
 
+    <p>Um die aktuelle version der Firmware herunterzuladen trennen sie die WLAN Verbindung zur Ruder Kamera und verbinden sie sich mit Mobilen Daten oder einem anderen WLAN.</p>
+
+    <p>Nach dem Herunterladen der Firmware stellen Sie die Verbindung zum WLAN der Ruder Kamera wieder her und öffnen Sie den Update service um das Update durchzuführen.</p>
+
+    <p>Die neuste Version der Firmware finden Sie <a class="release-link" href="https://github.com/Tomyyy-1337/RuderCam/releases/latest" target="_blank" rel="noreferrer">hier</a>.</p>
+
     <button style="width:100%;" onclick={() => window.open(`http://${window.location.hostname}:4000`, '_blank')}>Update Service öffnen</button>
 
     <div class="spacer"></div>
@@ -29,3 +35,22 @@
     });
     
 </script>
+
+<style>
+    .release-link {
+        color: color-mix(in srgb, var(--button-color) 82%, white 18%);
+        text-underline-offset: 0.14em;
+        text-decoration-thickness: 0.08em;
+        transition: color 160ms ease;
+    }
+
+    .release-link:hover {
+        color: color-mix(in srgb, var(--button-color) 92%, white 8%);
+    }
+
+    .release-link:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--button-color) 88%, white 12%);
+        outline-offset: 2px;
+        border-radius: 0.2em;
+    }
+</style>
