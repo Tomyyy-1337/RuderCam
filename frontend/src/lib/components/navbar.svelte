@@ -39,7 +39,7 @@
         display: flex;
         gap: var(--tabbar-gap);
         padding: var(--tabbar-padding);
-        margin: 1rem 0 1.25rem;
+        margin: 1rem 0;
         background: var(--section-background);
         border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
         border-radius: 1.25rem;

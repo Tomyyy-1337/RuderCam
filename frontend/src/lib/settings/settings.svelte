@@ -35,7 +35,6 @@
         description="Gespeicherte Fahrten verwalten"
     >
         <SettingsFahrtenbuch {fahrtenbuch} />
-        <SettingsDeveloper {fahrtenbuch} />
     </AccordionSection>
 
     <AccordionSection
