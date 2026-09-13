@@ -36,7 +36,7 @@ impl DeviceState {
     }
 
     pub fn set_velocity(&mut self, velocity: f32) {
-        self.velocity = if velocity >= 1.0 {
+        self.velocity = if velocity >= 2.0 {
             (velocity * 10.0).round() / 10.0
         } else {
             0.0

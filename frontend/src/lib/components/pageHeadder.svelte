@@ -1,7 +1,15 @@
 <section>
-    <div id="Akkustand"><BatteryStatusIcon value={battery_percentage} /> </div>
+    <div id="Akkustand">
+        {#if deviceStatus.isConnected}
+            <BatteryStatusIcon value={battery_percentage} />
+        {/if}
+    </div>
     <h2>Ruder Cam Beta</h2>
-    <div id="Satelien"><SateliteIcon value={satellite_count} /> </div>
+    <div id="Satelien">
+        {#if deviceStatus.isConnected}
+            <SateliteIcon value={satellite_count} />
+        {/if}
+    </div>
 </section>
 
 <script lang="ts">
@@ -17,9 +25,9 @@
 
 <style>
     section {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
         padding: 0.5rem;
         margin-top: 0;
     }
@@ -31,10 +39,23 @@
         gap: 0.2rem;
     }
 
+    #Akkustand {
+        justify-content: flex-start;
+    }
+
+    #Satelien {
+        justify-content: flex-end;
+    }
+
     h2 {
         margin: 0;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 1.5rem;
         font-weight: bold;
         text-align: center;
+        justify-self: center;
     }
 </style>

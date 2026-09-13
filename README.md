@@ -25,15 +25,7 @@ npm run build
 ## Pi Setup
 
 - Activate i2c in `raspi-config` 
-
-### Disable Swap 
-```bash 
-sudo nano /etc/rpi/swap.conf
-```
-```
-[Main]
-Mechanism=none
-```
+- Sctivate Serial Port in `raspi-config` (disable login shell over serial)
 
 ### Install dependencies:
 ```bash
@@ -44,21 +36,13 @@ tar -xvzf mediamtx_v1.17.0_linux_arm64.tar.gz
 mkdir tmp
 ```
 
-
-### Disable WIFI power savings mode
-```bash
-sudo mkdir -p /etc/NetworkManager/conf.d
-sudo nano /etc/NetworkManager/conf.d/wifi-powersave.conf
+### Disable Swap 
+```bash 
+sudo nano /etc/rpi/swap.conf
 ```
-
-Copy in File
 ```
-[connection]
-wifi.powersave = 2
-```
-
-```bash
-sudo systemctl restart NetworkManager
+[Main]
+Mechanism=none
 ```
 
 ```bash
@@ -70,7 +54,8 @@ At the end of the file, add:
 paths:
   stream:
 ```
-For hotspot:
+
+hotspot only:
 ```
 webrtcIPsFromInterfaces: false
 webrtcIPsFromInterfacesList: []
@@ -108,6 +93,12 @@ sudo systemctl start mediamtx.service
 Stream accessible at: `https://<your-pi-ip>:8889/stream/`
 
 ### Update service Setup
+- Compile update service with docker
+- Copy the `update_service` binary to `/home/pi/update_service/` on the pi
+- Copy the `static` folder to `/home/pi/update_service/static/` on the pi
+
+- on the pi ```chmod +x /home/pi/update_service/update_service```
+
 ```bash
 sudo nano /etc/systemd/system/update_service.service
 ```
@@ -137,6 +128,8 @@ sudo systemctl start update_service.service
 ```
 
 ### Backend Setup
+- Use the update service to update the backend on the pi
+
 ```bash
 sudo nano /etc/systemd/system/backend.service
 ```

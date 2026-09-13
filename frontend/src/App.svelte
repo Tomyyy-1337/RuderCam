@@ -1,6 +1,6 @@
 <main class="container">
+    <PageHeadder {deviceStatus} />
     {#if deviceStatus.isConnected}
-        <PageHeadder {deviceStatus} />
         <Livestream {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
         <Fahrt {fahrtenbuch} bind:activeSession />
     {:else}

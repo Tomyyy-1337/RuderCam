@@ -1,10 +1,10 @@
 use std::{io::{self, Write}, path::Path, process::{Command, Stdio}};
 use sha2::{Sha256, Digest};
-use tar::{Builder};
+use tar::{Builder, Header};
 use std::fs::File;
 
 // This will be displayed to the User as the current version of the Firmware. 
-const VERSION_NUMBER: &str = "0.2.1";
+const VERSION_NUMBER: &str = "0.2.2";
 
 const STATIC_DIR: &str = "../backend/static";
 const BACKEND_CODE_PATH: &str = "../backend";
@@ -20,32 +20,7 @@ pub fn compile_and_sign(version: &str) -> io::Result<()> {
     build_backend()?;
 
     // Calculate Hash
-    print!("Calculating hash of files...");
-    std::io::stdout().flush().unwrap();
-
-    let raw_bin_path = Path::new(BACKEND_CODE_PATH).join(BACKEND_BIN_PATH);
-    let raw_data = std::fs::read(&raw_bin_path)?;
-    let backend_hash = Sha256::digest(&raw_data);
-
-    let mut files = Vec::new();
-    all_files_in_dir(STATIC_DIR, &mut files)?;
-
-    let version_file = File::create("version.txt")?;
-    writeln!(&version_file, "{}", version)?;
-    let version_file_hash = Sha256::digest(std::fs::read("version.txt")?);
-
-    let mut combined_hash = xor_hashes(&backend_hash, &version_file_hash);
-    
-    for file in &files {
-        let raw_data = std::fs::read(file)?;
-        let file_hash = Sha256::digest(&raw_data);
-        combined_hash = xor_hashes(&mut combined_hash, &file_hash);
-    }
-
-    // create a temporary file to store the checksum 
-    let mut checksum_file = File::create("update_hash")?;
-    checksum_file.write_all(&combined_hash)?;
-
+    let combined_hash = calculate_hash()?;
 
     // Create Archive
     print!("\rCreating update archive...             ");
@@ -56,35 +31,58 @@ pub fn compile_and_sign(version: &str) -> io::Result<()> {
 
     archive.append_dir_all("static", STATIC_DIR)?;
     archive.append_file("server", &mut File::open(Path::new(BACKEND_CODE_PATH).join(BACKEND_BIN_PATH))?)?;
-    archive.append_file("version.txt", &mut File::open("version.txt")?)?;
-    archive.append_file("update_hash", &mut File::open("update_hash")?)?;
+    
+    let mut version_header = Header::new_gnu();
+    version_header.set_size(version.as_bytes().len() as u64);
+    archive.append_data(&mut version_header, "version.txt", version.as_bytes())?;
+
+    let mut hash_header = Header::new_gnu();
+    hash_header.set_size(combined_hash.len() as u64);
+    archive.append_data(&mut hash_header, "update_hash", combined_hash.as_slice())?;
     
     archive.into_inner()?;    
-    
-    // delete the temporary checksum and version file
-    std::fs::remove_file("update_hash")?;
-    std::fs::remove_file("version.txt")?;
 
     println!("\rArchive has been created successfully at ./update.tar");
 
     Ok(())
 }
 
+pub fn calculate_hash() -> io::Result<Vec<u8>> {
+    print!("Calculating hash of files...");
+    std::io::stdout().flush().unwrap();
+
+    let backend_path = Path::new(BACKEND_CODE_PATH).join(BACKEND_BIN_PATH);
+
+    let backend_hash = Sha256::digest(&std::fs::read(&backend_path)?);
+    let version_hash = Sha256::digest(VERSION_NUMBER.as_bytes());
+    let mut combined_hash = xor_hashes(&backend_hash, &version_hash);
+    
+    for file in all_files_in_dir(STATIC_DIR)? {
+        let raw_data = std::fs::read(file)?;
+        let file_hash = Sha256::digest(&raw_data);
+        combined_hash = xor_hashes(&mut combined_hash, &file_hash);
+    }
+
+    Ok(combined_hash)
+}
+
 pub fn xor_hashes(hash1: &[u8], hash2: &[u8]) -> Vec<u8> {
     hash1.iter().zip(hash2.iter()).map(|(a, b)| a ^ b).collect()
 }
 
-fn all_files_in_dir(dir: &str, files: &mut Vec<String>) -> io::Result<()> {
+fn all_files_in_dir(dir: &str) -> io::Result<Vec<String>> {
+    let mut files = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
+
         if path.is_dir() {
-            all_files_in_dir(path.to_str().unwrap(), files)?;
+            files.extend(all_files_in_dir(path.to_string_lossy().as_ref())?);
         } else {
-            files.push(path.to_str().unwrap().to_string());
+            files.push(path.to_string_lossy().into_owned());
         }
     }
-    Ok(())
+    Ok(files)
 }
 
 fn build_frontend() -> io::Result<()> {
