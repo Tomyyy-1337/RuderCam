@@ -38,7 +38,14 @@ pub enum AppEvent {
 }
 
 pub fn read_version_number() -> io::Result<String> {
-    Ok(std::fs::read_to_string(VERSION_PATH)?.trim().to_string())
+    Ok(std::fs::read_to_string(VERSION_PATH)?
+        .trim()
+        .trim_start_matches('v')
+        .to_string())
+}
+
+pub fn write_version_number(version: &str) -> io::Result<()> {
+    std::fs::write(VERSION_PATH, format!("{version}\n"))
 }
 
 pub fn run_pipeline(tx: Sender<AppEvent>) {

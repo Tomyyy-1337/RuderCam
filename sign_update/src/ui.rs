@@ -17,7 +17,7 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
@@ -25,7 +25,7 @@ use ratatui::{
 };
 
 use crate::upload::{self, FlashEvent};
-use crate::pipeline::{read_version_number, AppEvent, TaskStatus, TASK_NAMES};
+use crate::pipeline::{read_version_number, write_version_number, AppEvent, TaskStatus, TASK_NAMES};
 
 const ARCHIVE_PATH: &str = "update.tar";
 
@@ -53,30 +53,11 @@ pub struct OutputLine {
 
 enum FlashState {
     Hidden,
+    ChangingVersion { input: String },
     Scanning,
     SelectNetwork { networks: Vec<String>, selected: usize },
     Working { log: Vec<String>, cancel: Arc<AtomicBool> },
     Finished { log: Vec<String>, result: Result<(), String> },
-}
-
-fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
-    let vertical = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(area);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(vertical[1])[1]
 }
 
 impl App {
@@ -412,9 +393,9 @@ fn run_app(
             let output_block = Block::default().borders(Borders::ALL).title(if app.has_error() {
                 "Output (failed, press Enter/r to retry or q to quit)"
             } else if app.finished {
-                "Output (finished, q to quit, r to restart)"
+                "Output (q: quit, r: restart, v: change version numer)"
             } else {
-                "Output (working, q to quit, r to restart)"
+                "Output (q quit, r restart, v change version nume)"
             });
             let output_area = output_block.inner(right_chunks[0]);
             visible_height = output_area.height;
@@ -457,7 +438,15 @@ fn run_app(
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Release {
                     if !matches!(flash_state, FlashState::Hidden) {
-                        handle_flash_key(&mut flash_state, key.code, &flash_tx, &original_ssid);
+                        if handle_flash_key(
+                            &mut flash_state,
+                            key.code,
+                            &flash_tx,
+                            &original_ssid,
+                            &mut app.version,
+                        ) {
+                            return Ok(RunOutcome::Retry);
+                        }
                         continue;
                     }
 
@@ -470,6 +459,11 @@ fn run_app(
                             original_ssid = upload::current_ssid();
                             flash_state = FlashState::Scanning;
                             upload::scan_networks_async(flash_tx.clone(), false);
+                        }
+                        KeyCode::Char('v') => {
+                            flash_state = FlashState::ChangingVersion {
+                                input: app.version.clone(),
+                            };
                         }
                         KeyCode::Enter if app.finished && !app.has_error() => {
                             original_ssid = upload::current_ssid();
@@ -511,8 +505,34 @@ fn handle_flash_key(
     code: KeyCode,
     flash_tx: &std::sync::mpsc::Sender<FlashEvent>,
     original_ssid: &Option<String>,
-) {
+    version: &mut String,
+) -> bool {
+    let mut restart = false;
+
     match flash_state {
+        FlashState::ChangingVersion { input } => match code {
+            KeyCode::Esc => *flash_state = FlashState::Hidden,
+            KeyCode::Backspace => {
+                input.pop();
+            }
+            KeyCode::Char(character) if character.is_ascii_digit() || character == '.' => {
+                input.push(character);
+            }
+            KeyCode::Enter => {
+                let normalized = input.trim_start_matches('v');
+                if !normalized.is_empty()
+                    && normalized
+                        .chars()
+                        .all(|character| character.is_ascii_digit() || character == '.')
+                    && write_version_number(normalized).is_ok()
+                {
+                    *version = normalized.to_string();
+                    *flash_state = FlashState::Hidden;
+                    restart = true;
+                }
+            }
+            _ => {}
+        },
         FlashState::Scanning => {
             if code == KeyCode::Esc {
                 *flash_state = FlashState::Hidden;
@@ -553,6 +573,8 @@ fn handle_flash_key(
         }
         FlashState::Hidden => {}
     }
+
+    restart
 }
 
 /// Renders the flash-to-pi popup on top of the main UI, if visible.
@@ -561,13 +583,24 @@ fn render_flash_overlay(frame: &mut ratatui::Frame, flash_state: &FlashState) {
         return;
     }
 
-    let area = centered_rect(70, 60, frame.area());
+    let area = frame.area();
     let visible_height = area.height.saturating_sub(2) as usize;
 
     let (title, lines): (&str, Vec<Line>) = match flash_state {
         FlashState::Hidden => unreachable!(),
+        FlashState::ChangingVersion { input } => (
+            "Change version (Enter to save, Esc to cancel)",
+            vec![
+                Line::from(format!("Version: {input}")),
+                Line::default(),
+                Line::from(Span::styled(
+                    "Use numbers and dots, for example 1.2.4",
+                    Style::default().fg(Color::DarkGray),
+                )),
+            ],
+        ),
         FlashState::Scanning => (
-            "Flash to pi",
+            "Select WLAN network (r to refresh, Esc to cancel)",
             vec![Line::from("Scanning for WLAN networks...")],
         ),
         FlashState::SelectNetwork { networks, selected } => {
@@ -591,7 +624,7 @@ fn render_flash_overlay(frame: &mut ratatui::Frame, flash_state: &FlashState) {
                     }
                 })
                 .collect();
-            ("Select a known WLAN network (r to refresh, Esc to cancel)", lines)
+            ("Select WLAN network (r to refresh, Esc to cancel)", lines)
         }
         FlashState::Working { log, .. } => {
             let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
@@ -604,7 +637,7 @@ fn render_flash_overlay(frame: &mut ratatui::Frame, flash_state: &FlashState) {
                 "Esc to cancel",
                 Style::default().fg(Color::DarkGray),
             )));
-            ("Flashing update to pi", lines)
+            ("Uploading to pi", lines)
         }
         FlashState::Finished { log, result } => {
             let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
