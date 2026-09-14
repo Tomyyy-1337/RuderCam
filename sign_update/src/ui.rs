@@ -469,12 +469,12 @@ fn run_app(
                         KeyCode::Char('f') if app.finished && !app.has_error() => {
                             original_ssid = upload::current_ssid();
                             flash_state = FlashState::Scanning;
-                            upload::scan_networks_async(flash_tx.clone());
+                            upload::scan_networks_async(flash_tx.clone(), false);
                         }
                         KeyCode::Enter if app.finished && !app.has_error() => {
                             original_ssid = upload::current_ssid();
                             flash_state = FlashState::Scanning;
-                            upload::scan_networks_async(flash_tx.clone());
+                            upload::scan_networks_async(flash_tx.clone(), false);
                         }
                         KeyCode::Enter if app.finished => return Ok(RunOutcome::Retry),
                         KeyCode::Char('r') => return Ok(RunOutcome::Retry),
@@ -524,7 +524,7 @@ fn handle_flash_key(
             KeyCode::Down => *selected = (*selected + 1).min(networks.len().saturating_sub(1)),
             KeyCode::Char('r') => {
                 *flash_state = FlashState::Scanning;
-                upload::scan_networks_async(flash_tx.clone());
+                upload::scan_networks_async(flash_tx.clone(), true);
             }
             KeyCode::Enter => {
                 if let Some(ssid) = networks.get(*selected).cloned() {

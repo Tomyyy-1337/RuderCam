@@ -73,9 +73,9 @@ pub enum FlashEvent {
 
 /// Scans for visible WLAN networks on a background thread using `netsh`, keeping only ones
 /// Windows already has a saved profile for (connecting to unknown networks is not supported).
-pub fn scan_networks_async(tx: Sender<FlashEvent>) {
+pub fn scan_networks_async(tx: Sender<FlashEvent>, refresh: bool) {
     thread::spawn(move || {
-        if request_wlan_scan() {
+        if refresh && request_wlan_scan() {
             thread::sleep(Duration::from_secs(2));
         }
         let result = list_networks().map(|networks| {
