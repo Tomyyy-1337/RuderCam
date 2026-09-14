@@ -26,6 +26,7 @@ npm run build
 
 - Activate i2c in `raspi-config` 
 - Sctivate Serial Port in `raspi-config` (disable login shell over serial)
+- Disable wifi powersaving
 
 ### Install dependencies:
 ```bash

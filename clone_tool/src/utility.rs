@@ -1,7 +1,11 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::ptr;
-use std::sync::mpsc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+    mpsc,
+};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -198,6 +202,7 @@ pub fn clone_drive_to_image<F>(
     device_name: &str,
     output_path: &str,
     total_size: u64,
+    cancellation: Arc<AtomicBool>,
     mut on_progress: F,
 ) -> Result<(), String>
 where
@@ -235,6 +240,10 @@ where
     let start_time = Instant::now();
 
     loop {
+        if cancellation.load(Ordering::Relaxed) {
+            break;
+        }
+
         let mut bytes_read: DWORD = 0;
         let ok = unsafe {
             ReadFile(
@@ -268,6 +277,12 @@ where
 
     writer_thread.join().map_err(|_| "Writer thread panicked.".to_string())??;
 
+    if cancellation.load(Ordering::Relaxed) {
+        std::fs::remove_file(output_path)
+            .map_err(|e| format!("Operation cancelled, but the partial image could not be deleted: {e}"))?;
+        return Err("Operation cancelled; partial image deleted.".to_string());
+    }
+
     on_progress(TransferProgress {
         done: copied,
         total: total_size,
@@ -281,6 +296,7 @@ pub fn write_image_to_drive<F>(
     input_path: &str,
     device_name: &str,
     drive_capacity: u64,
+    cancellation: Arc<AtomicBool>,
     mut on_progress: F,
 ) -> Result<(), String>
 where
@@ -347,7 +363,11 @@ where
     let start_time = Instant::now();
     let mut failure: Option<String> = None;
 
-    for msg in rx {
+    for msg in &rx {
+        if cancellation.load(Ordering::Relaxed) {
+            break;
+        }
+
         let (buffer, logical_len, mut aligned_len) = match msg {
             Ok(v) => v,
             Err(e) => {
@@ -406,6 +426,7 @@ where
         });
     }
 
+    drop(rx);
     let _ = reader_thread.join();
     unsafe { CloseHandle(handle) };
     for volume_handle in locked_volume_handles {
@@ -414,6 +435,10 @@ where
 
     if let Some(err) = failure {
         return Err(err);
+    }
+
+    if cancellation.load(Ordering::Relaxed) {
+        return Err("Operation cancelled.".to_string());
     }
 
     on_progress(TransferProgress {

@@ -16,7 +16,11 @@ use std::collections::VecDeque;
 use std::fs;
 use std::io::stdout;
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+    mpsc::{self, Receiver, Sender},
+};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -62,8 +66,10 @@ enum Screen {
     Menu,
     DriveSelect,
     FilePath,
+    ConfirmOverwrite,
     ConfirmWrite,
     Running,
+    ConfirmCancel,
     Finished,
     Error,
 }
@@ -86,6 +92,7 @@ struct App {
     status_message: String,
     error_message: String,
     rx: Option<Receiver<AppEvent>>,
+    cancellation: Option<Arc<AtomicBool>>,
 }
 
 impl Default for App {
@@ -112,6 +119,7 @@ impl Default for App {
             status_message: String::new(),
             error_message: String::new(),
             rx: None,
+            cancellation: None,
         }
     }
 }
@@ -138,6 +146,7 @@ impl App {
         self.status_message.clear();
         self.error_message.clear();
         self.rx = None;
+        self.cancellation = None;
     }
 
     fn refresh_drives(&mut self) {
@@ -179,9 +188,11 @@ impl App {
 
         let (tx, rx) = mpsc::channel();
         self.rx = Some(rx);
+        let cancellation = Arc::new(AtomicBool::new(false));
+        self.cancellation = Some(Arc::clone(&cancellation));
 
         thread::spawn(move || {
-            let result = run_operation(operation, drive, file_path, &tx);
+            let result = run_operation(operation, drive, file_path, cancellation, &tx);
             let _ = tx.send(AppEvent::Finished(result));
         });
     }
@@ -202,6 +213,7 @@ impl App {
                 }
                 Ok(AppEvent::Finished(result)) => {
                     self.rx = None;
+                    self.cancellation = None;
                     self.current_speed_bps = 0;
                     self.speed_history.push_back(0);
                     trim_speed_history(&mut self.speed_history);
@@ -282,6 +294,7 @@ fn run_operation(
     operation: Operation,
     drive: RawDrive,
     file_path: String,
+    cancellation: Arc<AtomicBool>,
     tx: &Sender<AppEvent>,
 ) -> Result<(), String> {
     let progress_sender = |progress: TransferProgress| {
@@ -289,8 +302,20 @@ fn run_operation(
     };
 
     match operation {
-        Operation::CloneDrive => clone_drive_to_image(&drive.name, &normalized_clone_path(&file_path), drive.capacity, progress_sender),
-        Operation::WriteImage => write_image_to_drive(&file_path, &drive.name, drive.capacity, progress_sender),
+        Operation::CloneDrive => clone_drive_to_image(
+            &drive.name,
+            &normalized_clone_path(&file_path),
+            drive.capacity,
+            cancellation,
+            progress_sender,
+        ),
+        Operation::WriteImage => write_image_to_drive(
+            &file_path,
+            &drive.name,
+            drive.capacity,
+            cancellation,
+            progress_sender,
+        ),
     }
 }
 
@@ -460,8 +485,13 @@ fn handle_key(app: &mut App, code: KeyCode) {
                 }
             }
             KeyCode::Enter => {
-                app.file_path = String::from("pi.img");
-                app.file_path_is_default = true;
+                if matches!(app.operation, Some(Operation::CloneDrive)) {
+                    app.file_path = String::from("pi.img");
+                    app.file_path_is_default = true;
+                } else {
+                    app.file_path.clear();
+                    app.file_path_is_default = false;
+                }
                 app.file_path_match_index = 0;
                 app.file_path_match_scroll = 0;
                 app.screen = Screen::FilePath;
@@ -510,11 +540,18 @@ fn handle_key(app: &mut App, code: KeyCode) {
             KeyCode::Enter => {
                 if matches!(app.operation, Some(Operation::WriteImage)) {
                     app.screen = Screen::ConfirmWrite;
+                } else if Path::new(&normalized_clone_path(&app.file_path)).is_file() {
+                    app.screen = Screen::ConfirmOverwrite;
                 } else {
                     app.start_operation();
                 }
             }
             KeyCode::Esc => app.screen = Screen::DriveSelect,
+            _ => {}
+        },
+        Screen::ConfirmOverwrite => match code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => app.start_operation(),
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => app.screen = Screen::FilePath,
             _ => {}
         },
         Screen::ConfirmWrite => match code {
@@ -524,9 +561,20 @@ fn handle_key(app: &mut App, code: KeyCode) {
         },
         Screen::Running => {
             if code == KeyCode::Char('q') {
-                app.should_quit = true;
+                app.screen = Screen::ConfirmCancel;
             }
         }
+        Screen::ConfirmCancel => match code {
+            KeyCode::Char('y') | KeyCode::Char('Y') => {
+                if let Some(cancellation) = &app.cancellation {
+                    cancellation.store(true, Ordering::Relaxed);
+                    app.status_message = "Cancelling operation...".to_string();
+                    app.screen = Screen::Running;
+                }
+            }
+            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => app.screen = Screen::Running,
+            _ => {}
+        },
         Screen::Finished | Screen::Error => match code {
             KeyCode::Enter | KeyCode::Esc => app.reset_to_menu(),
             KeyCode::Char('q') => app.should_quit = true,
@@ -540,8 +588,10 @@ fn render(frame: &mut ratatui::Frame<'_>, app: &App) {
         Screen::Menu => render_menu(frame, app),
         Screen::DriveSelect => render_drive_select(frame, app),
         Screen::FilePath => render_file_path(frame, app),
+        Screen::ConfirmOverwrite => render_overwrite_confirm(frame, app),
         Screen::ConfirmWrite => render_confirm(frame, app),
         Screen::Running => render_running(frame, app),
+        Screen::ConfirmCancel => render_cancel_confirm(frame, app),
         Screen::Finished => render_status(frame, "Success", &app.status_message, Color::Green),
         Screen::Error => render_status(frame, "Error", &app.error_message, Color::Red),
     }
@@ -671,6 +721,48 @@ fn render_confirm(frame: &mut ratatui::Frame<'_>, app: &App) {
     frame.render_widget(paragraph, frame.area());
 }
 
+fn render_overwrite_confirm(frame: &mut ratatui::Frame<'_>, app: &App) {
+    let output_path = normalized_clone_path(&app.file_path);
+    let text = format!(
+        "The image file already exists and will be overwritten:\n\n{output_path}\n\nPress Y to overwrite it or N to cancel."
+    );
+
+    let paragraph = Paragraph::new(text)
+        .block(
+            Block::default()
+                .title(" Warning: File Exists ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Yellow)),
+        )
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Yellow));
+
+    frame.render_widget(paragraph, frame.area());
+}
+
+fn render_cancel_confirm(frame: &mut ratatui::Frame<'_>, app: &App) {
+    let cleanup_note = if matches!(app.operation, Some(Operation::CloneDrive)) {
+        " The partially written image file will be deleted."
+    } else {
+        ""
+    };
+    let text = format!(
+        "Cancel the operation?{cleanup_note}\n\nPress Y to cancel or N to continue."
+    );
+
+    let paragraph = Paragraph::new(text)
+        .block(
+            Block::default()
+                .title(" Confirm Cancellation ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Yellow)),
+        )
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Yellow));
+
+    frame.render_widget(paragraph, frame.area());
+}
+
 fn render_running(frame: &mut ratatui::Frame<'_>, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -756,7 +848,7 @@ fn render_running(frame: &mut ratatui::Frame<'_>, app: &App) {
     };
 
     let details = Paragraph::new(format!(
-        "Source: {source}\nDestination: {destination}\nCurrent: {}\nAverage: {}\nETA: {eta_text}\nPress q to quit the app",
+        "Source: {source}\nDestination: {destination}\nCurrent: {}\nAverage: {}\nETA: {eta_text}\nPress q to cancel",
         format_rate(app.current_speed_bps),
         format_rate(avg_speed_bps)
     ))

@@ -10,7 +10,7 @@ use std::{
 use sha2::{Digest, Sha256};
 use tar::{Builder, Header};
 
-pub const VERSION_NUMBER: &str = "0.2.2";
+use crate::VERSION_NUMBER;
 
 pub const STATIC_DIR: &str = "../backend/static";
 pub const BACKEND_CODE_PATH: &str = "../backend";
