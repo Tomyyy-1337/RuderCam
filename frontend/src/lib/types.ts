@@ -1,6 +1,6 @@
 export type Theme = 'light' | 'dark'
 export type OverlayPosition = 'top' | 'bottom'
-export type AppTab = 'sessions' | 'settings'
+export type AppTab = 'camera' | 'sessions' | 'settings'
 export type SessionButtonVariant = 'primary' | 'overlay'
 
 export interface TableColumn {

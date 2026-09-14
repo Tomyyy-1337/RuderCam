@@ -1,21 +1,22 @@
 <main class="container">
-    <PageHeadder {deviceStatus} />
-    {#if deviceStatus.isConnected}
-        <Livestream {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
-        <Fahrt {fahrtenbuch} bind:activeSession />
-    {:else}
-        <NotConnected />
-    {/if}
-
+    <PageHeadder {deviceStatus} /> 
     <Navbar bind:activeTab />
 
-    {#if activeTab === "sessions"}
+    {#if activeTab === "camera"}
+        {#if deviceStatus.isConnected}
+            <Livestream {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
+            <Fahrt {fahrtenbuch} bind:activeSession />
+        {:else}
+            <NotConnected />
+        {/if}
+    {:else if activeTab === "sessions"}
         <Fahrtenbuch {fahrtenbuch} />
+        <div style="height: 3.2rem;"></div>
     {:else if activeTab === "settings"}
         <Settings {fahrtenbuch} bind:overlay_settings />
+        <div style="height: 3.2rem;"></div>
     {/if}
 
-    <div style="height: 500px;"></div>
 </main>
 
 <script lang="ts">
@@ -76,7 +77,7 @@
         show_distanc_per_stroke: true,
     });
 
-    let activeTab = $state<AppTab>("sessions");
+    let activeTab = $state<AppTab>("camera");
 
     let socket: WebSocket | null = null;
     let sessionActivityTimeout: number | null = null;

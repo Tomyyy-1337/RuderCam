@@ -7,10 +7,20 @@
 <nav
     aria-label="Navigation"
     class="tabbar"
+    class:camera-active={activeTab === 'camera'}
     class:sessions-active={activeTab === 'sessions'}
     class:settings-active={activeTab === 'settings'}
 >
     <div class="tabbar_indicator" aria-hidden="true"></div>
+    <button
+        type="button"
+        onclick={() => activeTab = 'camera'}
+        class="tab"
+        class:active={activeTab === 'camera'}
+        aria-pressed={activeTab === 'camera'}
+    >
+        <span class="tab_label">Kamera</span>
+    </button>
     <button
         type="button"
         onclick={() => activeTab = 'sessions'}
@@ -18,7 +28,7 @@
         class:active={activeTab === 'sessions'}
         aria-pressed={activeTab === 'sessions'}
     >
-        <span class="tab_label">Fahrtenbuch</span>
+        <span class="tab_label sessions_label">Fahrtenbuch</span>
     </button>
     <button
         type="button"
@@ -35,8 +45,11 @@
     .tabbar {
         --tabbar-padding: 0.5rem;
         --tabbar-gap: 0.6rem;
-        --active-index: 0;
-        display: flex;
+        --tab-width: calc((100% - (var(--tabbar-padding) * 2) - (var(--tabbar-gap) * 2)) / 3);
+        --indicator-shift: 0px;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: var(--tabbar-gap);
         padding: var(--tabbar-padding);
         margin: 1rem 0;
@@ -47,28 +60,27 @@
     }
 
     .tabbar.sessions-active {
-        --active-index: 0;
+        --indicator-shift: calc(var(--tab-width) + var(--tabbar-gap) - 0.2rem);
     }
 
     .tabbar.settings-active {
-        --active-index: 1;
+        --indicator-shift: calc(var(--tab-width) + var(--tabbar-gap) + var(--tab-width) + var(--tabbar-gap));
+    }
+
+    .tabbar.camera-active {
+        --indicator-shift: 0px;
     }
 
     .tabbar_indicator {
         position: absolute;
         top: var(--tabbar-padding);
-        left: calc(
-            var(--tabbar-padding)
-            + var(--active-index) * (
-                (100% - (var(--tabbar-padding) * 2) - var(--tabbar-gap)) / 2
-                + var(--tabbar-gap)
-            )
-        );
-        width: calc((100% - (var(--tabbar-padding) * 2) - var(--tabbar-gap)) / 2);
+        left: calc(var(--tabbar-padding) + var(--indicator-shift));
+        width: var(--tab-width);
         height: calc(100% - (var(--tabbar-padding) * 2));
         border-radius: 0.9rem;
         background: color-mix(in srgb, var(--button-color) 22%, var(--section-background));
         border: 1px solid color-mix(in srgb, var(--button-color) 52%, var(--text) 12%);
+        box-sizing: border-box;
         transition: left 260ms ease;
         pointer-events: none;
     }
@@ -76,12 +88,13 @@
     .tab {
         -webkit-tap-highlight-color: transparent;
         display: flex;
-        flex: 1 1 0;
         position: relative;
         z-index: 1;
         align-items: center;
         justify-content: center;
         min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
         padding: 0.9rem 1rem;
         color: color-mix(in srgb, var(--text) 72%, transparent);
         background: transparent;
@@ -121,6 +134,10 @@
         font-weight: 700;
         letter-spacing: 0.01em;
         white-space: nowrap;
+    }
+
+    .sessions_label {
+        transform: translateX(-0.2rem);
     }
 
     @media (prefers-reduced-motion: reduce) {

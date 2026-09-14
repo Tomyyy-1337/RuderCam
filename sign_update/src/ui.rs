@@ -56,7 +56,7 @@ enum FlashState {
     ChangingVersion { input: String },
     Scanning,
     SelectNetwork { networks: Vec<String>, selected: usize },
-    Working { log: Vec<String>, cancel: Arc<AtomicBool> },
+    Working { log: Vec<String>, cancel: Arc<AtomicBool>, ssid: String },
     Finished { log: Vec<String>, result: Result<(), String> },
 }
 
@@ -283,11 +283,22 @@ fn run_app(
 
     let mut flash_state = FlashState::Hidden;
     let mut original_ssid: Option<String> = None;
+    let mut auto_upload_pending = false;
     let (flash_tx, flash_rx): (_, Receiver<FlashEvent>) = mpsc::channel();
 
     loop {
+        let was_finished = app.finished;
         while let Ok(event) = rx.try_recv() {
             app.handle_event(event);
+        }
+
+        if !was_finished && app.finished && !app.has_error() && upload::auto_upload_enabled() {
+            auto_upload_pending = true;
+        }
+
+        if auto_upload_pending && matches!(flash_state, FlashState::Hidden) {
+            auto_upload_pending = false;
+            start_upload(&mut flash_state, &mut original_ssid, &flash_tx, true);
         }
 
         while let Ok(event) = flash_rx.try_recv() {
@@ -308,7 +319,10 @@ fn run_app(
                     }
                 }
                 FlashEvent::Finished(result) => {
-                    if let FlashState::Working { log, .. } = &flash_state {
+                    if let FlashState::Working { log, ssid, .. } = &flash_state {
+                        if result.is_ok() {
+                            upload::remember_last_network(ssid);
+                        }
                         flash_state = FlashState::Finished { log: log.clone(), result };
                     }
                 }
@@ -325,7 +339,7 @@ fn run_app(
             let left_chunks = if show_flash_hint {
                 Layout::default()
                     .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(4)])
+                    .constraints([Constraint::Min(0), Constraint::Length(6)])
                     .split(chunks[0])
             } else {
                 Layout::default()
@@ -362,6 +376,11 @@ fn run_app(
             frame.render_widget(list, left_chunks[0]);
 
             if show_flash_hint {
+                let auto_upload_line = match (upload::last_network(), upload::auto_upload_enabled()) {
+                    (Some(ssid), true) => format!("a: auto upload on ({ssid})"),
+                    (Some(_), false) => "a: auto upload off".to_string(),
+                    (None, _) => "a: auto upload unavailable".to_string(),
+                };
                 let hint_lines = vec![
                     Line::from(Span::styled(
                         "Press Enter or f",
@@ -371,6 +390,7 @@ fn run_app(
                         "to upload this update",
                         Style::default().fg(Color::Cyan),
                     )),
+                    Line::from(Span::styled(auto_upload_line, Style::default().fg(Color::DarkGray))),
                 ];
                 let hint = Paragraph::new(hint_lines)
                     .block(Block::default().borders(Borders::ALL).title("Update"))
@@ -455,10 +475,13 @@ fn run_app(
                         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             return Ok(RunOutcome::Quit)
                         }
+                        KeyCode::Char('a') if app.finished && !app.has_error() => {
+                            if upload::last_network().is_some() {
+                                upload::toggle_auto_upload();
+                            }
+                        }
                         KeyCode::Char('f') if app.finished && !app.has_error() => {
-                            original_ssid = upload::current_ssid();
-                            flash_state = FlashState::Scanning;
-                            upload::scan_networks_async(flash_tx.clone(), false);
+                            start_upload(&mut flash_state, &mut original_ssid, &flash_tx, false);
                         }
                         KeyCode::Char('v') => {
                             flash_state = FlashState::ChangingVersion {
@@ -466,9 +489,7 @@ fn run_app(
                             };
                         }
                         KeyCode::Enter if app.finished && !app.has_error() => {
-                            original_ssid = upload::current_ssid();
-                            flash_state = FlashState::Scanning;
-                            upload::scan_networks_async(flash_tx.clone(), false);
+                            start_upload(&mut flash_state, &mut original_ssid, &flash_tx, false);
                         }
                         KeyCode::Enter if app.finished => return Ok(RunOutcome::Retry),
                         KeyCode::Char('r') => return Ok(RunOutcome::Retry),
@@ -497,6 +518,24 @@ fn run_app(
             }
         }
     }
+}
+
+fn start_upload(
+    flash_state: &mut FlashState,
+    original_ssid: &mut Option<String>,
+    flash_tx: &std::sync::mpsc::Sender<FlashEvent>,
+    use_last_network: bool,
+) {
+    *original_ssid = upload::current_ssid();
+    if use_last_network {
+        if let Some(ssid) = upload::last_network() {
+            let cancel = upload::flash_async(flash_tx.clone(), ssid.clone(), PathBuf::from(ARCHIVE_PATH));
+            *flash_state = FlashState::Working { log: Vec::new(), cancel, ssid };
+            return;
+        }
+    }
+    *flash_state = FlashState::Scanning;
+    upload::scan_networks_async(flash_tx.clone(), false);
 }
 
 /// Advances the flash overlay state machine in response to a key press.
@@ -548,8 +587,8 @@ fn handle_flash_key(
             }
             KeyCode::Enter => {
                 if let Some(ssid) = networks.get(*selected).cloned() {
-                    let cancel = upload::flash_async(flash_tx.clone(), ssid, PathBuf::from(ARCHIVE_PATH));
-                    *flash_state = FlashState::Working { log: Vec::new(), cancel };
+                    let cancel = upload::flash_async(flash_tx.clone(), ssid.clone(), PathBuf::from(ARCHIVE_PATH));
+                    *flash_state = FlashState::Working { log: Vec::new(), cancel, ssid };
                 }
             }
             _ => {}

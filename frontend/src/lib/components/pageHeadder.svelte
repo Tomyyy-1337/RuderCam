@@ -28,8 +28,8 @@
         display: grid;
         grid-template-columns: 1fr auto 1fr;
         align-items: center;
-        padding: 0.5rem;
-        margin-top: 0;
+        padding: 0.625rem;
+        margin-top: 0.2rem;
     }
 
     #Akkustand, #Satelien {

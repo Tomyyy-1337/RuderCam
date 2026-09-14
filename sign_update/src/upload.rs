@@ -14,6 +14,55 @@ use std::{
 };
 
 const PI_ADDR: &str = "192.168.50.1:4000";
+const LAST_NETWORK_PATH: &str = "last_network.txt";
+
+static LAST_NETWORK_SSID: std::sync::OnceLock<std::sync::Mutex<Option<String>>> = std::sync::OnceLock::new();
+static AUTO_UPLOAD_ENABLED: AtomicBool = AtomicBool::new(false);
+
+fn last_network_ssid() -> std::sync::MutexGuard<'static, Option<String>> {
+    LAST_NETWORK_SSID
+        .get_or_init(|| {
+            let ssid = std::fs::read_to_string(LAST_NETWORK_PATH)
+                .ok()
+                .map(|ssid| ssid.trim().to_string())
+                .filter(|ssid| !ssid.is_empty());
+            std::sync::Mutex::new(ssid)
+        })
+        .lock()
+        .unwrap()
+}
+
+fn prioritize_networks(mut networks: Vec<String>, preferred: Option<&str>) -> Vec<String> {
+    if let Some(preferred) = preferred {
+        if let Some(index) = networks.iter().position(|ssid| ssid == preferred) {
+            let preferred_network = networks.remove(index);
+            networks.insert(0, preferred_network);
+        }
+    }
+    networks
+}
+
+pub fn remember_last_network(ssid: &str) {
+    let mut last = last_network_ssid();
+    if last.as_deref() != Some(ssid) {
+        *last = Some(ssid.to_string());
+        let _ = std::fs::write(LAST_NETWORK_PATH, ssid);
+    }
+}
+
+pub fn last_network() -> Option<String> {
+    last_network_ssid().clone()
+}
+
+pub fn auto_upload_enabled() -> bool {
+    AUTO_UPLOAD_ENABLED.load(Ordering::Relaxed)
+}
+
+pub fn toggle_auto_upload() -> bool {
+    let enabled = !auto_upload_enabled();
+    AUTO_UPLOAD_ENABLED.store(enabled, Ordering::Relaxed);
+    enabled
+}
 
 #[cfg(windows)]
 #[repr(C)]
@@ -71,6 +120,21 @@ pub enum FlashEvent {
     Finished(Result<(), String>),
 }
 
+#[cfg(test)]
+mod tests {
+    use super::prioritize_networks;
+
+    #[test]
+    fn prioritizes_last_uploaded_network_first() {
+        let networks = vec!["Alpha".to_string(), "Bravo".to_string(), "Charlie".to_string()];
+
+        assert_eq!(
+            prioritize_networks(networks, Some("Bravo")),
+            vec!["Bravo".to_string(), "Alpha".to_string(), "Charlie".to_string()]
+        );
+    }
+}
+
 /// Scans for visible WLAN networks on a background thread using `netsh`, keeping only ones
 /// Windows already has a saved profile for (connecting to unknown networks is not supported).
 pub fn scan_networks_async(tx: Sender<FlashEvent>, refresh: bool) {
@@ -81,7 +145,7 @@ pub fn scan_networks_async(tx: Sender<FlashEvent>, refresh: bool) {
         let result = list_networks().map(|networks| {
             let mut networks: Vec<String> = networks.into_iter().filter(|ssid| has_saved_profile(ssid)).collect();
             networks.sort();
-            networks
+            prioritize_networks(networks, last_network().as_deref())
         }).and_then(|networks| {
             if networks.is_empty() {
                 Err("No known WLAN networks were found nearby".to_string())
@@ -225,6 +289,21 @@ fn list_networks() -> Result<Vec<String>, String> {
         Err("No wireless networks were found".to_string())
     } else {
         Ok(networks)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::prioritize_networks;
+
+    #[test]
+    fn prioritizes_last_uploaded_network_first() {
+        let networks = vec!["Alpha".to_string(), "Bravo".to_string(), "Charlie".to_string()];
+
+        assert_eq!(
+            prioritize_networks(networks, Some("Bravo")),
+            vec!["Bravo".to_string(), "Alpha".to_string(), "Charlie".to_string()]
+        );
     }
 }
 
