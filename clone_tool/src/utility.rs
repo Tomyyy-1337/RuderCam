@@ -12,7 +12,7 @@ use winapi::um::fileapi::{CreateFileW, GetLogicalDrives, ReadFile, WriteFile, OP
 use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
 use winapi::um::ioapiset::DeviceIoControl;
 use winapi::um::memoryapi::{VirtualAlloc, VirtualFree};
-use winapi::um::winbase::{FILE_FLAG_NO_BUFFERING, FILE_FLAG_SEQUENTIAL_SCAN, FILE_FLAG_WRITE_THROUGH};
+use winapi::um::winbase::{FILE_FLAG_NO_BUFFERING, FILE_FLAG_SEQUENTIAL_SCAN};
 use winapi::um::winnt::{
     FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_READ, GENERIC_WRITE, MEM_COMMIT, MEM_RELEASE, PAGE_READWRITE,
 };
@@ -591,12 +591,9 @@ fn open_device_for_write(device_name: &str) -> *mut c_void {
             FILE_SHARE_READ | FILE_SHARE_WRITE,
             ptr::null_mut(),
             OPEN_EXISTING,
-            // Write-through bypasses the system cache so throughput reflects the card's real
-            // sustained speed instead of bursting into RAM then stalling once the cache fills.
-            // No buffering bypasses the system cache entirely (direct-to-media I/O), which is
-            // what actually eliminates the cache-fill/stall bursts; write-through is kept as a
-            // belt-and-braces guarantee that nothing is silently cached by lower layers.
-            FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING,
+            // Unbuffered I/O prevents Windows cache bursts. Omitting write-through lets the
+            // reader/controller batch commands instead of flushing after each 8 MiB write.
+            FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_NO_BUFFERING,
             ptr::null_mut(),
         ) as *mut c_void
     }
