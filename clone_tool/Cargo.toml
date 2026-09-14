@@ -1,0 +1,9 @@
+[package]
+name = "clone_tool"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+winapi = { version = "0.3.9", features = ["winioctl", "fileapi", "handleapi", "winnt", "winbase", "minwindef", "errhandlingapi", "synchapi", "processthreadsapi", "memoryapi", "ioapiset"] }
+ratatui = "0.30.2"
+crossterm = "0.29.0"
