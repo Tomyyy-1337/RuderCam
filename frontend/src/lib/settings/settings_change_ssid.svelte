@@ -1,6 +1,9 @@
 <article>
-    <h4>SSID ändern</h4>
+    <h4>SSID (Wlan Name) ändern</h4>
     <p>Aktuelle SSID: {config.ssid}</p>
+    <p>Das Ändern der SSID wird nach dem nächsten Neustart des Geräts wirksam.</p>
+    <p>Die Verbindung zur Kamera ist nach dem Ändern der SSID nur noch über den neuen Netzwerknamen möglich. Um sich wieder zu verbinden, müssen Sie in den Netzwerkeinstellungen Ihres Geräts das neue WLAN auswählen und das Passwort eingeben.</p>
+
     <input id="ssid" name="ssid" placeholder="Netzwerkname" bind:value={SSIDInput}>
     <button 
         style="width:100%;" 

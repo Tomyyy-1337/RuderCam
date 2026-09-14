@@ -16,16 +16,10 @@
 
     <AccordionSection
         title="Geräteverwaltung"
-        description="Einstellungen für Automatisches Herunterfahren und Neustart"
+        description="Einstellungen für Automatisches Herunterfahren und Wlan"
     >
-        <SettingsShutdownTimer {config} />
         <SettingsPowerButton />
-    </AccordionSection>
-
-    <AccordionSection
-        title="WLAN"
-        description="SSID und Passwort des Geräts verwalten"
-    >
+        <SettingsShutdownTimer {config} />
         <SettingsChangeSsid {config} />
         <SettingsChangePassword {config} />
     </AccordionSection>
