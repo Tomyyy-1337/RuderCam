@@ -8,10 +8,9 @@ mod session;
 mod hotspot;
 mod camera_interface;
 
-use std::{sync::Mutex, thread::sleep};
-
 use crate::{bpm_fft::FFTBPMDetector, camera_interface::CameraInterface, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, InternalState}}; 
 
+use std::{sync::Mutex, thread::sleep};
 use futures::stream::StreamExt;
 use tokio::{pin, runtime::LocalOptions, task, time::MissedTickBehavior};
 

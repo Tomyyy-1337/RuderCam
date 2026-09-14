@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use crate::CONFIG;
 
 pub struct CameraInterface {
-    metering: Metering, 
     stream_process: Option<std::process::Child>,
 }
 
@@ -46,7 +45,6 @@ impl FocusMode {
 impl CameraInterface {
     pub const fn new() -> Self {
         CameraInterface {
-            metering: Metering::Average,
             stream_process: None,
         }
     }

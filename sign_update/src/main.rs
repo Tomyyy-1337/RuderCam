@@ -1,3 +1,4 @@
+mod upload;
 mod pipeline;
 mod ui;
 
@@ -5,8 +6,6 @@ use std::{io, sync::mpsc, thread};
 
 use pipeline::{run_pipeline, AppEvent};
 use ui::{run_ui, RunOutcome};
-
-pub const VERSION_NUMBER: &str = "0.2.3";
 
 fn main() -> io::Result<()> {
     loop {

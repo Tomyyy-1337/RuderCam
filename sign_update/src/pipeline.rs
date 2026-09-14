@@ -10,7 +10,7 @@ use std::{
 use sha2::{Digest, Sha256};
 use tar::{Builder, Header};
 
-use crate::VERSION_NUMBER;
+const VERSION_PATH: &str = "version.txt";
 
 pub const STATIC_DIR: &str = "../backend/static";
 pub const BACKEND_CODE_PATH: &str = "../backend";
@@ -37,12 +37,16 @@ pub enum AppEvent {
     TaskFinished(usize, Result<(), String>),
 }
 
+pub fn read_version_number() -> io::Result<String> {
+    Ok(std::fs::read_to_string(VERSION_PATH)?.trim().to_string())
+}
+
 pub fn run_pipeline(tx: Sender<AppEvent>) {
     let result: io::Result<()> = (|| {
         run_step(&tx, 0, |tx| build_frontend(tx))?;
         run_step(&tx, 1, |tx| build_backend(tx))?;
         let combined_hash = run_step(&tx, 2, |tx| calculate_hash(tx))?;
-        run_step(&tx, 3, |tx| create_archive(tx, VERSION_NUMBER, &combined_hash))?;
+        run_step(&tx, 3, |tx| create_archive(tx, read_version_number()?.as_str(), &combined_hash))?;
         Ok(())
     })();
 
@@ -77,7 +81,7 @@ fn calculate_hash(tx: &Sender<AppEvent>) -> io::Result<Vec<u8>> {
 
     let backend_hash = Sha256::digest(&std::fs::read(&backend_path)?);
     let _ = tx.send(AppEvent::Output(format!("\x1b[90mHashed\x1b[0m \x1b[33mBackend binary\x1b[0m")));
-    let version_hash = Sha256::digest(VERSION_NUMBER.as_bytes());
+    let version_hash = Sha256::digest(read_version_number()?.as_bytes());
     let _ = tx.send(AppEvent::Output(format!("\x1b[90mHashed\x1b[0m \x1b[33mversion.txt\x1b[0m")));
     let mut combined_hash = xor_hashes(&backend_hash, &version_hash);
 
@@ -190,7 +194,7 @@ fn run_command_streaming(
         .env("TERM", "xterm-256color")
         .env("COLORTERM", "truecolor")
         .env("CARGO_TERM_COLOR", "always");
-    
+
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
 
     let mut child: Child = command.spawn()?;

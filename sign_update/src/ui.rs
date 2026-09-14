@@ -1,4 +1,13 @@
-use std::{io, time::Duration};
+use std::{
+    io,
+    path::PathBuf,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::{self, Receiver},
+        Arc,
+    },
+    time::Duration,
+};
 
 use ansi_to_tui::IntoText;
 use crossterm::{
@@ -8,14 +17,17 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
     Terminal,
 };
 
-use crate::pipeline::{AppEvent, TaskStatus, TASK_NAMES};
+use crate::upload::{self, FlashEvent};
+use crate::pipeline::{read_version_number, AppEvent, TaskStatus, TASK_NAMES};
+
+const ARCHIVE_PATH: &str = "update.tar";
 
 const NETWORK_ERROR_MARKERS: [&str; 5] = [
     "no such host",
@@ -26,6 +38,7 @@ const NETWORK_ERROR_MARKERS: [&str; 5] = [
 ];
 
 pub struct App {
+    version: String,
     statuses: [TaskStatus; TASK_NAMES.len()],
     output: Vec<OutputLine>,
     scroll: u16,
@@ -38,9 +51,38 @@ pub struct OutputLine {
     line: Line<'static>,
 }
 
+enum FlashState {
+    Hidden,
+    Scanning,
+    SelectNetwork { networks: Vec<String>, selected: usize },
+    Working { log: Vec<String>, cancel: Arc<AtomicBool> },
+    Finished { log: Vec<String>, result: Result<(), String> },
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(area);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(vertical[1])[1]
+}
+
 impl App {
     pub fn new() -> Self {
         Self {
+            version: read_version_number().unwrap_or_else(|_| "unknown".to_string()),
             statuses: [TaskStatus::Pending; TASK_NAMES.len()],
             output: Vec::new(),
             scroll: 0,
@@ -258,9 +300,38 @@ fn run_app(
     let mut visible_height: u16 = 20;
     let mut max_scroll: u16 = 0;
 
+    let mut flash_state = FlashState::Hidden;
+    let mut original_ssid: Option<String> = None;
+    let (flash_tx, flash_rx): (_, Receiver<FlashEvent>) = mpsc::channel();
+
     loop {
         while let Ok(event) = rx.try_recv() {
             app.handle_event(event);
+        }
+
+        while let Ok(event) = flash_rx.try_recv() {
+            match event {
+                FlashEvent::NetworksFound(Ok(networks)) => {
+                    if matches!(flash_state, FlashState::Scanning) {
+                        flash_state = FlashState::SelectNetwork { networks, selected: 0 };
+                    }
+                }
+                FlashEvent::NetworksFound(Err(e)) => {
+                    if matches!(flash_state, FlashState::Scanning) {
+                        flash_state = FlashState::Finished { log: Vec::new(), result: Err(e) };
+                    }
+                }
+                FlashEvent::Log(line) => {
+                    if let FlashState::Working { log, .. } = &mut flash_state {
+                        log.push(line);
+                    }
+                }
+                FlashEvent::Finished(result) => {
+                    if let FlashState::Working { log, .. } = &flash_state {
+                        flash_state = FlashState::Finished { log: log.clone(), result };
+                    }
+                }
+            }
         }
 
         terminal.draw(|frame| {
@@ -268,6 +339,19 @@ fn run_app(
                 .direction(Direction::Horizontal)
                 .constraints([Constraint::Length(25), Constraint::Min(0)])
                 .split(frame.area());
+
+            let show_flash_hint = app.finished && !app.has_error() && matches!(flash_state, FlashState::Hidden);
+            let left_chunks = if show_flash_hint {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0), Constraint::Length(4)])
+                    .split(chunks[0])
+            } else {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Min(0)])
+                    .split(chunks[0])
+            };
 
             let items: Vec<ListItem> = TASK_NAMES
                 .iter()
@@ -292,8 +376,26 @@ fn run_app(
                 })
                 .collect();
 
-            let list = List::new(items).block(Block::default().borders(Borders::ALL).title("Tasks"));
-            frame.render_widget(list, chunks[0]);
+            let list = List::new(items)
+                .block(Block::default().borders(Borders::ALL).title(format!("Tasks · v{}", app.version)));
+            frame.render_widget(list, left_chunks[0]);
+
+            if show_flash_hint {
+                let hint_lines = vec![
+                    Line::from(Span::styled(
+                        "Press Enter or f",
+                        Style::default().fg(Color::Cyan),
+                    )),
+                    Line::from(Span::styled(
+                        "to upload this update",
+                        Style::default().fg(Color::Cyan),
+                    )),
+                ];
+                let hint = Paragraph::new(hint_lines)
+                    .block(Block::default().borders(Borders::ALL).title("Update"))
+                    .wrap(Wrap { trim: true });
+                frame.render_widget(hint, left_chunks[1]);
+            }
 
             let right_chunks = if app.network_error {
                 Layout::default()
@@ -310,9 +412,9 @@ fn run_app(
             let output_block = Block::default().borders(Borders::ALL).title(if app.has_error() {
                 "Output (failed, press Enter/r to retry or q to quit)"
             } else if app.finished {
-                "Output (finished, press Enter or q to quit, r to restart)"
+                "Output (finished, q to quit, r to restart)"
             } else {
-                "Output (press r to restart)"
+                "Output (working, q to quit, r to restart)"
             });
             let output_area = output_block.inner(right_chunks[0]);
             visible_height = output_area.height;
@@ -347,23 +449,34 @@ fn run_app(
                 .wrap(Wrap { trim: true });
                 frame.render_widget(warning, right_chunks[1]);
             }
+
+            render_flash_overlay(frame, &flash_state);
         })?;
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Release {
+                    if !matches!(flash_state, FlashState::Hidden) {
+                        handle_flash_key(&mut flash_state, key.code, &flash_tx, &original_ssid);
+                        continue;
+                    }
+
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(RunOutcome::Quit),
                         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             return Ok(RunOutcome::Quit)
                         }
-                        KeyCode::Enter if app.finished => {
-                            return Ok(if app.has_error() {
-                                RunOutcome::Retry
-                            } else {
-                                RunOutcome::Quit
-                            })
+                        KeyCode::Char('f') if app.finished && !app.has_error() => {
+                            original_ssid = upload::current_ssid();
+                            flash_state = FlashState::Scanning;
+                            upload::scan_networks_async(flash_tx.clone());
                         }
+                        KeyCode::Enter if app.finished && !app.has_error() => {
+                            original_ssid = upload::current_ssid();
+                            flash_state = FlashState::Scanning;
+                            upload::scan_networks_async(flash_tx.clone());
+                        }
+                        KeyCode::Enter if app.finished => return Ok(RunOutcome::Retry),
                         KeyCode::Char('r') => return Ok(RunOutcome::Retry),
                         KeyCode::Up => {
                             app.auto_scroll = false;
@@ -390,4 +503,130 @@ fn run_app(
             }
         }
     }
+}
+
+/// Advances the flash overlay state machine in response to a key press.
+fn handle_flash_key(
+    flash_state: &mut FlashState,
+    code: KeyCode,
+    flash_tx: &std::sync::mpsc::Sender<FlashEvent>,
+    original_ssid: &Option<String>,
+) {
+    match flash_state {
+        FlashState::Scanning => {
+            if code == KeyCode::Esc {
+                *flash_state = FlashState::Hidden;
+            }
+        }
+        FlashState::SelectNetwork { networks, selected } => match code {
+            KeyCode::Esc => *flash_state = FlashState::Hidden,
+            KeyCode::Up => *selected = selected.saturating_sub(1),
+            KeyCode::Down => *selected = (*selected + 1).min(networks.len().saturating_sub(1)),
+            KeyCode::Char('r') => {
+                *flash_state = FlashState::Scanning;
+                upload::scan_networks_async(flash_tx.clone());
+            }
+            KeyCode::Enter => {
+                if let Some(ssid) = networks.get(*selected).cloned() {
+                    let cancel = upload::flash_async(flash_tx.clone(), ssid, PathBuf::from(ARCHIVE_PATH));
+                    *flash_state = FlashState::Working { log: Vec::new(), cancel };
+                }
+            }
+            _ => {}
+        },
+        FlashState::Working { cancel, .. } => {
+            if code == KeyCode::Esc {
+                cancel.store(true, Ordering::Relaxed);
+                *flash_state = FlashState::Hidden;
+                if let Some(ssid) = original_ssid.clone() {
+                    upload::reconnect_async(ssid);
+                }
+            }
+        }
+        FlashState::Finished { .. } => {
+            if matches!(code, KeyCode::Enter | KeyCode::Esc) {
+                *flash_state = FlashState::Hidden;
+                if let Some(ssid) = original_ssid.clone() {
+                    upload::reconnect_async(ssid);
+                }
+            }
+        }
+        FlashState::Hidden => {}
+    }
+}
+
+/// Renders the flash-to-pi popup on top of the main UI, if visible.
+fn render_flash_overlay(frame: &mut ratatui::Frame, flash_state: &FlashState) {
+    if matches!(flash_state, FlashState::Hidden) {
+        return;
+    }
+
+    let area = centered_rect(70, 60, frame.area());
+    let visible_height = area.height.saturating_sub(2) as usize;
+
+    let (title, lines): (&str, Vec<Line>) = match flash_state {
+        FlashState::Hidden => unreachable!(),
+        FlashState::Scanning => (
+            "Flash to pi",
+            vec![Line::from("Scanning for WLAN networks...")],
+        ),
+        FlashState::SelectNetwork { networks, selected } => {
+            let visible_height = visible_height.max(1);
+            let offset = selected
+                .saturating_sub(visible_height.saturating_sub(1))
+                .min(networks.len().saturating_sub(visible_height));
+            let lines = networks
+                .iter()
+                .enumerate()
+                .skip(offset)
+                .take(visible_height)
+                .map(|(i, name)| {
+                    if i == *selected {
+                        Line::from(Span::styled(
+                            format!("> {name}"),
+                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                        ))
+                    } else {
+                        Line::from(format!("  {name}"))
+                    }
+                })
+                .collect();
+            ("Select a known WLAN network (r to refresh, Esc to cancel)", lines)
+        }
+        FlashState::Working { log, .. } => {
+            let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
+            lines.push(Line::from(Span::styled(
+                "Working...",
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            )));
+            lines.push(Line::default());
+            lines.push(Line::from(Span::styled(
+                "Esc to cancel",
+                Style::default().fg(Color::DarkGray),
+            )));
+            ("Flashing update to pi", lines)
+        }
+        FlashState::Finished { log, result } => {
+            let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
+            match result {
+                Ok(()) => lines.push(Line::from(Span::styled(
+                    "✓ Update uploaded successfully",
+                    Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                ))),
+                Err(e) => lines.push(Line::from(Span::styled(
+                    format!("✗ Flash failed: {e}"),
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ))),
+            }
+            lines.push(Line::default());
+            lines.push(Line::from("Press Enter or Esc to close"));
+            ("Flash to pi", lines)
+        }
+    };
+
+    frame.render_widget(Clear, area);
+    let paragraph = Paragraph::new(lines)
+        .block(Block::default().borders(Borders::ALL).title(title))
+        .wrap(Wrap { trim: true });
+    frame.render_widget(paragraph, area);
 }
