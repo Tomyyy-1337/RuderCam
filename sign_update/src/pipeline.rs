@@ -189,9 +189,8 @@ fn run_command_streaming(
         .env("CLICOLOR_FORCE", "1")
         .env("TERM", "xterm-256color")
         .env("COLORTERM", "truecolor")
-        .env("CARGO_TERM_COLOR", "always")
-        .env("DOCKER_BUILDKIT", "1")
-        .env("BUILDKIT_TTY_LOG_FORMAT", "1");
+        .env("CARGO_TERM_COLOR", "always");
+    
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
 
     let mut child: Child = command.spawn()?;
