@@ -103,7 +103,7 @@
         display: grid;
         grid-template-rows: 0fr;
         transition: grid-template-rows 220ms ease;
-        padding: 0 1rem 0.75rem;
+        padding: 0 0.6rem 0.75rem;
     }
 
     .accordion-section[open] .accordion-panel {
@@ -113,5 +113,10 @@
     .accordion-panel-inner {
         overflow: hidden;
         display: grid;
+    }
+
+    .accordion-panel-inner :global(> article) {
+        margin-top: 0.25em;
+        margin-bottom: 0.25em;
     }
 </style>

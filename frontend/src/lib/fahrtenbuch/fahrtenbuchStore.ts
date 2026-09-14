@@ -63,7 +63,7 @@ export class FahrtenbuchStore {
     }
 
     addSession(session: Session): void {
-        if (session.duration_secs <= 3) {
+        if (session.duration_secs <= 10) {
             return
         }
 
