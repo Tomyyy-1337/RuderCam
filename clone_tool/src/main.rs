@@ -12,7 +12,10 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Gauge, List, ListItem, Paragraph, Sparkline};
+use std::collections::VecDeque;
+use std::fs;
 use std::io::stdout;
+use std::path::{MAIN_SEPARATOR, Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -73,8 +76,11 @@ struct App {
     drives: Vec<RawDrive>,
     operation: Option<Operation>,
     file_path: String,
+    file_path_is_default: bool,
+    file_path_match_index: usize,
+    file_path_match_scroll: usize,
     progress: TransferProgress,
-    speed_history: Vec<u64>,
+    speed_history: VecDeque<u64>,
     current_speed_bps: u64,
     last_speed_sample: Option<(Instant, u64)>,
     status_message: String,
@@ -92,12 +98,15 @@ impl Default for App {
             drives: Vec::new(),
             operation: None,
             file_path: String::from("pi.img"),
+            file_path_is_default: true,
+            file_path_match_index: 0,
+            file_path_match_scroll: 0,
             progress: TransferProgress {
                 done: 0,
                 total: 0,
                 eta: None,
             },
-            speed_history: Vec::new(),
+            speed_history: VecDeque::new(),
             current_speed_bps: 0,
             last_speed_sample: None,
             status_message: String::new(),
@@ -115,6 +124,9 @@ impl App {
         self.drives.clear();
         self.operation = None;
         self.file_path = String::from("pi.img");
+        self.file_path_is_default = true;
+        self.file_path_match_index = 0;
+        self.file_path_match_scroll = 0;
         self.progress = TransferProgress {
             done: 0,
             total: 0,
@@ -191,7 +203,7 @@ impl App {
                 Ok(AppEvent::Finished(result)) => {
                     self.rx = None;
                     self.current_speed_bps = 0;
-                    self.speed_history.push(0);
+                    self.speed_history.push_back(0);
                     trim_speed_history(&mut self.speed_history);
                     match result {
                         Ok(()) => {
@@ -237,28 +249,31 @@ impl App {
         };
 
         self.current_speed_bps = speed_bps;
-        self.speed_history.push(speed_bps);
+        self.speed_history.push_back(speed_bps);
         trim_speed_history(&mut self.speed_history);
         self.last_speed_sample = Some((now, done));
     }
 }
 
-fn trim_speed_history(speed_history: &mut Vec<u64>) {
+fn trim_speed_history(speed_history: &mut VecDeque<u64>) {
     // Keep a generous rolling window so wider terminals can still render a full graph.
     const MAX_POINTS: usize = 4096;
-    if speed_history.len() > MAX_POINTS {
-        let excess = speed_history.len() - MAX_POINTS;
-        speed_history.drain(0..excess);
+    while speed_history.len() > MAX_POINTS {
+        speed_history.pop_front();
     }
 }
 
-fn visible_speed_points(speed_history: &[u64], panel_width: u16) -> Vec<u64> {
+fn visible_speed_points(speed_history: &VecDeque<u64>, panel_width: u16) -> Vec<u64> {
     let target_len = panel_width.saturating_sub(2).max(1) as usize;
     if speed_history.len() >= target_len {
-        speed_history[speed_history.len() - target_len..].to_vec()
+        speed_history
+            .iter()
+            .skip(speed_history.len() - target_len)
+            .copied()
+            .collect()
     } else {
         let mut padded = vec![0; target_len - speed_history.len()];
-        padded.extend_from_slice(speed_history);
+        padded.extend(speed_history.iter().copied());
         padded
     }
 }
@@ -280,11 +295,92 @@ fn run_operation(
 }
 
 fn normalized_clone_path(path: &str) -> String {
+    if path.ends_with(['\\', '/']) || Path::new(path).is_dir() {
+        return Path::new(path).join("pi.img").to_string_lossy().to_string();
+    }
+
     if path.ends_with(".img") {
         path.to_string()
     } else {
         format!("{path}.img")
     }
+}
+
+fn selected_path_suggestion(path: &str, selected_index: usize) -> Option<String> {
+    let suggestions = path_suggestions(path, usize::MAX);
+    suggestions
+        .get(selected_index.min(suggestions.len().saturating_sub(1)))
+        .cloned()
+}
+
+fn scroll_path_matches_to_selection(app: &mut App, match_count: usize) {
+    const MATCH_PREVIEW_LIMIT: usize = 6;
+
+    if match_count == 0 {
+        app.file_path_match_index = 0;
+        app.file_path_match_scroll = 0;
+        return;
+    }
+
+    app.file_path_match_index = app.file_path_match_index.min(match_count - 1);
+
+    if app.file_path_match_index < app.file_path_match_scroll {
+        app.file_path_match_scroll = app.file_path_match_index;
+    } else if app.file_path_match_index >= app.file_path_match_scroll + MATCH_PREVIEW_LIMIT {
+        app.file_path_match_scroll = app.file_path_match_index + 1 - MATCH_PREVIEW_LIMIT;
+    }
+
+    app.file_path_match_scroll = app
+        .file_path_match_scroll
+        .min(match_count.saturating_sub(MATCH_PREVIEW_LIMIT));
+}
+
+fn path_suggestions(path: &str, limit: usize) -> Vec<String> {
+    let (directory, prefix) = path_completion_parts(path);
+    let Ok(entries) = fs::read_dir(&directory) else {
+        return Vec::new();
+    };
+
+    let mut suggestions: Vec<String> = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if !name.to_lowercase().starts_with(&prefix.to_lowercase()) {
+                return None;
+            }
+
+            let file_type = entry.file_type().ok()?;
+            if !file_type.is_dir() && !name.to_lowercase().ends_with(".img") {
+                return None;
+            }
+
+            let mut suggestion = directory.join(name).to_string_lossy().to_string();
+            if file_type.is_dir() {
+                suggestion.push(MAIN_SEPARATOR);
+            }
+            Some(suggestion)
+        })
+        .collect();
+
+    suggestions.sort_by_key(|suggestion| suggestion.to_lowercase());
+    suggestions.truncate(limit);
+    suggestions
+}
+
+fn path_completion_parts(path: &str) -> (PathBuf, String) {
+    if path.is_empty() {
+        return (PathBuf::from("."), String::new());
+    }
+
+    if path.ends_with(['\\', '/']) {
+        return (PathBuf::from(path), String::new());
+    }
+
+    let path = Path::new(path);
+    let directory = path.parent().filter(|parent| !parent.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
+    let prefix = path.file_name().map(|name| name.to_string_lossy().to_string()).unwrap_or_default();
+
+    (directory.to_path_buf(), prefix)
 }
 
 fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<(), Box<dyn std::error::Error>> {
@@ -365,15 +461,51 @@ fn handle_key(app: &mut App, code: KeyCode) {
             }
             KeyCode::Enter => {
                 app.file_path = String::from("pi.img");
+                app.file_path_is_default = true;
+                app.file_path_match_index = 0;
+                app.file_path_match_scroll = 0;
                 app.screen = Screen::FilePath;
             }
             KeyCode::Esc => app.reset_to_menu(),
             _ => {}
         },
         Screen::FilePath => match code {
-            KeyCode::Char(ch) => app.file_path.push(ch),
+            KeyCode::Char(ch) => {
+                if app.file_path_is_default {
+                    app.file_path.clear();
+                }
+                app.file_path_is_default = false;
+                app.file_path_match_index = 0;
+                app.file_path_match_scroll = 0;
+                app.file_path.push(ch);
+            }
             KeyCode::Backspace => {
+                app.file_path_is_default = false;
+                app.file_path_match_index = 0;
+                app.file_path_match_scroll = 0;
                 app.file_path.pop();
+            }
+            KeyCode::Tab => {
+                if let Some(path) = selected_path_suggestion(&app.file_path, app.file_path_match_index) {
+                    app.file_path = path;
+                    app.file_path_is_default = false;
+                    app.file_path_match_index = 0;
+                    app.file_path_match_scroll = 0;
+                }
+            }
+            KeyCode::Up => {
+                if app.file_path_match_index > 0 {
+                    app.file_path_match_index -= 1;
+                    let match_count = path_suggestions(&app.file_path, usize::MAX).len();
+                    scroll_path_matches_to_selection(app, match_count);
+                }
+            }
+            KeyCode::Down => {
+                let match_count = path_suggestions(&app.file_path, usize::MAX).len();
+                if app.file_path_match_index + 1 < match_count {
+                    app.file_path_match_index += 1;
+                    scroll_path_matches_to_selection(app, match_count);
+                }
             }
             KeyCode::Enter => {
                 if matches!(app.operation, Some(Operation::WriteImage)) {
@@ -475,9 +607,39 @@ fn render_drive_select(frame: &mut ratatui::Frame<'_>, app: &App) {
 }
 
 fn render_file_path(frame: &mut ratatui::Frame<'_>, app: &App) {
+    const MATCH_PREVIEW_LIMIT: usize = 6;
+
     let op = app.operation.map(|o| o.title()).unwrap_or("Operation");
+    let suggestions = path_suggestions(&app.file_path, usize::MAX);
+    let suggestions = if suggestions.is_empty() {
+        "No path matches".to_string()
+    } else {
+        let selected_index = app.file_path_match_index.min(suggestions.len().saturating_sub(1));
+        let max_first_visible_index = suggestions.len().saturating_sub(MATCH_PREVIEW_LIMIT);
+        let mut first_visible_index = app.file_path_match_scroll.min(max_first_visible_index);
+        if selected_index < first_visible_index {
+            first_visible_index = selected_index;
+        } else if selected_index >= first_visible_index + MATCH_PREVIEW_LIMIT {
+            first_visible_index = selected_index + 1 - MATCH_PREVIEW_LIMIT;
+        }
+
+        suggestions
+            .iter()
+            .enumerate()
+            .skip(first_visible_index)
+            .take(MATCH_PREVIEW_LIMIT)
+            .map(|(index, suggestion)| {
+                if index == selected_index {
+                    format!("> {suggestion}")
+                } else {
+                    format!("  {suggestion}")
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
     let body = format!(
-        "Operation: {op}\n\nImage path:\n{}\n\nEnter to continue, Esc to go back",
+        "Operation: {op}\n\nImage path:\n{}\n\nMatches:\n{suggestions}\n\nUp/Down to choose, Tab to autocomplete, Enter to continue, Esc to go back",
         app.file_path
     );
 
@@ -575,8 +737,17 @@ fn render_running(frame: &mut ratatui::Frame<'_>, app: &App) {
             / app.speed_history.len() as u128) as u64
     };
 
+    let destination = match app.operation {
+        Some(Operation::CloneDrive) => normalized_clone_path(&app.file_path),
+        Some(Operation::WriteImage) => app
+            .selected_drive()
+            .map(|drive| drive.name)
+            .unwrap_or_else(|| "unknown drive".to_string()),
+        None => "unknown".to_string(),
+    };
+
     let details = Paragraph::new(format!(
-        "Current: {}\nAverage: {}\nETA: {eta_text}\nPress q to quit the app",
+        "Destination: {destination}\nCurrent: {}\nAverage: {}\nETA: {eta_text}\nPress q to quit the app",
         format_rate(app.current_speed_bps),
         format_rate(avg_speed_bps)
     ))
