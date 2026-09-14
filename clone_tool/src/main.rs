@@ -737,6 +737,15 @@ fn render_running(frame: &mut ratatui::Frame<'_>, app: &App) {
             / app.speed_history.len() as u128) as u64
     };
 
+    let source = match app.operation {
+        Some(Operation::CloneDrive) => app
+            .selected_drive()
+            .map(|drive| drive.name)
+            .unwrap_or_else(|| "unknown drive".to_string()),
+        Some(Operation::WriteImage) => normalized_clone_path(&app.file_path),
+        None => "unknown".to_string(),
+    };
+
     let destination = match app.operation {
         Some(Operation::CloneDrive) => normalized_clone_path(&app.file_path),
         Some(Operation::WriteImage) => app
@@ -747,7 +756,7 @@ fn render_running(frame: &mut ratatui::Frame<'_>, app: &App) {
     };
 
     let details = Paragraph::new(format!(
-        "Destination: {destination}\nCurrent: {}\nAverage: {}\nETA: {eta_text}\nPress q to quit the app",
+        "Source: {source}\nDestination: {destination}\nCurrent: {}\nAverage: {}\nETA: {eta_text}\nPress q to quit the app",
         format_rate(app.current_speed_bps),
         format_rate(avg_speed_bps)
     ))

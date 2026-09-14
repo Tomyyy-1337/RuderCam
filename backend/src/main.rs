@@ -159,7 +159,6 @@ async fn accelerometer_processing_task(
 ) {
     static BPM_FFT: Mutex<FFTBPMDetector> = Mutex::new(FFTBPMDetector::new(50.0, 12.0));
 
-    // let mut bpm_fft = bpm_fft::FFTBPMDetector::new(50.0, 12.0);
     let mut timer = tokio::time::interval(tokio::time::Duration::from_secs(1));
     timer.set_missed_tick_behavior(MissedTickBehavior::Delay);
     loop {
