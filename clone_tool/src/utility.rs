@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::ptr;
+use std::sync::mpsc;
+use std::thread;
 use std::time::{Duration, Instant};
 
 use winapi::ctypes::c_void;
@@ -9,13 +11,58 @@ use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::fileapi::{CreateFileW, GetLogicalDrives, ReadFile, WriteFile, OPEN_EXISTING};
 use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
 use winapi::um::ioapiset::DeviceIoControl;
-use winapi::um::winbase::FILE_FLAG_SEQUENTIAL_SCAN;
-use winapi::um::winnt::{FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_READ, GENERIC_WRITE};
+use winapi::um::memoryapi::{VirtualAlloc, VirtualFree};
+use winapi::um::winbase::{FILE_FLAG_NO_BUFFERING, FILE_FLAG_SEQUENTIAL_SCAN, FILE_FLAG_WRITE_THROUGH};
+use winapi::um::winnt::{
+    FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_READ, GENERIC_WRITE, MEM_COMMIT, MEM_RELEASE, PAGE_READWRITE,
+};
 use winapi::um::winioctl::{
     DISK_EXTENT, FSCTL_DISMOUNT_VOLUME, FSCTL_LOCK_VOLUME, GET_LENGTH_INFORMATION,
     IOCTL_DISK_GET_LENGTH_INFO, IOCTL_STORAGE_QUERY_PROPERTY, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
     VOLUME_DISK_EXTENTS,
 };
+
+// Larger chunks reduce per-call overhead; depth 3 lets read/write threads pipeline (double/triple buffering).
+const TRANSFER_CHUNK_SIZE: usize = 8 * 1024 * 1024;
+const TRANSFER_QUEUE_DEPTH: usize = 3;
+// FILE_FLAG_NO_BUFFERING requires buffers/lengths aligned to the device sector size; USB card
+// readers virtually always report 512-byte logical sectors, so this is a safe universal choice.
+const SECTOR_ALIGN: usize = 512;
+
+fn round_up_to_sector(len: usize) -> usize {
+    (len + SECTOR_ALIGN - 1) / SECTOR_ALIGN * SECTOR_ALIGN
+}
+
+/// Page-aligned buffer required for unbuffered (FILE_FLAG_NO_BUFFERING) device I/O.
+struct AlignedBuffer {
+    ptr: *mut u8,
+    len: usize,
+}
+
+impl AlignedBuffer {
+    fn new(len: usize) -> Self {
+        let ptr = unsafe { VirtualAlloc(ptr::null_mut(), len, MEM_COMMIT, PAGE_READWRITE) as *mut u8 };
+        assert!(!ptr.is_null(), "VirtualAlloc failed for transfer buffer");
+        Self { ptr, len }
+    }
+
+    fn as_slice(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
+impl Drop for AlignedBuffer {
+    fn drop(&mut self) {
+        unsafe { VirtualFree(self.ptr as *mut c_void, 0, MEM_RELEASE) };
+    }
+}
+
+// Sole owner moves between the reader and writer threads; never aliased concurrently.
+unsafe impl Send for AlignedBuffer {}
 
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -172,8 +219,18 @@ where
         })?;
     }
 
-    let mut writer = BufWriter::with_capacity(4 * 1024 * 1024, file);
-    let mut buffer = vec![0u8; 4 * 1024 * 1024];
+    // Write to the output file on its own thread so device reads never wait on local disk I/O.
+    let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(TRANSFER_QUEUE_DEPTH);
+
+    let writer_thread = thread::spawn(move || -> Result<(), String> {
+        let mut writer = BufWriter::with_capacity(TRANSFER_CHUNK_SIZE, file);
+        for chunk in rx {
+            writer.write_all(&chunk).map_err(|e| e.to_string())?;
+        }
+        writer.flush().map_err(|e| e.to_string())
+    });
+
+    let mut buffer = vec![0u8; TRANSFER_CHUNK_SIZE];
     let mut copied = 0u64;
     let start_time = Instant::now();
 
@@ -193,7 +250,9 @@ where
             break;
         }
 
-        writer.write_all(&buffer[..bytes_read as usize]).map_err(|e| e.to_string())?;
+        if tx.send(buffer[..bytes_read as usize].to_vec()).is_err() {
+            break;
+        }
         copied += bytes_read as u64;
 
         let eta = estimate_remaining_time(start_time.elapsed(), copied, total_size);
@@ -204,8 +263,10 @@ where
         });
     }
 
-    writer.flush().map_err(|e| e.to_string())?;
+    drop(tx);
     unsafe { CloseHandle(handle) };
+
+    writer_thread.join().map_err(|_| "Writer thread panicked.".to_string())??;
 
     on_progress(TransferProgress {
         done: copied,
@@ -253,32 +314,62 @@ where
         return Err(format!("Could not open {} for writing", device_name));
     }
 
-    let mut reader = BufReader::with_capacity(4 * 1024 * 1024, file);
-    let mut buffer = vec![0u8; 4 * 1024 * 1024];
-    let mut written_total = 0u64;
-    let start_time = Instant::now();
+    // Read the source image on its own thread so the next chunk is ready as soon as the
+    // current WriteFile call completes, keeping the device's write pipe continuously fed.
+    // Buffers are page-aligned and lengths sector-rounded because the write handle is opened
+    // with FILE_FLAG_NO_BUFFERING, which bypasses the system cache entirely so throughput
+    // reflects the card's real, sustained speed instead of bursting into RAM then stalling.
+    let (tx, rx) = mpsc::sync_channel::<Result<(AlignedBuffer, usize, usize), String>>(TRANSFER_QUEUE_DEPTH);
 
-    loop {
-        let bytes_read = reader.read(&mut buffer).map_err(|e| {
-            unsafe { CloseHandle(handle) };
-            for volume_handle in &locked_volume_handles {
-                unsafe { CloseHandle(*volume_handle) };
+    let reader_thread = thread::spawn(move || {
+        let mut reader = BufReader::with_capacity(TRANSFER_CHUNK_SIZE, file);
+        loop {
+            let mut buffer = AlignedBuffer::new(TRANSFER_CHUNK_SIZE);
+            match reader.read(buffer.as_mut_slice()) {
+                Ok(0) => break,
+                Ok(n) => {
+                    let aligned_len = round_up_to_sector(n);
+                    let is_last = n < TRANSFER_CHUNK_SIZE;
+                    if tx.send(Ok((buffer, n, aligned_len))).is_err() || is_last {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let _ = tx.send(Err(e.to_string()));
+                    break;
+                }
             }
-            e.to_string()
-        })?;
+        }
+    });
 
-        if bytes_read == 0 {
-            break;
+    let mut written_total = 0u64; // aligned bytes actually placed on the disk
+    let mut logical_done = 0u64; // real image bytes copied, used for progress/eta
+    let start_time = Instant::now();
+    let mut failure: Option<String> = None;
+
+    for msg in rx {
+        let (buffer, logical_len, mut aligned_len) = match msg {
+            Ok(v) => v,
+            Err(e) => {
+                failure = Some(e);
+                break;
+            }
+        };
+
+        if drive_capacity > 0 {
+            let remaining = drive_capacity.saturating_sub(written_total);
+            aligned_len = aligned_len.min(remaining as usize);
         }
 
+        let data = &buffer.as_slice()[..aligned_len];
         let mut chunk_written = 0usize;
-        while chunk_written < bytes_read {
+        while chunk_written < data.len() {
             let mut bytes_written: DWORD = 0;
             let ok = unsafe {
                 WriteFile(
                     handle,
-                    buffer.as_ptr().add(chunk_written) as *const c_void,
-                    (bytes_read - chunk_written) as DWORD,
+                    data.as_ptr().add(chunk_written) as *const c_void,
+                    (data.len() - chunk_written) as DWORD,
                     &mut bytes_written,
                     ptr::null_mut(),
                 )
@@ -286,43 +377,47 @@ where
 
             if ok == 0 {
                 let err = unsafe { GetLastError() };
-                unsafe { CloseHandle(handle) };
-                for volume_handle in &locked_volume_handles {
-                    unsafe { CloseHandle(*volume_handle) };
-                }
-                return Err(format!(
+                failure = Some(format!(
                     "WriteFile failed (Win32 error {}). Try closing Explorer windows for the SD card and ensure no partition is mounted.",
                     err
                 ));
+                break;
             }
 
             if bytes_written == 0 {
-                unsafe { CloseHandle(handle) };
-                for volume_handle in &locked_volume_handles {
-                    unsafe { CloseHandle(*volume_handle) };
-                }
-                return Err("WriteFile wrote 0 bytes unexpectedly.".to_string());
+                failure = Some("WriteFile wrote 0 bytes unexpectedly.".to_string());
+                break;
             }
 
             chunk_written += bytes_written as usize;
         }
 
+        if failure.is_some() {
+            break;
+        }
+
         written_total += chunk_written as u64;
-        let eta = estimate_remaining_time(start_time.elapsed(), written_total, image_size);
+        logical_done = (logical_done + logical_len as u64).min(image_size);
+        let eta = estimate_remaining_time(start_time.elapsed(), logical_done, image_size);
         on_progress(TransferProgress {
-            done: written_total,
+            done: logical_done,
             total: image_size,
             eta,
         });
     }
 
+    let _ = reader_thread.join();
     unsafe { CloseHandle(handle) };
     for volume_handle in locked_volume_handles {
         unsafe { CloseHandle(volume_handle) };
     }
 
+    if let Some(err) = failure {
+        return Err(err);
+    }
+
     on_progress(TransferProgress {
-        done: written_total,
+        done: image_size,
         total: image_size,
         eta: None,
     });
@@ -496,7 +591,12 @@ fn open_device_for_write(device_name: &str) -> *mut c_void {
             FILE_SHARE_READ | FILE_SHARE_WRITE,
             ptr::null_mut(),
             OPEN_EXISTING,
-            FILE_FLAG_SEQUENTIAL_SCAN,
+            // Write-through bypasses the system cache so throughput reflects the card's real
+            // sustained speed instead of bursting into RAM then stalling once the cache fills.
+            // No buffering bypasses the system cache entirely (direct-to-media I/O), which is
+            // what actually eliminates the cache-fill/stall bursts; write-through is kept as a
+            // belt-and-braces guarantee that nothing is silently cached by lower layers.
+            FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING,
             ptr::null_mut(),
         ) as *mut c_void
     }
