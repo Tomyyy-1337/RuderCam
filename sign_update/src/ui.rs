@@ -254,20 +254,24 @@ pub enum RunOutcome {
     Retry,
 }
 
-pub fn run_ui(rx: std::sync::mpsc::Receiver<AppEvent>) -> io::Result<RunOutcome> {
+pub fn init_terminal() -> io::Result<Terminal<CrosstermBackend<io::Stdout>>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    Terminal::new(CrosstermBackend::new(stdout))
+}
 
-    let result = run_app(&mut terminal, rx);
-
+pub fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> io::Result<()> {
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+    terminal.show_cursor()
+}
 
-    result
+pub fn run_ui(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    rx: std::sync::mpsc::Receiver<AppEvent>,
+) -> io::Result<RunOutcome> {
+    run_app(terminal, rx)
 }
 
 fn run_app(

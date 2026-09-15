@@ -62,7 +62,6 @@ pub fn run_pipeline(tx: Sender<AppEvent>) {
     }
 }
 
-/// Runs a single pipeline step, reporting its start/finish to the UI and stopping the pipeline on error.
 pub fn run_step<T>(
     tx: &Sender<AppEvent>,
     idx: usize,
