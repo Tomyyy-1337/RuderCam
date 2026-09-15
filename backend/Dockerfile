@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 ARG BUILD_PLATFORM=linux/amd64
 FROM --platform=${BUILD_PLATFORM} rust:latest AS builder
 
@@ -26,10 +28,14 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
 
-RUN RUSTFLAGS="-D warnings" cargo build --release --target aarch64-unknown-linux-gnu
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target \
+    RUSTFLAGS="-D warnings" cargo build --release --target aarch64-unknown-linux-gnu && \
+    cp /app/target/aarch64-unknown-linux-gnu/release/backend /tmp/backend
 
 FROM alpine:latest
 RUN apk add --no-cache bash
-COPY --from=builder /app/target/aarch64-unknown-linux-gnu/release/backend /backend
+COPY --from=builder /tmp/backend /backend
 
 # Use: docker build -t pi-backend . ; docker create --name temp pi-backend ; docker cp temp:/backend ./backend ; docker rm temp

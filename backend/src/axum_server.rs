@@ -41,8 +41,8 @@ pub async fn start_server() {
         .route("/api/set_metering_mode", post(change_metering_mode))
         .route("/api/get_firmware_version", get(get_current_firmware_version))
         .route("/ws", get(websocket_handler))
-        .nest_service("/maps", get_service(ServeDir::new("./maps")))
-        .fallback_service(ServeDir::new("./static"))
+        .nest_service("/maps", get_service(ServeDir::new("./maps")))    
+        .fallback_service(ServeDir::new("./static").precompressed_gzip())
         .layer(CorsLayer::permissive());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));

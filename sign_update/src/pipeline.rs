@@ -166,6 +166,7 @@ fn build_backend(tx: &Sender<AppEvent>) -> io::Result<()> {
 
     let mut build = Command::new("docker");
     build
+        .env("DOCKER_BUILDKIT", "1")
         .arg("build")
         .arg("-t")
         .arg("pi-backend")
