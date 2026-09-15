@@ -16,7 +16,6 @@
         <Settings {fahrtenbuch} {deviceStatus} bind:overlay_settings />
         <div style="height: 30rem;"></div>
     {/if}
-
 </main>
 
 <script lang="ts">
