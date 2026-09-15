@@ -1,10 +1,5 @@
 use std::{
-    fs::File,
-    io::{self, BufRead, BufReader},
-    path::Path,
-    process::{Child, Command, Stdio},
-    sync::mpsc::Sender,
-    thread,
+    fs::File, io::{self, BufRead, BufReader}, path::Path, process::{Child, Command, Stdio}, sync::mpsc::{self, Sender}, thread::{self},
 };
 
 use sha2::{Digest, Sha256};
@@ -16,12 +11,30 @@ pub const STATIC_DIR: &str = "../backend/static";
 pub const BACKEND_CODE_PATH: &str = "../backend";
 pub const BACKEND_BIN_PATH: &str = "./backend_bin";
 
-pub const TASK_NAMES: [&str; 4] = [
-    "Build frontend",
-    "Build backend",
-    "Create hash",
-    "Create archive",
-];
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Task {
+    Frontend,
+    Backend,
+    Hash,
+    Archive,
+}
+
+impl Task {
+    pub const ALL: [Task; 4] = [Task::Frontend, Task::Backend, Task::Hash, Task::Archive];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Task::Frontend => "Build frontend",
+            Task::Backend => "Build backend",
+            Task::Hash => "Create hash",
+            Task::Archive => "Create archive",
+        }
+    }
+
+    pub fn index(self) -> usize {
+        self as usize
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TaskStatus {
@@ -32,9 +45,13 @@ pub enum TaskStatus {
 }
 
 pub enum AppEvent {
-    TaskStarted(usize),
+    TaskStarted(Task),
     Output(String),
-    TaskFinished(usize, Result<(), String>),
+    TaskFinished(Task, Result<(), String>),
+    ParallelStarted,
+    ParallelOutput(Task, String),
+    ParallelTaskFinished(Task, Result<(), String>),
+    ParallelFinished,
 }
 
 pub fn read_version_number() -> io::Result<String> {
@@ -50,10 +67,9 @@ pub fn write_version_number(version: &str) -> io::Result<()> {
 
 pub fn run_pipeline(tx: Sender<AppEvent>) {
     let result: io::Result<()> = (|| {
-        run_step(&tx, 0, |tx| build_frontend(tx))?;
-        run_step(&tx, 1, |tx| build_backend(tx))?;
-        let combined_hash = run_step(&tx, 2, |tx| calculate_hash(tx))?;
-        run_step(&tx, 3, |tx| create_archive(tx, read_version_number()?.as_str(), &combined_hash))?;
+        run_parallel_build(&tx)?;
+        let combined_hash = run_step(&tx, Task::Hash, |tx| calculate_hash(tx))?;
+        run_step(&tx, Task::Archive, |tx| create_archive(tx, read_version_number()?.as_str(), &combined_hash))?;
         Ok(())
     })();
 
@@ -62,19 +78,75 @@ pub fn run_pipeline(tx: Sender<AppEvent>) {
     }
 }
 
+fn run_parallel_build(tx: &Sender<AppEvent>) -> io::Result<()> {
+    let _ = tx.send(AppEvent::ParallelStarted);
+
+    let frontend_handle = spawn_parallel_task(Task::Frontend, tx.clone(), build_frontend);
+    let backend_handle = spawn_parallel_task(Task::Backend, tx.clone(), build_backend);
+
+    let (frontend_result, frontend_lines) = frontend_handle.join().expect("frontend build thread panicked");
+    let (backend_result, backend_lines) = backend_handle.join().expect("backend build thread panicked");
+
+    let _ = tx.send(AppEvent::ParallelFinished);
+    
+    let _ = tx.send(AppEvent::TaskStarted(Task::Frontend));
+    for line in frontend_lines {
+        let _ = tx.send(AppEvent::Output(line));
+    }
+    let _ = tx.send(AppEvent::TaskFinished(Task::Frontend, frontend_result.as_ref().map(|_| ()).map_err(|e| e.to_string())));
+
+    let _ = tx.send(AppEvent::TaskStarted(Task::Backend));
+    for line in backend_lines {
+        let _ = tx.send(AppEvent::Output(line));
+    }
+    let _ = tx.send(AppEvent::TaskFinished(Task::Backend, backend_result.as_ref().map(|_| ()).map_err(|e| e.to_string())));
+
+    frontend_result?;
+    backend_result?;
+    Ok(())
+}
+
+fn spawn_parallel_task(
+    task: Task,
+    tx: Sender<AppEvent>,
+    f: impl FnOnce(&Sender<AppEvent>) -> io::Result<()> + Send + 'static,
+) -> thread::JoinHandle<(io::Result<()>, Vec<String>)> {
+    thread::spawn(move || {
+        let (local_tx, local_rx) = mpsc::channel::<AppEvent>();
+        let output_tx = tx.clone();
+
+        let collector = thread::spawn(move || {
+            let mut lines = Vec::new();
+            while let Ok(AppEvent::Output(line)) = local_rx.recv() {
+                let _ = output_tx.send(AppEvent::ParallelOutput(task, line.clone()));
+                lines.push(line);
+            }
+            lines
+        });
+
+        let result = f(&local_tx);
+        drop(local_tx);
+        let lines = collector.join().expect("output collector thread panicked");
+        let event_result = result.as_ref().map(|_| ()).map_err(|e| e.to_string());
+        let _ = tx.send(AppEvent::ParallelTaskFinished(task, event_result));
+
+        (result, lines)
+    })
+}
+
 pub fn run_step<T>(
     tx: &Sender<AppEvent>,
-    idx: usize,
+    task: Task,
     f: impl FnOnce(&Sender<AppEvent>) -> io::Result<T>,
 ) -> io::Result<T> {
-    let _ = tx.send(AppEvent::TaskStarted(idx));
+    let _ = tx.send(AppEvent::TaskStarted(task));
     match f(tx) {
         Ok(value) => {
-            let _ = tx.send(AppEvent::TaskFinished(idx, Ok(())));
+            let _ = tx.send(AppEvent::TaskFinished(task, Ok(())));
             Ok(value)
         }
         Err(e) => {
-            let _ = tx.send(AppEvent::TaskFinished(idx, Err(e.to_string())));
+            let _ = tx.send(AppEvent::TaskFinished(task, Err(e.to_string())));
             Err(e)
         }
     }

@@ -20,7 +20,7 @@ use ratatui::{
 };
 
 use crate::upload::{self, FlashEvent};
-use crate::pipeline::{read_version_number, write_version_number, AppEvent, TaskStatus, TASK_NAMES};
+use crate::pipeline::{read_version_number, write_version_number, AppEvent, Task, TaskStatus};
 
 const ARCHIVE_PATH: &str = "update.tar";
 
@@ -34,13 +34,17 @@ const NETWORK_ERROR_MARKERS: [&str; 5] = [
 
 pub struct App {
     version: String,
-    statuses: [TaskStatus; TASK_NAMES.len()],
+    statuses: [TaskStatus; Task::ALL.len()],
     auto_upload_status: Option<TaskStatus>,
     output: Vec<OutputLine>,
     scroll: u16,
     auto_scroll: bool,
     finished: bool,
     network_error: bool,
+    parallel_active: bool,
+    parallel_output: [Vec<Line<'static>>; 2],
+    fail_marker: Option<usize>,
+    jump_pending: bool,
 }
 
 pub struct OutputLine {
@@ -60,20 +64,24 @@ impl App {
     pub fn new() -> Self {
         Self {
             version: read_version_number().unwrap_or_else(|_| "unknown".to_string()),
-            statuses: [TaskStatus::Pending; TASK_NAMES.len()],
+            statuses: [TaskStatus::Pending; Task::ALL.len()],
             auto_upload_status: upload::auto_upload_enabled().then_some(TaskStatus::Pending),
             output: Vec::new(),
             scroll: 0,
             auto_scroll: true,
             finished: false,
             network_error: false,
+            parallel_active: false,
+            parallel_output: [Vec::new(), Vec::new()],
+            fail_marker: None,
+            jump_pending: false,
         }
     }
 
     pub fn handle_event(&mut self, event: AppEvent) {
         match event {
-            AppEvent::TaskStarted(idx) => {
-                self.statuses[idx] = TaskStatus::Running;
+            AppEvent::TaskStarted(task) => {
+                self.statuses[task.index()] = TaskStatus::Running;
                 if !self.output.is_empty() {
                     self.output.push(OutputLine {
                         line: Line::default(),
@@ -86,7 +94,7 @@ impl App {
                             Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
                         ),
                         Span::styled(
-                            format!("Step {}/{}: {}", idx + 1, TASK_NAMES.len(), TASK_NAMES[idx]),
+                            format!("Step {}/{}: {}", task.index() + 1, Task::ALL.len(), task.name()),
                             Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
                         ),
                     ]),
@@ -114,10 +122,10 @@ impl App {
                     self.output.push(OutputLine { line: parsed });
                 }
             }
-            AppEvent::TaskFinished(idx, result) => {
+            AppEvent::TaskFinished(task, result) => {
                 match result {
                     Ok(()) => {
-                        self.statuses[idx] = TaskStatus::Done;
+                        self.statuses[task.index()] = TaskStatus::Done;
                         self.output.push(OutputLine {
                             line: Line::from(vec![
                                 Span::styled(
@@ -125,14 +133,14 @@ impl App {
                                     Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
                                 ),
                                 Span::styled(
-                                    format!("{} completed", TASK_NAMES[idx]),
+                                    format!("{} completed", task.name()),
                                     Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
                                 ),
                             ]),
                         });
                     }
                     Err(e) => {
-                        self.statuses[idx] = TaskStatus::Failed;
+                        self.statuses[task.index()] = TaskStatus::Failed;
                         self.output.push(OutputLine {
                             line: Line::from(vec![
                                 Span::styled(
@@ -140,16 +148,50 @@ impl App {
                                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                                 ),
                                 Span::styled(
-                                    format!("{} failed: {e}", TASK_NAMES[idx]),
+                                    format!("{} failed: {e}", task.name()),
                                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                                 ),
                             ]),
                         });
+                        self.fail_marker = Some(self.output.len() - 1);
+                        self.jump_pending = true;
                     }
                 }
-                if idx == TASK_NAMES.len() - 1 || self.has_error() {
+                if task.index() == Task::ALL.len() - 1 || self.has_error() {
                     self.finished = true;
                 }
+            }
+            AppEvent::ParallelStarted => {
+                self.parallel_active = true;
+                self.parallel_output = [Vec::new(), Vec::new()];
+                self.statuses[Task::Frontend.index()] = TaskStatus::Running;
+                self.statuses[Task::Backend.index()] = TaskStatus::Running;
+            }
+            AppEvent::ParallelOutput(task, line) => {
+                let parsed_lines = match line.into_text() {
+                    Ok(text) => text.lines,
+                    Err(_) => {
+                        vec![Line::from(Span::styled(line, Style::default().fg(Color::Gray)))]
+                    }
+                };
+                for mut parsed in parsed_lines {
+                    for span in &mut parsed.spans {
+                        if span.style.fg.is_none() {
+                            span.style = span.style.fg(Color::Gray);
+                        }
+                    }
+                    self.parallel_output[task.index()].push(parsed);
+                }
+            }
+            AppEvent::ParallelTaskFinished(task, result) => {
+                self.statuses[task.index()] = if result.is_ok() {
+                    TaskStatus::Done
+                } else {
+                    TaskStatus::Failed
+                };
+            }
+            AppEvent::ParallelFinished => {
+                self.parallel_active = false;
             }
         }
     }
@@ -346,10 +388,10 @@ fn run_app(
 
             let show_flash_hint = app.finished && !app.has_error() && matches!(flash_state, FlashState::Hidden);
 
-            let mut items: Vec<ListItem> = TASK_NAMES
+            let mut items: Vec<ListItem> = Task::ALL
                 .iter()
                 .zip(app.statuses.iter())
-                .map(|(name, status)| {
+                .map(|(task, status)| {
                     let (marker, style) = match status {
                         TaskStatus::Pending => (" ", Style::default().fg(Color::DarkGray)),
                         TaskStatus::Running => ("~", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),),
@@ -358,7 +400,7 @@ fn run_app(
                     };
                     ListItem::new(Line::from(vec![
                         Span::styled(format!("[{marker}] "), style),
-                        Span::styled(*name, style),
+                        Span::styled(task.name(), style),
                     ]))
                 })
                 .collect();
@@ -422,36 +464,71 @@ fn run_app(
                     .split(chunks[1])
             };
 
-            let output_block = Block::default().borders(Borders::ALL).title(if app.has_error() {
-                "Output (failed, press Enter/r to retry or q to quit)"
-            } else if app.finished {
-                "Output (q: quit, r: restart, v: version number)"
-            } else {
-                "Output (q: quit, r: restart, v: version number)"
-            });
-            let output_area = output_block.inner(right_chunks[0]);
-            visible_height = output_area.height;
+            if app.parallel_active {
+                let panes = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(right_chunks[0]);
 
-            let text: Vec<Line> = app
-                .output
-                .iter()
-                .flat_map(|output_line| {
-                    wrap_line(output_line.line.clone(), output_area.width as usize)
-                })
-                .collect();
-            max_scroll = text
-                .len()
-                .saturating_sub(visible_height as usize)
-                .min(u16::MAX as usize) as u16;
-            if app.auto_scroll {
-                app.scroll = max_scroll;
+                for (task, title) in [(Task::Frontend, "Frontend"), (Task::Backend, "Backend")] {
+                    let pane_idx = task.index();
+                    let pane_block = Block::default().borders(Borders::ALL).title(title);
+                    let pane_area = pane_block.inner(panes[pane_idx]);
+                    let text: Vec<Line> = app.parallel_output[pane_idx]
+                        .iter()
+                        .flat_map(|line| wrap_line(line.clone(), pane_area.width as usize))
+                        .collect();
+                    let pane_scroll = text
+                        .len()
+                        .saturating_sub(pane_area.height as usize)
+                        .min(u16::MAX as usize) as u16;
+                    let paragraph = Paragraph::new(text)
+                        .block(pane_block)
+                        .scroll((pane_scroll, 0));
+                    frame.render_widget(paragraph, panes[pane_idx]);
+                }
+                visible_height = right_chunks[0].height;
             } else {
-                app.scroll = app.scroll.min(max_scroll);
+                let output_block = Block::default().borders(Borders::ALL).title(if app.has_error() {
+                    "Output (failed, press Enter/r to retry or q to quit)"
+                } else if app.finished {
+                    "Output (q: quit, r: restart, v: version number)"
+                } else {
+                    "Output (q: quit, r: restart, v: version number)"
+                });
+                let output_area = output_block.inner(right_chunks[0]);
+                visible_height = output_area.height;
+
+                let mut fail_marker_end: Option<usize> = None;
+                let mut text: Vec<Line> = Vec::new();
+                for (i, output_line) in app.output.iter().enumerate() {
+                    text.extend(wrap_line(output_line.line.clone(), output_area.width as usize));
+                    if Some(i) == app.fail_marker {
+                        fail_marker_end = Some(text.len());
+                    }
+                }
+                max_scroll = text
+                    .len()
+                    .saturating_sub(visible_height as usize)
+                    .min(u16::MAX as usize) as u16;
+                if app.jump_pending {
+                    if let Some(end) = fail_marker_end {
+                        app.auto_scroll = false;
+                        let scroll_target = end.saturating_sub(visible_height as usize);
+                        app.scroll = (scroll_target as u16).min(max_scroll);
+                    }
+                    app.jump_pending = false;
+                }
+                if app.auto_scroll {
+                    app.scroll = max_scroll;
+                } else {
+                    app.scroll = app.scroll.min(max_scroll);
+                }
+                let paragraph = Paragraph::new(text)
+                    .block(output_block)
+                    .scroll((app.scroll, 0));
+                frame.render_widget(paragraph, right_chunks[0]);
             }
-            let paragraph = Paragraph::new(text)
-                .block(output_block)
-                .scroll((app.scroll, 0));
-            frame.render_widget(paragraph, right_chunks[0]);
 
             if app.network_error {
                 let warning = Paragraph::new(Line::from(Span::styled(

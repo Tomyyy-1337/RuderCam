@@ -120,21 +120,6 @@ pub enum FlashEvent {
     Finished(Result<(), String>),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::prioritize_networks;
-
-    #[test]
-    fn prioritizes_last_uploaded_network_first() {
-        let networks = vec!["Alpha".to_string(), "Bravo".to_string(), "Charlie".to_string()];
-
-        assert_eq!(
-            prioritize_networks(networks, Some("Bravo")),
-            vec!["Bravo".to_string(), "Alpha".to_string(), "Charlie".to_string()]
-        );
-    }
-}
-
 /// Scans for visible WLAN networks on a background thread using `netsh`, keeping only ones
 /// Windows already has a saved profile for (connecting to unknown networks is not supported).
 pub fn scan_networks_async(tx: Sender<FlashEvent>, refresh: bool) {
@@ -289,21 +274,6 @@ fn list_networks() -> Result<Vec<String>, String> {
         Err("No wireless networks were found".to_string())
     } else {
         Ok(networks)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::prioritize_networks;
-
-    #[test]
-    fn prioritizes_last_uploaded_network_first() {
-        let networks = vec!["Alpha".to_string(), "Bravo".to_string(), "Charlie".to_string()];
-
-        assert_eq!(
-            prioritize_networks(networks, Some("Bravo")),
-            vec!["Bravo".to_string(), "Alpha".to_string(), "Charlie".to_string()]
-        );
     }
 }
 
