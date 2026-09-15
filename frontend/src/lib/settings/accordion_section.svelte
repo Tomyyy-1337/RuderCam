@@ -16,7 +16,7 @@
     </button>
 
     {#if open}
-        <div class="accordion-panel" transition:slide={{ duration: 320 }}>
+        <div class="accordion-panel" transition:slideAtConstantSpeed>
         <div class="accordion-panel-inner">
             {@render children?.()}
         </div>
@@ -45,6 +45,22 @@
     }
 
     let open = $state(getInitialOpen());
+
+    const PANEL_TRANSITION_MS_PER_PX = 0.45;
+    const MIN_PANEL_TRANSITION_MS = 180;
+    const MAX_PANEL_TRANSITION_MS = 300;
+
+    function slideAtConstantSpeed(node: Element) {
+        return slide(node, {
+            duration: Math.min(
+                MAX_PANEL_TRANSITION_MS,
+                Math.max(
+                    MIN_PANEL_TRANSITION_MS,
+                    node.getBoundingClientRect().height * PANEL_TRANSITION_MS_PER_PX,
+                ),
+            ),
+        });
+    }
 </script>
 
 <style>
@@ -76,6 +92,10 @@
     .accordion-summary:focus-visible {
         outline: 2px solid var(--button-color);
         outline-offset: 2px;
+    }
+
+    .accordion-summary:hover {
+        transform: none;
     }
 
     .summary-copy {
@@ -110,10 +130,6 @@
     .accordion-section.expanded .chevron {
         transform: rotate(225deg);
         border-color: var(--text);
-    }
-
-    .accordion-section.expanded .accordion-summary {
-        padding-bottom: 0.6rem;
     }
 
     .accordion-panel {

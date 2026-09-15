@@ -184,7 +184,7 @@
 
     .toggle-button:hover {
         background-color: color-mix(in srgb, var(--text) 4%, transparent);
-        transform: translateY(-1px);
+        transform: none;
     }
 
     .toggle-button:focus-visible {

@@ -121,7 +121,7 @@
     }
 
     .tab:hover {
-        transform: translateY(-1px);
+        transform: none;
         color: var(--text);
         background: color-mix(in srgb, var(--text) 8%, transparent);
         border-color: color-mix(in srgb, var(--text) 18%, transparent);
