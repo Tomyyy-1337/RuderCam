@@ -152,12 +152,10 @@ fn create_archive(tx: &Sender<AppEvent>, version: &str, combined_hash: &[u8]) ->
 fn build_frontend(tx: &Sender<AppEvent>) -> io::Result<()> {
     let mut command = Command::new("npm.cmd");
     command.arg("run").arg("check").current_dir("../frontend");
-
-    run_command_streaming(command, tx, "frontend build failed")?;
+    run_command_streaming(command, tx, "frontend check failed")?;
 
     let mut command = Command::new("npm.cmd");
     command.arg("run").arg("build").current_dir("../frontend");
-
     run_command_streaming(command, tx, "frontend build failed")
 }
 

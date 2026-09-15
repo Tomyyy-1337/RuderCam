@@ -9,7 +9,7 @@ cargo build --release
 ## Build Backend with Docker:
 ```bash
 cd backend
-docker build -t pi-backend . ; docker create --name temp pi-backend ; docker cp temp:/backend ./backend ; docker rm temp
+docker build -t pi-backend . ; docker create --name temp pi-backend ; docker cp temp:/backend ./backend_bin ; docker rm temp
 ```
 ```bash
 cd update_service

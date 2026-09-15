@@ -38,4 +38,4 @@ FROM alpine:latest
 RUN apk add --no-cache bash
 COPY --from=builder /tmp/backend /backend
 
-# Use: docker build -t pi-backend . ; docker create --name temp pi-backend ; docker cp temp:/backend ./backend ; docker rm temp
+# Use: docker build -t pi-backend . ; docker create --name temp pi-backend ; docker cp temp:/backend ./backend_bin ; docker rm temp
