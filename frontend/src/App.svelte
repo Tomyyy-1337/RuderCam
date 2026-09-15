@@ -45,7 +45,7 @@
     } from "./lib/types";
 
     let fahrtenbuch: Writable<FahrtenbuchStore> = writable(new FahrtenbuchStore());
-        
+
     let deviceStatus = $state<DeviceStatus>({
         isConnected: true,
         battery_percentage: 0,
