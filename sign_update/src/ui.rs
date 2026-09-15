@@ -425,9 +425,9 @@ fn run_app(
             let output_block = Block::default().borders(Borders::ALL).title(if app.has_error() {
                 "Output (failed, press Enter/r to retry or q to quit)"
             } else if app.finished {
-                "Output (q: quit, r: restart, v: change version numer)"
+                "Output (q: quit, r: restart, v: version number)"
             } else {
-                "Output (q quit, r restart, v change version nume)"
+                "Output (q: quit, r: restart, v: version number)"
             });
             let output_area = output_block.inner(right_chunks[0]);
             visible_height = output_area.height;
