@@ -1,13 +1,12 @@
 use axum::{Json, Router, extract::ws::{WebSocket, WebSocketUpgrade}, http::StatusCode, routing::{get, get_service, post}};
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::Serialize;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
 
 use std::{net::SocketAddr, time::{Duration}};
 
-use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, hotspot::Hotspot, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
+use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
 
 lazy_static!(
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9!@#$%^&*()_+\-=?]*$").expect("Failed to compile password regex");

@@ -46,9 +46,9 @@
 
     let open = $state(getInitialOpen());
 
-    const PANEL_TRANSITION_MS_PER_PX = 0.45;
-    const MIN_PANEL_TRANSITION_MS = 180;
-    const MAX_PANEL_TRANSITION_MS = 300;
+    const PANEL_TRANSITION_MS_PER_PX = 0.4;
+    const MIN_PANEL_TRANSITION_MS = 100;
+    const MAX_PANEL_TRANSITION_MS = 250;
 
     function slideAtConstantSpeed(node: Element) {
         return slide(node, {
@@ -59,8 +59,9 @@
                     node.getBoundingClientRect().height * PANEL_TRANSITION_MS_PER_PX,
                 ),
             ),
+            easing: t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
         });
-    }
+    };
 </script>
 
 <style>

@@ -26,7 +26,7 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
 
-RUN cargo build --release --target aarch64-unknown-linux-gnu
+RUN RUSTFLAGS="-D warnings" cargo build --release --target aarch64-unknown-linux-gnu
 
 FROM alpine:latest
 RUN apk add --no-cache bash
