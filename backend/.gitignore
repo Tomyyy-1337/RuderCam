@@ -1,11 +1,4 @@
 /target
 backend_bin
 /static/*
-/maps/belgium.pmtiles
-/maps/czech_republic.pmtiles
-/maps/denmark.pmtiles
-/maps/france.pmtiles
-/maps/germany.pmtiles
-/maps/luxembourg.pmtiles
-/maps/netherlands.pmtiles
-/maps/poland.pmtiles
+/maps/*.pmtiles

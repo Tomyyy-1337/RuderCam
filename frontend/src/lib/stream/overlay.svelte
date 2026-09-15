@@ -1,37 +1,20 @@
 {#if overlay_settings.show_overlay}
 <div class="overlay {overlay_settings.position}">
-    <div class="overlay-content">
-        <div class="stats">
-            <div class="card-group">
-                {#each visibleCards as card (card.id)}
-                    <div
-                        class="overlay-stat"
-                        in:fly={{ x: 36, duration: 800 }}
-                        out:fly={{ x: -36, duration: 600 }}
-                        animate:flip={{ duration: 600, easing: (t) => 1 - Math.pow(1 - t, 3) }}
-                    >
-                        <OverlayCard label={card.label} unit={card.unit} value={card.value} />
-                    </div>
-                {/each}
-            </div>
+    <OverlayCard {visibleCards} />
+
+    <div class="controls">
+        <div class="icon-container">
+            <BatteryStatusIcon value={battery_percentage} />
+            <SateliteIcon value={satellite_count} />
+            <PauseIcon paused={activeSession.pausiert} session={activeSession} />
         </div>
 
-        <div class="controls {overlay_settings.position === 'top' ? 'bottom' : 'top'}">
-            <div class="icon-container">
-                <BatteryStatusIcon value={battery_percentage} />
-                <SateliteIcon value={satellite_count} />
-                <PauseIcon paused={activeSession.pausiert} session={activeSession} />
-            </div>
-
-            <ToggleSessionButton {fahrtenbuch} bind:activeSession variant="overlay" />
-        </div>
+        <ToggleSessionButton {fahrtenbuch} bind:activeSession variant="overlay" />
     </div>
 </div>
 {/if}
 
 <script lang="ts">
-    import { fly } from "svelte/transition";
-    import { flip } from "svelte/animate";
     import BatteryStatusIcon from "../icons/batteryStatusIcon.svelte";
     import OverlayCard from "./overlay_card.svelte";
     import PauseIcon from "../icons/pauseIcon.svelte";
@@ -82,43 +65,17 @@
         inset: 0;
         display: flex;
         flex-direction: column;
+        justify-content: space-between;
         width: 100%;
         height: 100%;
+        min-height: 0;
         background: transparent;
         box-sizing: border-box;
         pointer-events: none;
     }
 
-    .overlay.top {
-        justify-content: space-between;
-    }
-
     .overlay.bottom {
-        justify-content: space-between;
-    }
-
-    .overlay-content {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        width: 100%;
-        height: 100%;
-        min-height: 0;
-    }
-
-    .overlay.bottom .overlay-content {
         flex-direction: column-reverse;
-    }
-
-    .stats {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        align-items: center;
-        width: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        padding: 0 0.75rem;
-        box-sizing: border-box;
-        min-width: 0;
     }
 
     .controls {
@@ -146,35 +103,8 @@
     }
 
     .icon-container,
-    .controls,
-    .card-group {
+    .controls {
         pointer-events: auto;
     }
 
-    .card-group {
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: stretch;
-        gap: 0.4rem;
-        width: 100%;
-        min-width: 0;
-        overflow: visible;
-    }
-
-    .overlay-stat {
-        flex: 1 1 0;
-        min-width: 0;
-        width: 100%;
-        contain: layout style;
-        will-change: transform;
-        overflow: visible;
-    }
-
-    .card-group :global(.stat) {
-        flex: 1 1 0;
-        min-width: 0;
-        width: 100%;
-        transform: translateZ(0);
-        overflow: visible;
-    }
 </style>

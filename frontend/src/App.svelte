@@ -13,7 +13,7 @@
         <Fahrtenbuch {fahrtenbuch} />
         <div style="height: 3.2rem;"></div>
     {:else if activeTab === "settings"}
-        <Settings {fahrtenbuch} bind:overlay_settings />
+        <Settings {fahrtenbuch} {deviceStatus} bind:overlay_settings />
         <div style="height: 3.2rem;"></div>
     {/if}
 
@@ -86,6 +86,11 @@
         const theme = (localStorage.getItem("theme") as Theme | null) ?? "dark";
         setTheme(theme);
 
+        const storedActiveTab = localStorage.getItem("active_tab");
+        if (storedActiveTab) {
+            activeTab = storedActiveTab as AppTab;
+        }
+
         const storedOverlaySettings = localStorage.getItem("overlay_settings");
         if (storedOverlaySettings) {
             try {
@@ -104,6 +109,10 @@
             clearSessionActivityTimeout();
             socket?.close();
         };
+    });
+
+    $effect(() => {
+        localStorage.setItem("active_tab", activeTab);
     });
 
     $effect(() => {

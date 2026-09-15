@@ -1,16 +1,55 @@
-<div class="stat">
-    <p class="stat_label">{label}</p>
-    <p class="stat_value">{value}</p>
-    {#if unit}
-        <span class="stat_unit">{unit}</span>
-    {/if}
+<div class="card-group">
+    {#each visibleCards as card (card.id)}
+        <div
+            class="overlay-stat"
+            in:fly={{ x: 36, duration: 800 }}
+            out:fly={{ x: -36, duration: 600 }}
+            animate:flip={{ duration: 600, easing: (t) => 1 - Math.pow(1 - t, 3) }}
+        >
+            <div class="stat">
+                <p class="stat_label">{card.label}</p>
+                <p class="stat_value">{card.value}</p>
+                {#if card.unit}
+                    <span class="stat_unit">{card.unit}</span>
+                {/if}
+            </div>
+        </div>
+    {/each}
 </div>
 
 <script lang="ts">
-    let { label, value, unit = "" }: { label: string; value: string | number; unit?: string } = $props();
+    import { fly } from "svelte/transition";
+    import { flip } from "svelte/animate";
+
+    let { visibleCards }: {
+        visibleCards: Array<{ id: string; label: string; value: string | number; unit?: string }>;
+    } = $props();
 </script>
 
 <style>
+    .card-group {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        gap: 0.4rem;
+        width: 100%;
+        min-width: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 0 0.75rem;
+        box-sizing: border-box;
+        overflow: visible;
+        pointer-events: auto;
+    }
+
+    .overlay-stat {
+        flex: 1 1 0;
+        min-width: 0;
+        width: 100%;
+        contain: layout style;
+        will-change: transform;
+        overflow: visible;
+    }
+
     .stat {
         margin-top: 0;
         display: flex;
@@ -25,6 +64,8 @@
         overflow: visible;
         position: relative;
         z-index: 1;
+        flex: 1 1 0;
+        transform: translateZ(0);
     }
 
     .stat_label {

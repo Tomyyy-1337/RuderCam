@@ -7,22 +7,24 @@
         <SettingsOverlay bind:overlay_settings />
     </AccordionSection>
 
-    <AccordionSection
-        title="Kamera"
-        description="Einstellungen für Fokus und Belichtungsmessung"
-    >
-        <SettingsCamera {config} />
-    </AccordionSection>
+    {#if deviceStatus.isConnected}
+        <AccordionSection
+            title="Kamera"
+            description="Einstellungen für Fokus und Belichtungsmessung"
+        >
+            <SettingsCamera {config} />
+        </AccordionSection>
 
-    <AccordionSection
-        title="Geräteverwaltung"
-        description="Einstellungen für Automatisches Herunterfahren und Wlan"
-    >
-        <SettingsPowerButton />
-        <SettingsShutdownTimer {config} />
-        <SettingsChangeSsid {config} />
-        <SettingsChangePassword {config} />
-    </AccordionSection>
+        <AccordionSection
+            title="Geräteverwaltung"
+            description="Einstellungen für Automatisches Herunterfahren und Wlan"
+        >
+            <SettingsPowerButton />
+            <SettingsShutdownTimer {config} />
+            <SettingsChangeSsid {config} />
+            <SettingsChangePassword {config} />
+        </AccordionSection>
+    {/if}
 
     <AccordionSection
         title="Fahrtenbuch"
@@ -51,7 +53,7 @@
     import type { Writable } from "svelte/store";
     import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
     import { isAppConfig } from "../types";
-    import type { AppConfig, OverlaySettings } from "../types";
+    import type { AppConfig, DeviceStatus, OverlaySettings } from "../types";
     import AccordionSection from "./accordion_section.svelte";
     import SettingsToggleTheme from "./settings_toggle_theme.svelte";
     import SettingsOverlay from "./settings_overlay.svelte";
@@ -86,8 +88,9 @@
         };
     }
 
-    let { fahrtenbuch, overlay_settings = $bindable() }: {
+    let { fahrtenbuch, deviceStatus, overlay_settings = $bindable() }: {
         fahrtenbuch: Writable<FahrtenbuchStore>;
+        deviceStatus: DeviceStatus;
         overlay_settings: OverlaySettings;
     } = $props();
 

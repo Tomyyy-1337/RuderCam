@@ -38,44 +38,87 @@
     <div class="spacer"></div>
 </article>
 
+<Dialog
+    bind:open={dialogOpen}
+    title={dialogTitle}
+    message={dialogMessage}
+    confirmLabel="OK"
+    showCancel={false}
+    tone={dialogTone}
+/>
+
 <script lang="ts">
+    import Dialog from "../components/dialog.svelte";
     import type { AppConfig, FocusMode, MeteringMode } from "../types";
 
     let { config }: { config: AppConfig } = $props();
 
+    type DialogTone = "info" | "warning" | "danger";
+
     let focusMode = $state<FocusMode>("Fixed");
     let meteringMode = $state<MeteringMode>("Average");
+    let dialogOpen = $state(false);
+    let dialogTitle = $state("");
+    let dialogMessage = $state("");
+    let dialogTone = $state<DialogTone>("info");
 
     $effect(() => {
         focusMode = config.focus_mode;
         meteringMode = config.metering_mode;
     });
 
+    function openDialog(title: string, message: string, tone: DialogTone): void {
+        dialogTitle = title;
+        dialogMessage = message;
+        dialogTone = tone;
+        dialogOpen = true;
+    }
+
     async function saveFocusMode(): Promise<void> {
+        const previousFocusMode = config.focus_mode;
         config.focus_mode = focusMode;
+
         try {
-            await fetch("/api/set_focus_mode", {
+            const response = await fetch("/api/set_focus_mode", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ focus_mode: focusMode }),
             });
+
+            if (!response.ok) {
+                throw new Error("focus mode update failed");
+            }
+
         } catch {
+            config.focus_mode = previousFocusMode;
+            focusMode = previousFocusMode;
+            openDialog("Speichern fehlgeschlagen", "Der Fokusmodus konnte nicht gespeichert werden.", "danger");
         }
     }
 
     async function saveMeteringMode(): Promise<void> {
+        const previousMeteringMode = config.metering_mode;
         config.metering_mode = meteringMode;
+
         try {
-            await fetch("/api/set_metering_mode", {
+            const response = await fetch("/api/set_metering_mode", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ metering_mode: meteringMode }),
             });
+
+            if (!response.ok) {
+                throw new Error("metering mode update failed");
+            }
+
         } catch {
+            config.metering_mode = previousMeteringMode;
+            meteringMode = previousMeteringMode;
+            openDialog("Speichern fehlgeschlagen", "Die Belichtungsmessung konnte nicht gespeichert werden.", "danger");
         }
     }
 </script>

@@ -127,11 +127,3 @@ select {
   color: var(--text);
 }
 
-nav {
-  display: flex;
-  background-color: var(--section-background);
-  padding: 1em;
-  border-radius: 1em;
-  gap: var(--space-md);
-}
-

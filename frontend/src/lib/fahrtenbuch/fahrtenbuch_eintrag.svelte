@@ -54,29 +54,10 @@
             </div>
 
             <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-tag">Dauer</span>
-                    <span class="stat-value">{minutes}:{seconds}</span>
-                    <span class="stat-unit">min:sek</span>
-                </div>
-
-                <div class="stat-card">
-                    <span class="stat-tag">Ø Splittime</span>
-                    <span class="stat-value">{average_splittime_per_500m}</span>
-                    <span class="stat-unit">sek / 500 m</span>
-                </div>
-
-                <div class="stat-card">
-                    <span class="stat-tag">Ø Tempo</span>
-                    <span class="stat-value">{average_speed_kmh}</span>
-                    <span class="stat-unit">km/h</span>
-                </div>
-
-                <div class="stat-card">
-                    <span class="stat-tag">Ø Schlagfrequenz</span>
-                    <span class="stat-value">{average_bpm}</span>
-                    <span class="stat-unit">bpm</span>
-                </div>
+                <StatCard label="Dauer" value={`${minutes}:${seconds}`} unit="min:sek" />
+                <StatCard label="Ø Splittime" value={average_splittime_per_500m} unit="sek / 500 m" />
+                <StatCard label="Ø Tempo" value={average_speed_kmh} unit="km/h" />
+                <StatCard label="Ø Schlagfrequenz" value={average_bpm} unit="bpm" />
             </div>
 
             <button class="delete-button" class:confirming={confirmingDelete} onclick={handleDeleteClick}>
@@ -92,6 +73,7 @@
     import type { Writable } from "svelte/store";
     import type { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
     import type { GpsPosition } from "../types";
+    import StatCard from "./stat_card.svelte";
 
     let { fahrt, index, fahrtenbuch }: {
         fahrt: Session;
@@ -225,9 +207,7 @@
 
     .toggle-meta,
     .distance-label,
-    .stat-tag,
-    .distance-unit,
-    .stat-unit {
+    .distance-unit {
         color: var(--muted-text);
         text-transform: uppercase;
     }
@@ -349,37 +329,6 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
         gap: 0.75rem;
-    }
-
-    .stat-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.2rem;
-        min-height: 6rem;
-        padding: 0.9rem 0.7rem;
-        border-radius: 0.75em;
-        background-color: var(--background);
-        border: 1px solid var(--subtle-border);
-        text-align: center;
-    }
-
-    .stat-tag {
-        font-size: 0.68rem;
-        letter-spacing: 0.12em;
-    }
-
-    .stat-value {
-        font-size: clamp(1.7rem, 3vw, 2.45rem);
-        line-height: 1.05;
-        color: var(--text);
-        font-weight: 800;
-    }
-
-    .stat-unit {
-        font-size: 0.8rem;
-        letter-spacing: 0.08em;
     }
 
     .delete-button {

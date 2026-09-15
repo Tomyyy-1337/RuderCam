@@ -42,6 +42,14 @@
 </nav>
 
 <style>
+    nav {
+        display: flex;
+        background-color: var(--section-background);
+        padding: 1em;
+        border-radius: 1em;
+        gap: var(--space-md);
+    }
+
     .tabbar {
         --tabbar-padding: 0.5rem;
         --tabbar-gap: 0.6rem;
@@ -60,7 +68,7 @@
     }
 
     .tabbar.sessions-active {
-        --indicator-shift: calc(var(--tab-width) + var(--tabbar-gap) - 0.2rem);
+        --indicator-shift: calc(var(--tab-width) + var(--tabbar-gap));
     }
 
     .tabbar.settings-active {
