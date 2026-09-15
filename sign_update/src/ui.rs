@@ -119,6 +119,7 @@ impl App {
                             span.style = span.style.fg(Color::Gray);
                         }
                     }
+                    add_left_padding(&mut parsed);
                     self.output.push(OutputLine { line: parsed });
                 }
             }
@@ -166,6 +167,18 @@ impl App {
                 self.parallel_output = [Vec::new(), Vec::new()];
                 self.statuses[Task::Frontend.index()] = TaskStatus::Running;
                 self.statuses[Task::Backend.index()] = TaskStatus::Running;
+                for task in [Task::Frontend, Task::Backend] {
+                    self.parallel_output[task.index()].push(Line::from(vec![
+                        Span::styled(
+                            "▶  ",
+                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                        ),
+                        Span::styled(
+                            format!("Step {}/{}: {}", task.index() + 1, Task::ALL.len(), task.name()),
+                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                        ),
+                    ]));
+                }
             }
             AppEvent::ParallelOutput(task, line) => {
                 let parsed_lines = match line.into_text() {
@@ -180,6 +193,7 @@ impl App {
                             span.style = span.style.fg(Color::Gray);
                         }
                     }
+                    add_left_padding(&mut parsed);
                     self.parallel_output[task.index()].push(parsed);
                 }
             }
@@ -189,6 +203,22 @@ impl App {
                 } else {
                     TaskStatus::Failed
                 };
+                let (marker, label, style) = match result {
+                    Ok(()) => (
+                        "✓  ",
+                        format!("{} completed", task.name()),
+                        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                    ),
+                    Err(error) => (
+                        "✗  ",
+                        format!("{} failed: {error}", task.name()),
+                        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                    ),
+                };
+                self.parallel_output[task.index()].push(Line::from(vec![
+                    Span::styled(marker, style),
+                    Span::styled(label, style),
+                ]));
             }
             AppEvent::ParallelFinished => {
                 self.parallel_active = false;
@@ -199,6 +229,10 @@ impl App {
     fn has_error(&self) -> bool {
         self.statuses.iter().any(|s| *s == TaskStatus::Failed)
     }
+}
+
+fn add_left_padding(line: &mut Line<'static>) {
+    line.spans.insert(0, Span::raw(" "));
 }
 
 fn split_words_and_spaces(text: &str) -> Vec<&str> {
@@ -265,7 +299,11 @@ fn wrap_line(line: Line<'static>, width: usize) -> Vec<Line<'static>> {
                 }
             } else {
                 if current_width > 0 {
-                    acc_lines.push(Line::from(std::mem::take(&mut current_spans)));
+                    let mut wrapped = std::mem::take(&mut current_spans);
+                    if !acc_lines.is_empty() {
+                        wrapped.insert(0, Span::raw("  "));
+                    }
+                    acc_lines.push(Line::from(wrapped));
                     current_width = 0;
                 }
                 if word.trim_start().is_empty() {
@@ -280,7 +318,11 @@ fn wrap_line(line: Line<'static>, width: usize) -> Vec<Line<'static>> {
     }
 
     if !current_spans.is_empty() {
-        acc_lines.push(Line::from(current_spans));
+        let mut wrapped = current_spans;
+        if !acc_lines.is_empty() {
+            wrapped.insert(0, Span::raw("  "));
+        }
+        acc_lines.push(Line::from(wrapped));
     }
 
     if acc_lines.is_empty() {
@@ -383,7 +425,7 @@ fn run_app(
         terminal.draw(|frame| {
             let chunks = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints([Constraint::Length(25), Constraint::Min(0)])
+                .constraints([Constraint::Length(24), Constraint::Min(0)])
                 .split(frame.area());
 
             let show_flash_hint = app.finished && !app.has_error() && matches!(flash_state, FlashState::Hidden);
@@ -532,7 +574,7 @@ fn run_app(
 
             if app.network_error {
                 let warning = Paragraph::new(Line::from(Span::styled(
-                    "⚠ No network connection detected. Reconnect to the network and try again.",
+                    "No network connection detected. Reconnect to the network and try again.",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 )))
                 .block(Block::default().borders(Borders::ALL))
