@@ -1,11 +1,14 @@
-mod upload;
+mod events;
 mod pipeline;
 mod ui;
+mod upload;
+mod text;
 
 use std::{io, sync::mpsc, thread};
 
-use pipeline::{run_pipeline, AppEvent};
-use ui::{init_terminal, restore_terminal, run_ui, RunOutcome};
+use events::AppEvent;
+use pipeline::run_pipeline;
+use ui::{RunOutcome, init_terminal, restore_terminal, run_ui};
 
 fn main() -> io::Result<()> {
     let mut terminal = init_terminal()?;
@@ -26,5 +29,3 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
-

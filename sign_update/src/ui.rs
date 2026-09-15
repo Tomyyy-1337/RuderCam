@@ -1,26 +1,34 @@
+use crate::text;
+
 use std::{
     io,
     path::PathBuf,
     sync::{
+        Arc,
         atomic::{AtomicBool, Ordering},
         mpsc::{self, Receiver},
-        Arc,
     },
     time::Duration,
 };
 
-use ansi_to_tui::IntoText;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
-    Terminal, backend::CrosstermBackend, layout::{Constraint, Direction, Layout}, style::{Color, Modifier, Style}, text::{Line, Span}, widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
+    Terminal,
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
 };
 
+use crate::events::{AppEvent, Task, TaskStatus};
+use crate::pipeline::{read_version_number, write_version_number};
 use crate::upload::{self, FlashEvent};
-use crate::pipeline::{read_version_number, write_version_number, AppEvent, Task, TaskStatus};
+use text::{parse_output_lines, wrap_line};
 
 const ARCHIVE_PATH: &str = "update.tar";
 
@@ -53,11 +61,23 @@ pub struct OutputLine {
 
 enum FlashState {
     Hidden,
-    ChangingVersion { input: String },
+    ChangingVersion {
+        input: String,
+    },
     Scanning,
-    SelectNetwork { networks: Vec<String>, selected: usize },
-    Working { log: Vec<String>, cancel: Arc<AtomicBool>, ssid: String },
-    Finished { log: Vec<String>, result: Result<(), String> },
+    SelectNetwork {
+        networks: Vec<String>,
+        selected: usize,
+    },
+    Working {
+        log: Vec<String>,
+        cancel: Arc<AtomicBool>,
+        ssid: String,
+    },
+    Finished {
+        log: Vec<String>,
+        result: Result<(), String>,
+    },
 }
 
 impl App {
@@ -91,35 +111,34 @@ impl App {
                     line: Line::from(vec![
                         Span::styled(
                             "▶  ",
-                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
                         ),
                         Span::styled(
-                            format!("Step {}/{}: {}", task.index() + 1, Task::ALL.len(), task.name()),
-                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                            format!(
+                                "Step {}/{}: {}",
+                                task.index() + 1,
+                                Task::ALL.len(),
+                                task.name()
+                            ),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
                         ),
                     ]),
                 });
             }
             AppEvent::Output(line) => {
                 let lower = line.to_lowercase();
-                if NETWORK_ERROR_MARKERS.iter().any(|marker| lower.contains(marker)) {
+                if NETWORK_ERROR_MARKERS
+                    .iter()
+                    .any(|marker| lower.contains(marker))
+                {
                     self.network_error = true;
                 }
 
-                let parsed_lines = match line.into_text() {
-                    Ok(text) => text.lines,
-                    Err(_) => {
-                        vec![Line::from(Span::styled(line, Style::default().fg(Color::Gray)))]
-                    }
-                };
-
-                for mut parsed in parsed_lines {
-                    for span in &mut parsed.spans {
-                        if span.style.fg.is_none() {
-                            span.style = span.style.fg(Color::Gray);
-                        }
-                    }
-                    add_left_padding(&mut parsed);
+                for parsed in parse_output_lines(line) {
                     self.output.push(OutputLine { line: parsed });
                 }
             }
@@ -131,11 +150,15 @@ impl App {
                             line: Line::from(vec![
                                 Span::styled(
                                     "✓  ",
-                                    Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                                    Style::default()
+                                        .fg(Color::Green)
+                                        .add_modifier(Modifier::BOLD),
                                 ),
                                 Span::styled(
                                     format!("{} completed", task.name()),
-                                    Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                                    Style::default()
+                                        .fg(Color::Green)
+                                        .add_modifier(Modifier::BOLD),
                                 ),
                             ]),
                         });
@@ -171,29 +194,26 @@ impl App {
                     self.parallel_output[task.index()].push(Line::from(vec![
                         Span::styled(
                             "▶  ",
-                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
                         ),
                         Span::styled(
-                            format!("Step {}/{}: {}", task.index() + 1, Task::ALL.len(), task.name()),
-                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                            format!(
+                                "Step {}/{}: {}",
+                                task.index() + 1,
+                                Task::ALL.len(),
+                                task.name()
+                            ),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
                         ),
                     ]));
                 }
             }
             AppEvent::ParallelOutput(task, line) => {
-                let parsed_lines = match line.into_text() {
-                    Ok(text) => text.lines,
-                    Err(_) => {
-                        vec![Line::from(Span::styled(line, Style::default().fg(Color::Gray)))]
-                    }
-                };
-                for mut parsed in parsed_lines {
-                    for span in &mut parsed.spans {
-                        if span.style.fg.is_none() {
-                            span.style = span.style.fg(Color::Gray);
-                        }
-                    }
-                    add_left_padding(&mut parsed);
+                for parsed in parse_output_lines(line) {
                     self.parallel_output[task.index()].push(parsed);
                 }
             }
@@ -207,7 +227,9 @@ impl App {
                     Ok(()) => (
                         "✓  ",
                         format!("{} completed", task.name()),
-                        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
                     ),
                     Err(error) => (
                         "✗  ",
@@ -231,10 +253,6 @@ impl App {
     }
 }
 
-fn add_left_padding(line: &mut Line<'static>) {
-    line.spans.insert(0, Span::raw(" "));
-}
-
 fn task_border_style(status: TaskStatus) -> Style {
     let color = match status {
         TaskStatus::Pending => Color::White,
@@ -243,103 +261,6 @@ fn task_border_style(status: TaskStatus) -> Style {
         TaskStatus::Failed => Color::Red,
     };
     Style::default().fg(color)
-}
-
-fn split_words_and_spaces(text: &str) -> Vec<&str> {
-    let mut result = Vec::new();
-    let mut start = 0;
-    let mut in_space = false;
-
-    for (i, c) in text.char_indices() {
-        let is_space = c.is_whitespace();
-        if i == 0 {
-            in_space = is_space;
-            continue;
-        }
-        if is_space != in_space {
-            result.push(&text[start..i]);
-            start = i;
-            in_space = is_space;
-        }
-    }
-    if start < text.len() {
-        result.push(&text[start..]);
-    }
-    result
-}
-
-fn wrap_line(line: Line<'static>, width: usize) -> Vec<Line<'static>> {
-    if width == 0 {
-        return vec![line];
-    }
-
-    let total_width: usize = line.spans.iter().map(|s| s.width()).sum();
-    if total_width <= width {
-        return vec![line];
-    }
-
-    let mut acc_lines: Vec<Line<'static>> = Vec::new();
-    let mut current_spans: Vec<Span<'static>> = Vec::new();
-    let mut current_width: usize = 0;
-
-    for span in line.spans {
-        let style = span.style;
-        let text = span.content;
-        let words = split_words_and_spaces(&text);
-
-        for word in words {
-            let word_span = Span::styled(word.to_string(), style);
-            let word_width = word_span.width();
-
-            if current_width + word_width <= width {
-                current_spans.push(word_span);
-                current_width += word_width;
-            } else if word_width > width {
-                for ch in word.chars() {
-                    let ch_str = ch.to_string();
-                    let ch_span = Span::styled(ch_str, style);
-                    let ch_width = ch_span.width();
-
-                    if current_width + ch_width > width && current_width > 0 {
-                        acc_lines.push(Line::from(std::mem::take(&mut current_spans)));
-                        current_width = 0;
-                    }
-                    current_spans.push(ch_span);
-                    current_width += ch_width;
-                }
-            } else {
-                if current_width > 0 {
-                    let mut wrapped = std::mem::take(&mut current_spans);
-                    if !acc_lines.is_empty() {
-                        wrapped.insert(0, Span::raw("  "));
-                    }
-                    acc_lines.push(Line::from(wrapped));
-                    current_width = 0;
-                }
-                if word.trim_start().is_empty() {
-                    continue;
-                }
-                let word_span = Span::styled(word.to_string(), style);
-                let word_width = word_span.width();
-                current_spans.push(word_span);
-                current_width += word_width;
-            }
-        }
-    }
-
-    if !current_spans.is_empty() {
-        let mut wrapped = current_spans;
-        if !acc_lines.is_empty() {
-            wrapped.insert(0, Span::raw("  "));
-        }
-        acc_lines.push(Line::from(wrapped));
-    }
-
-    if acc_lines.is_empty() {
-        vec![Line::default()]
-    } else {
-        acc_lines
-    }
 }
 
 #[derive(PartialEq, Eq)]
@@ -401,12 +322,18 @@ fn run_app(
             match event {
                 FlashEvent::NetworksFound(Ok(networks)) => {
                     if matches!(flash_state, FlashState::Scanning) {
-                        flash_state = FlashState::SelectNetwork { networks, selected: 0 };
+                        flash_state = FlashState::SelectNetwork {
+                            networks,
+                            selected: 0,
+                        };
                     }
                 }
                 FlashEvent::NetworksFound(Err(e)) => {
                     if matches!(flash_state, FlashState::Scanning) {
-                        flash_state = FlashState::Finished { log: Vec::new(), result: Err(e) };
+                        flash_state = FlashState::Finished {
+                            log: Vec::new(),
+                            result: Err(e),
+                        };
                     }
                 }
                 FlashEvent::Log(line) => {
@@ -426,7 +353,10 @@ fn run_app(
                                 TaskStatus::Failed
                             });
                         }
-                        flash_state = FlashState::Finished { log: log.clone(), result };
+                        flash_state = FlashState::Finished {
+                            log: log.clone(),
+                            result,
+                        };
                     }
                 }
             }
@@ -438,7 +368,8 @@ fn run_app(
                 .constraints([Constraint::Length(24), Constraint::Min(0)])
                 .split(frame.area());
 
-            let show_flash_hint = app.finished && !app.has_error() && matches!(flash_state, FlashState::Hidden);
+            let show_flash_hint =
+                app.finished && !app.has_error() && matches!(flash_state, FlashState::Hidden);
 
             let mut items: Vec<ListItem> = Task::ALL
                 .iter()
@@ -446,9 +377,17 @@ fn run_app(
                 .map(|(task, status)| {
                     let (marker, style) = match status {
                         TaskStatus::Pending => (" ", Style::default().fg(Color::DarkGray)),
-                        TaskStatus::Running => ("~", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),),
+                        TaskStatus::Running => (
+                            "~",
+                            Style::default()
+                                .fg(Color::Yellow)
+                                .add_modifier(Modifier::BOLD),
+                        ),
                         TaskStatus::Done => ("✓", Style::default().fg(Color::Green)),
-                        TaskStatus::Failed => ("✗", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),),
+                        TaskStatus::Failed => (
+                            "✗",
+                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                        ),
                     };
                     ListItem::new(Line::from(vec![
                         Span::styled(format!("[{marker}] "), style),
@@ -458,11 +397,24 @@ fn run_app(
                 .collect();
 
             let (marker, style) = match app.auto_upload_status {
-                None => ("-", Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
+                None => (
+                    "-",
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .add_modifier(Modifier::DIM),
+                ),
                 Some(TaskStatus::Pending) => (" ", Style::default().fg(Color::DarkGray)),
-                Some(TaskStatus::Running) => ("~", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Some(TaskStatus::Running) => (
+                    "~",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Some(TaskStatus::Done) => ("✓", Style::default().fg(Color::Green)),
-                Some(TaskStatus::Failed) => ("✗", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+                Some(TaskStatus::Failed) => (
+                    "✗",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
             };
             let ssid = upload::last_network().unwrap_or_else(|| "No known SSID".to_string());
             items.push(ListItem::new(vec![
@@ -489,12 +441,10 @@ fn run_app(
                 None => "auto upload unavailable",
             };
             let mut hint_lines = if show_flash_hint {
-                vec![
-                    Line::from(Span::styled(
-                        "f: upload to pi",
-                        Style::default().fg(Color::DarkGray),
-                    )),
-                ]
+                vec![Line::from(Span::styled(
+                    "f: upload to pi",
+                    Style::default().fg(Color::DarkGray),
+                ))]
             } else {
                 Vec::new()
             };
@@ -565,7 +515,10 @@ fn run_app(
                 let mut fail_marker_end: Option<usize> = None;
                 let mut text: Vec<Line> = Vec::new();
                 for (i, output_line) in app.output.iter().enumerate() {
-                    text.extend(wrap_line(output_line.line.clone(), output_area.width as usize));
+                    text.extend(wrap_line(
+                        output_line.line.clone(),
+                        output_area.width as usize,
+                    ));
                     if Some(i) == app.fail_marker {
                         fail_marker_end = Some(text.len());
                     }
@@ -610,8 +563,8 @@ fn run_app(
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Release {
                     if key.code == KeyCode::Char('a') && upload::last_network().is_some() {
-                        app.auto_upload_status = upload::toggle_auto_upload()
-                            .then_some(TaskStatus::Pending);
+                        app.auto_upload_status =
+                            upload::toggle_auto_upload().then_some(TaskStatus::Pending);
                         continue;
                     }
 
@@ -631,7 +584,7 @@ fn run_app(
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => return Ok(RunOutcome::Quit),
                         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            return Ok(RunOutcome::Quit)
+                            return Ok(RunOutcome::Quit);
                         }
                         KeyCode::Char('f') if app.finished && !app.has_error() => {
                             start_upload(&mut flash_state, &mut original_ssid, &flash_tx, false);
@@ -658,9 +611,7 @@ fn run_app(
                             app.scroll = app.scroll.saturating_sub(visible_height);
                         }
                         KeyCode::PageDown => {
-                            app.scroll = app.scroll
-                                .saturating_add(visible_height)
-                                .min(max_scroll);
+                            app.scroll = app.scroll.saturating_add(visible_height).min(max_scroll);
                         }
                         KeyCode::End => {
                             app.auto_scroll = true;
@@ -682,8 +633,13 @@ fn start_upload(
     *original_ssid = upload::current_ssid();
     if use_last_network {
         if let Some(ssid) = upload::last_network() {
-            let cancel = upload::flash_async(flash_tx.clone(), ssid.clone(), PathBuf::from(ARCHIVE_PATH));
-            *flash_state = FlashState::Working { log: Vec::new(), cancel, ssid };
+            let cancel =
+                upload::flash_async(flash_tx.clone(), ssid.clone(), PathBuf::from(ARCHIVE_PATH));
+            *flash_state = FlashState::Working {
+                log: Vec::new(),
+                cancel,
+                ssid,
+            };
             return;
         }
     }
@@ -740,8 +696,16 @@ fn handle_flash_key(
             }
             KeyCode::Enter => {
                 if let Some(ssid) = networks.get(*selected).cloned() {
-                    let cancel = upload::flash_async(flash_tx.clone(), ssid.clone(), PathBuf::from(ARCHIVE_PATH));
-                    *flash_state = FlashState::Working { log: Vec::new(), cancel, ssid };
+                    let cancel = upload::flash_async(
+                        flash_tx.clone(),
+                        ssid.clone(),
+                        PathBuf::from(ARCHIVE_PATH),
+                    );
+                    *flash_state = FlashState::Working {
+                        log: Vec::new(),
+                        cancel,
+                        ssid,
+                    };
                 }
             }
             _ => {}
@@ -781,7 +745,7 @@ fn render_flash_overlay(
 
     let visible_height = area.height.saturating_sub(2) as usize;
 
-    let (title, lines): (&str, Vec<Line>) = match flash_state {
+    let (title, lines, border_color): (&str, Vec<Line>, Color) = match flash_state {
         FlashState::Hidden => unreachable!(),
         FlashState::ChangingVersion { input } => (
             "Change version (Enter to save, Esc to cancel)",
@@ -793,10 +757,12 @@ fn render_flash_overlay(
                     Style::default().fg(Color::DarkGray),
                 )),
             ],
+            Color::White,
         ),
         FlashState::Scanning => (
             "Select WLAN network (r to refresh, Esc to cancel)",
             vec![Line::from("Scanning for WLAN networks...")],
+            Color::White,
         ),
         FlashState::SelectNetwork { networks, selected } => {
             let visible_height = visible_height.max(1);
@@ -812,34 +778,44 @@ fn render_flash_overlay(
                     if i == *selected {
                         Line::from(Span::styled(
                             format!("> {name}"),
-                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
                         ))
                     } else {
                         Line::from(format!("  {name}"))
                     }
                 })
                 .collect();
-            ("Select WLAN network (r to refresh, Esc to cancel)", lines)
+            (
+                "Select WLAN network (r to refresh, Esc to cancel)",
+                lines,
+                Color::White,
+            )
         }
         FlashState::Working { log, .. } => {
             let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
             lines.push(Line::from(Span::styled(
                 "Working...",
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
             )));
             lines.push(Line::default());
             lines.push(Line::from(Span::styled(
                 "Esc to cancel",
                 Style::default().fg(Color::DarkGray),
             )));
-            ("Uploading to pi", lines)
+            ("Uploading to pi", lines, Color::Yellow)
         }
         FlashState::Finished { log, result } => {
             let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
             match result {
                 Ok(()) => lines.push(Line::from(Span::styled(
                     "✓ Update uploaded successfully",
-                    Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
                 ))),
                 Err(e) => lines.push(Line::from(Span::styled(
                     format!("✗ Flash failed: {e}"),
@@ -849,12 +825,25 @@ fn render_flash_overlay(
             lines.push(Line::default());
             lines.push(Line::from("Connection to pi remains active until closed"));
             lines.push(Line::from("Press Enter or Esc to close"));
-            ("Upload finished", lines)
+            (
+                "Upload finished",
+                lines,
+                if result.is_ok() {
+                    Color::Cyan
+                } else {
+                    Color::Red
+                },
+            )
         }
     };
 
     let paragraph = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title(title))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(border_color))
+                .title(title),
+        )
         .wrap(Wrap { trim: true });
     frame.render_widget(Clear, area);
     frame.render_widget(paragraph, area);
