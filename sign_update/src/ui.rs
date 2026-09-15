@@ -235,6 +235,16 @@ fn add_left_padding(line: &mut Line<'static>) {
     line.spans.insert(0, Span::raw(" "));
 }
 
+fn task_border_style(status: TaskStatus) -> Style {
+    let color = match status {
+        TaskStatus::Pending => Color::White,
+        TaskStatus::Running => Color::Yellow,
+        TaskStatus::Done => Color::Green,
+        TaskStatus::Failed => Color::Red,
+    };
+    Style::default().fg(color)
+}
+
 fn split_words_and_spaces(text: &str) -> Vec<&str> {
     let mut result = Vec::new();
     let mut start = 0;
@@ -514,7 +524,10 @@ fn run_app(
 
                 for (task, title) in [(Task::Frontend, "Frontend"), (Task::Backend, "Backend")] {
                     let pane_idx = task.index();
-                    let pane_block = Block::default().borders(Borders::ALL).title(title);
+                    let pane_block = Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(task_border_style(app.statuses[pane_idx]))
+                        .title(title);
                     let pane_area = pane_block.inner(panes[pane_idx]);
                     let text: Vec<Line> = app.parallel_output[pane_idx]
                         .iter()
@@ -531,13 +544,21 @@ fn run_app(
                 }
                 visible_height = right_chunks[0].height;
             } else {
-                let output_block = Block::default().borders(Borders::ALL).title(if app.has_error() {
-                    "Output (failed, press Enter/r to retry or q to quit)"
+                let output_border = if app.has_error() {
+                    Color::Red
                 } else if app.finished {
-                    "Output (q: quit, r: restart, v: version number)"
+                    Color::White
                 } else {
-                    "Output (q: quit, r: restart, v: version number)"
-                });
+                    Color::Yellow
+                };
+                let output_block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(output_border))
+                    .title(if app.has_error() {
+                        "Output (failed, press Enter/r to retry or q to quit)"
+                    } else {
+                        "Output (q: quit, r: restart, v: version number)"
+                    });
                 let output_area = output_block.inner(right_chunks[0]);
                 visible_height = output_area.height;
 

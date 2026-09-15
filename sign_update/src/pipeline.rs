@@ -1,11 +1,12 @@
 use std::{
-    fs::File, io::{self, BufRead, BufReader}, path::Path, process::{Child, Command, Stdio}, sync::mpsc::{self, Sender}, thread::{self},
+    fs::File, io::{self, BufRead, BufReader}, path::{Path, PathBuf}, process::{Child, Command, Stdio}, sync::mpsc::{self, Sender}, thread::{self},
 };
 
 use sha2::{Digest, Sha256};
 use tar::{Builder, Header};
 
 const VERSION_PATH: &str = "version.txt";
+const BUILD_STATE_DIR: &str = ".build-state";
 
 pub const STATIC_DIR: &str = "../backend/static";
 pub const BACKEND_CODE_PATH: &str = "../backend";
@@ -222,16 +223,35 @@ fn create_archive(tx: &Sender<AppEvent>, version: &str, combined_hash: &[u8]) ->
 }
 
 fn build_frontend(tx: &Sender<AppEvent>) -> io::Result<()> {
+    let input_hash = hash_directory(Path::new("../frontend"), &["node_modules", "dist"])?;
+    if build_is_current("frontend", input_hash, Path::new(STATIC_DIR))? {
+        let _ = tx.send(AppEvent::Output("Frontend unchanged; skipping build".into()));
+        return Ok(());
+    }
+
     let mut command = Command::new("npm.cmd");
     command.arg("run").arg("check").current_dir("../frontend");
     run_command_streaming(command, tx, "frontend check failed")?;
 
     let mut command = Command::new("npm.cmd");
     command.arg("run").arg("build").current_dir("../frontend");
-    run_command_streaming(command, tx, "frontend build failed")
+    run_command_streaming(command, tx, "frontend build failed")?;
+    save_build_state("frontend", input_hash, Path::new(STATIC_DIR))
 }
 
 fn build_backend(tx: &Sender<AppEvent>) -> io::Result<()> {
+    let input_hash = hash_paths(&[
+        PathBuf::from("../backend/Cargo.toml"),
+        PathBuf::from("../backend/Cargo.lock"),
+        PathBuf::from("../backend/Dockerfile"),
+        PathBuf::from("../backend/src"),
+    ])?;
+    let output_path = Path::new(BACKEND_CODE_PATH).join(BACKEND_BIN_PATH);
+    if build_is_current("backend", input_hash, &output_path)? {
+        let _ = tx.send(AppEvent::Output("Backend unchanged; skipping build".into()));
+        return Ok(());
+    }
+
     let backend_dir = Path::new(BACKEND_CODE_PATH);
 
     let mut build = Command::new("docker");
@@ -261,7 +281,101 @@ fn build_backend(tx: &Sender<AppEvent>) -> io::Result<()> {
 
     let mut rm = Command::new("docker");
     rm.arg("rm").arg("temp");
-    run_command_streaming(rm, tx, "docker rm failed")
+    run_command_streaming(rm, tx, "docker rm failed")?;
+    save_build_state("backend", input_hash, &output_path)
+}
+
+fn build_is_current(name: &str, input_hash: [u8; 32], output_path: &Path) -> io::Result<bool> {
+    let output_hash = match hash_path(output_path)? {
+        Some(hash) => hash,
+        None => return Ok(false),
+    };
+    let state = match std::fs::read(Path::new(BUILD_STATE_DIR).join(format!("{name}.sha256"))) {
+        Ok(state) if state.len() == 64 => state,
+        Ok(_) | Err(_) => return Ok(false),
+    };
+
+    Ok(state[..32] == input_hash && state[32..] == output_hash)
+}
+
+fn save_build_state(name: &str, input_hash: [u8; 32], output_path: &Path) -> io::Result<()> {
+    let output_hash = hash_path(output_path)?
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "generated build output is missing"))?;
+    std::fs::create_dir_all(BUILD_STATE_DIR)?;
+    let mut state = Vec::with_capacity(64);
+    state.extend_from_slice(&input_hash);
+    state.extend_from_slice(&output_hash);
+    std::fs::write(Path::new(BUILD_STATE_DIR).join(format!("{name}.sha256")), state)
+}
+
+fn hash_paths(paths: &[PathBuf]) -> io::Result<[u8; 32]> {
+    let mut hasher = Sha256::new();
+    for path in paths {
+        hasher.update(path.to_string_lossy().replace('\\', "/").as_bytes());
+        hasher.update([0]);
+        if path.is_dir() {
+            hasher.update(hash_directory(path, &[])?);
+        } else {
+            hasher.update(std::fs::read(path)?);
+        }
+        hasher.update([0]);
+    }
+    Ok(hasher.finalize().into())
+}
+
+fn hash_directory(path: &Path, ignored_names: &[&str]) -> io::Result<[u8; 32]> {
+    let mut files = Vec::new();
+    collect_files(path, path, ignored_names, &mut files)?;
+    files.sort();
+
+    let mut hasher = Sha256::new();
+    for file in files {
+        hash_path_into(&mut hasher, path, &file)?;
+    }
+    Ok(hasher.finalize().into())
+}
+
+fn collect_files(
+    root: &Path,
+    path: &Path,
+    ignored_names: &[&str],
+    files: &mut Vec<PathBuf>,
+) -> io::Result<()> {
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry?;
+        let entry_path = entry.path();
+        if ignored_names.iter().any(|name| entry.file_name() == *name) {
+            continue;
+        }
+        if entry_path.is_dir() {
+            collect_files(root, &entry_path, ignored_names, files)?;
+        } else if entry_path.is_file() {
+            files.push(entry_path.strip_prefix(root).unwrap().to_path_buf());
+        }
+    }
+    Ok(())
+}
+
+fn hash_path_into(hasher: &mut Sha256, root: &Path, path: &Path) -> io::Result<()> {
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    hasher.update(relative.to_string_lossy().replace('\\', "/").as_bytes());
+    hasher.update([0]);
+    hasher.update(std::fs::read(root.join(path))?);
+    hasher.update([0]);
+    Ok(())
+}
+
+fn hash_path(path: &Path) -> io::Result<Option<[u8; 32]>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    if path.is_dir() {
+        return Ok(Some(hash_directory(path, &[])?));
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(std::fs::read(path)?);
+    Ok(Some(hasher.finalize().into()))
 }
 
 /// Spawns the command, streaming its combined stdout/stderr as `Output` events line by line.
