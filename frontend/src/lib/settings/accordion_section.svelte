@@ -1,5 +1,10 @@
-<details class="accordion-section" bind:open={open}>
-    <summary class="accordion-summary">
+<div class="accordion-section" class:expanded={open}>
+    <button
+        type="button"
+        class="accordion-summary"
+        aria-expanded={open}
+        onclick={() => (open = !open)}
+    >
         <div class="summary-copy">
             <span class="title">{title}</span>
             {#if description}
@@ -8,16 +13,19 @@
         </div>
 
         <span class="chevron" aria-hidden="true"></span>
-    </summary>
+    </button>
 
-    <div class="accordion-panel">
+    {#if open}
+        <div class="accordion-panel" transition:slide={{ duration: 320 }}>
         <div class="accordion-panel-inner">
             {@render children?.()}
         </div>
-    </div>
-</details>
+        </div>
+    {/if}
+</div>
 
 <script lang="ts">
+    import { slide } from "svelte/transition";
     import type { Snippet } from "svelte";
 
     let {
@@ -55,10 +63,19 @@
         cursor: pointer;
         list-style: none;
         user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        width: 100%;
+        border: 0;
+        border-radius: 1rem;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: left;
     }
 
-    .accordion-summary::-webkit-details-marker {
-        display: none;
+    .accordion-summary:focus-visible {
+        outline: 2px solid var(--button-color);
+        outline-offset: 2px;
     }
 
     .summary-copy {
@@ -90,28 +107,21 @@
         transition: transform 180ms ease, border-color 180ms ease;
     }
 
-    .accordion-section[open] .chevron {
+    .accordion-section.expanded .chevron {
         transform: rotate(225deg);
         border-color: var(--text);
     }
 
-    .accordion-section[open] .accordion-summary {
+    .accordion-section.expanded .accordion-summary {
         padding-bottom: 0.6rem;
     }
 
     .accordion-panel {
         display: grid;
-        grid-template-rows: 0fr;
-        transition: grid-template-rows 220ms ease;
         padding: 0 0.6rem 0.75rem;
     }
 
-    .accordion-section[open] .accordion-panel {
-        grid-template-rows: 1fr;
-    }
-
     .accordion-panel-inner {
-        overflow: hidden;
         display: grid;
     }
 

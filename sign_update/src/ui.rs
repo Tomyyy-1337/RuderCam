@@ -16,12 +16,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
-    Terminal,
+    Terminal, backend::CrosstermBackend, layout::{Constraint, Direction, Layout}, style::{Color, Modifier, Style}, symbols::line, text::{Line, Span}, widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
 };
 
 use crate::upload::{self, FlashEvent};
@@ -40,6 +35,7 @@ const NETWORK_ERROR_MARKERS: [&str; 5] = [
 pub struct App {
     version: String,
     statuses: [TaskStatus; TASK_NAMES.len()],
+    auto_upload_status: Option<TaskStatus>,
     output: Vec<OutputLine>,
     scroll: u16,
     auto_scroll: bool,
@@ -65,6 +61,7 @@ impl App {
         Self {
             version: read_version_number().unwrap_or_else(|_| "unknown".to_string()),
             statuses: [TaskStatus::Pending; TASK_NAMES.len()],
+            auto_upload_status: upload::auto_upload_enabled().then_some(TaskStatus::Pending),
             output: Vec::new(),
             scroll: 0,
             auto_scroll: true,
@@ -298,6 +295,7 @@ fn run_app(
 
         if auto_upload_pending && matches!(flash_state, FlashState::Hidden) {
             auto_upload_pending = false;
+            app.auto_upload_status = Some(TaskStatus::Running);
             start_upload(&mut flash_state, &mut original_ssid, &flash_tx, true);
         }
 
@@ -323,6 +321,13 @@ fn run_app(
                         if result.is_ok() {
                             upload::remember_last_network(ssid);
                         }
+                        if app.auto_upload_status == Some(TaskStatus::Running) {
+                            app.auto_upload_status = Some(if result.is_ok() {
+                                TaskStatus::Done
+                            } else {
+                                TaskStatus::Failed
+                            });
+                        }
                         flash_state = FlashState::Finished { log: log.clone(), result };
                     }
                 }
@@ -336,33 +341,16 @@ fn run_app(
                 .split(frame.area());
 
             let show_flash_hint = app.finished && !app.has_error() && matches!(flash_state, FlashState::Hidden);
-            let left_chunks = if show_flash_hint {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0), Constraint::Length(6)])
-                    .split(chunks[0])
-            } else {
-                Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Min(0)])
-                    .split(chunks[0])
-            };
 
-            let items: Vec<ListItem> = TASK_NAMES
+            let mut items: Vec<ListItem> = TASK_NAMES
                 .iter()
                 .zip(app.statuses.iter())
                 .map(|(name, status)| {
                     let (marker, style) = match status {
                         TaskStatus::Pending => (" ", Style::default().fg(Color::DarkGray)),
-                        TaskStatus::Running => (
-                            "~",
-                            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-                        ),
+                        TaskStatus::Running => ("~", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),),
                         TaskStatus::Done => ("✓", Style::default().fg(Color::Green)),
-                        TaskStatus::Failed => (
-                            "✗",
-                            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-                        ),
+                        TaskStatus::Failed => ("✗", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),),
                     };
                     ListItem::new(Line::from(vec![
                         Span::styled(format!("[{marker}] "), style),
@@ -371,32 +359,52 @@ fn run_app(
                 })
                 .collect();
 
-            let list = List::new(items)
-                .block(Block::default().borders(Borders::ALL).title(format!("Tasks · v{}", app.version)));
-            frame.render_widget(list, left_chunks[0]);
+            let (marker, style) = match app.auto_upload_status {
+                None => ("-", Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
+                Some(TaskStatus::Pending) => (" ", Style::default().fg(Color::DarkGray)),
+                Some(TaskStatus::Running) => ("~", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Some(TaskStatus::Done) => ("✓", Style::default().fg(Color::Green)),
+                Some(TaskStatus::Failed) => ("✗", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            };
+            let ssid = upload::last_network().unwrap_or_else(|| "No known SSID".to_string());
+            items.push(ListItem::new(vec![
+                Line::from(vec![
+                    Span::styled(format!("[{marker}] "), style),
+                    Span::styled("Upload to", style),
+                ]),
+                Line::from(Span::styled(format!("    {ssid}"), style)),
+            ]));
 
-            if show_flash_hint {
-                let auto_upload_line = match (upload::last_network(), upload::auto_upload_enabled()) {
-                    (Some(ssid), true) => format!("a: auto upload on ({ssid})"),
-                    (Some(_), false) => "a: auto upload off".to_string(),
-                    (None, _) => "a: auto upload unavailable".to_string(),
-                };
-                let hint_lines = vec![
+            let tasks_block = Block::default()
+                .borders(Borders::ALL)
+                .title(format!("Tasks · v{}", app.version));
+            let hint_height = if show_flash_hint { 2 } else { 1 };
+            let task_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(0), Constraint::Length(hint_height)])
+                .split(tasks_block.inner(chunks[0]));
+            frame.render_widget(tasks_block, chunks[0]);
+            frame.render_widget(List::new(items), task_chunks[0]);
+
+            let auto_upload_hint = match upload::last_network() {
+                Some(_) => "a: toggle auto upload",
+                None => "auto upload unavailable",
+            };
+            let mut hint_lines = if show_flash_hint {
+                vec![
                     Line::from(Span::styled(
-                        "Press Enter or f",
-                        Style::default().fg(Color::Cyan),
+                        "f: upload to pi",
+                        Style::default().fg(Color::DarkGray),
                     )),
-                    Line::from(Span::styled(
-                        "to upload this update",
-                        Style::default().fg(Color::Cyan),
-                    )),
-                    Line::from(Span::styled(auto_upload_line, Style::default().fg(Color::DarkGray))),
-                ];
-                let hint = Paragraph::new(hint_lines)
-                    .block(Block::default().borders(Borders::ALL).title("Update"))
-                    .wrap(Wrap { trim: true });
-                frame.render_widget(hint, left_chunks[1]);
-            }
+                ]
+            } else {
+                Vec::new()
+            };
+            hint_lines.push(Line::from(Span::styled(
+                auto_upload_hint,
+                Style::default().fg(Color::DarkGray),
+            )));
+            frame.render_widget(Paragraph::new(hint_lines), task_chunks[1]);
 
             let right_chunks = if app.network_error {
                 Layout::default()
@@ -451,12 +459,18 @@ fn run_app(
                 frame.render_widget(warning, right_chunks[1]);
             }
 
-            render_flash_overlay(frame, &flash_state);
+            render_flash_overlay(frame, right_chunks[0], &flash_state);
         })?;
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Release {
+                    if key.code == KeyCode::Char('a') && upload::last_network().is_some() {
+                        app.auto_upload_status = upload::toggle_auto_upload()
+                            .then_some(TaskStatus::Pending);
+                        continue;
+                    }
+
                     if !matches!(flash_state, FlashState::Hidden) {
                         if handle_flash_key(
                             &mut flash_state,
@@ -475,11 +489,6 @@ fn run_app(
                         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                             return Ok(RunOutcome::Quit)
                         }
-                        KeyCode::Char('a') if app.finished && !app.has_error() => {
-                            if upload::last_network().is_some() {
-                                upload::toggle_auto_upload();
-                            }
-                        }
                         KeyCode::Char('f') if app.finished && !app.has_error() => {
                             start_upload(&mut flash_state, &mut original_ssid, &flash_tx, false);
                         }
@@ -488,9 +497,9 @@ fn run_app(
                                 input: app.version.clone(),
                             };
                         }
-                        KeyCode::Enter if app.finished && !app.has_error() => {
-                            start_upload(&mut flash_state, &mut original_ssid, &flash_tx, false);
-                        }
+                        // KeyCode::Enter if app.finished && !app.has_error() => {
+                        //     start_upload(&mut flash_state, &mut original_ssid, &flash_tx, false);
+                        // }
                         KeyCode::Enter if app.finished => return Ok(RunOutcome::Retry),
                         KeyCode::Char('r') => return Ok(RunOutcome::Retry),
                         KeyCode::Up => {
@@ -617,12 +626,15 @@ fn handle_flash_key(
 }
 
 /// Renders the flash-to-pi popup on top of the main UI, if visible.
-fn render_flash_overlay(frame: &mut ratatui::Frame, flash_state: &FlashState) {
+fn render_flash_overlay(
+    frame: &mut ratatui::Frame,
+    area: ratatui::layout::Rect,
+    flash_state: &FlashState,
+) {
     if matches!(flash_state, FlashState::Hidden) {
         return;
     }
 
-    let area = frame.area();
     let visible_height = area.height.saturating_sub(2) as usize;
 
     let (title, lines): (&str, Vec<Line>) = match flash_state {
@@ -691,14 +703,15 @@ fn render_flash_overlay(frame: &mut ratatui::Frame, flash_state: &FlashState) {
                 ))),
             }
             lines.push(Line::default());
+            lines.push(Line::from("Connection to pi remains active until closed"));
             lines.push(Line::from("Press Enter or Esc to close"));
-            ("Flash to pi", lines)
+            ("Upload finished", lines)
         }
     };
 
-    frame.render_widget(Clear, area);
     let paragraph = Paragraph::new(lines)
         .block(Block::default().borders(Borders::ALL).title(title))
         .wrap(Wrap { trim: true });
+    frame.render_widget(Clear, area);
     frame.render_widget(paragraph, area);
 }

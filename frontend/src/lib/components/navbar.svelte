@@ -28,7 +28,7 @@
         class:active={activeTab === 'sessions'}
         aria-pressed={activeTab === 'sessions'}
     >
-        <span class="tab_label sessions_label">Fahrtenbuch</span>
+        <span class="tab_label">Fahrtenbuch</span>
     </button>
     <button
         type="button"
@@ -37,7 +37,7 @@
         class:active={activeTab === 'settings'}
         aria-pressed={activeTab === 'settings'}
     >
-        <span class="tab_label">Einstellungen</span>
+        <span class="tab_label">Settings</span>
     </button>
 </nav>
 
@@ -58,6 +58,7 @@
         box-sizing: border-box;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: center;
         gap: var(--tabbar-gap);
         padding: var(--tabbar-padding);
         margin: 1rem 0;
@@ -142,10 +143,6 @@
         font-weight: 700;
         letter-spacing: 0.01em;
         white-space: nowrap;
-    }
-
-    .sessions_label {
-        transform: translateX(-0.2rem);
     }
 
     @media (prefers-reduced-motion: reduce) {
