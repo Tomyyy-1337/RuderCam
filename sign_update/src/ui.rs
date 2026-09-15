@@ -282,14 +282,7 @@ pub fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -
     terminal.show_cursor()
 }
 
-pub fn run_ui(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    rx: std::sync::mpsc::Receiver<AppEvent>,
-) -> io::Result<RunOutcome> {
-    run_app(terminal, rx)
-}
-
-fn run_app(
+pub fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     rx: std::sync::mpsc::Receiver<AppEvent>,
 ) -> io::Result<RunOutcome> {
@@ -594,9 +587,6 @@ fn run_app(
                                 input: app.version.clone(),
                             };
                         }
-                        // KeyCode::Enter if app.finished && !app.has_error() => {
-                        //     start_upload(&mut flash_state, &mut original_ssid, &flash_tx, false);
-                        // }
                         KeyCode::Enter if app.finished => return Ok(RunOutcome::Retry),
                         KeyCode::Char('r') => return Ok(RunOutcome::Retry),
                         KeyCode::Up => {
@@ -733,7 +723,6 @@ fn handle_flash_key(
     restart
 }
 
-/// Renders the flash-to-pi popup on top of the main UI, if visible.
 fn render_flash_overlay(
     frame: &mut ratatui::Frame,
     area: ratatui::layout::Rect,

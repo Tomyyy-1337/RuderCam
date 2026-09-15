@@ -8,7 +8,7 @@ use std::{io, sync::mpsc, thread};
 
 use events::AppEvent;
 use pipeline::run_pipeline;
-use ui::{RunOutcome, init_terminal, restore_terminal, run_ui};
+use ui::{RunOutcome, init_terminal, restore_terminal, run_app};
 
 fn main() -> io::Result<()> {
     let mut terminal = init_terminal()?;
@@ -20,7 +20,7 @@ fn main() -> io::Result<()> {
             run_pipeline(tx);
         });
 
-        if run_ui(&mut terminal, rx)? == RunOutcome::Quit {
+        if run_app(&mut terminal, rx)? == RunOutcome::Quit {
             break;
         }
     }
