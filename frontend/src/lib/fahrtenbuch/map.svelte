@@ -23,6 +23,7 @@
     import type { GpsPosition, Waypoint } from "../types";
 
     const DEFAULT_CENTER: Waypoint = [8.472401705884762, 49.363691016649035];
+    const MARKER_FIT_PADDING = 35;
 
     let { waypoints = [] }: { waypoints: GpsPosition[] } = $props();
 
@@ -74,6 +75,13 @@
         });
     };
 
+    const getMarkerAwarePadding = (padding: number) => ({
+        top: Math.max(padding, MARKER_FIT_PADDING),
+        right: padding,
+        bottom: padding,
+        left: padding
+    });
+
     const buildInitialMapOptions = (points: Waypoint[]) => {
         if (points.length <= 1) {
             return {
@@ -90,7 +98,7 @@
         return {
             bounds,
             fitBoundsOptions: {
-                padding: 50,
+                padding: getMarkerAwarePadding(50),
                 maxZoom: 15,
                 animate: false,
                 duration: 0
@@ -98,7 +106,7 @@
         };
     };
 
-    const fitMapToWaypoints = (map: Map, points: Waypoint[], options: { maxZoom?: number; animate?: boolean; duration?: number } = {}): void => {
+    const fitMapToWaypoints = (map: Map, points: Waypoint[], options: { maxZoom?: number; animate?: boolean; duration?: number; padding?: number } = {}): void => {
         if (points.length <= 1) {
             return;
         }
@@ -108,8 +116,10 @@
             new LngLatBounds(points[0], points[0])
         );
 
+        const padding = options.padding ?? (isMapFullscreen ? 60 : 12);
+
         map.fitBounds(bounds, {
-            padding: 50,
+            padding: getMarkerAwarePadding(padding),
             maxZoom: options.maxZoom ?? 15,
             animate: options.animate ?? false,
             duration: options.duration ?? 0
@@ -170,7 +180,7 @@
             }
 
             map.resize();
-            fitMapToWaypoints(map, normalizedWaypoints, { animate: true, duration: 300 });
+            fitMapToWaypoints(map, normalizedWaypoints, { animate: true, duration: 300, padding: isMapFullscreen ? 80 : 12 });
         });
     };
 
@@ -224,7 +234,23 @@
         const handleOnline = (): void => {
             reloadMapTiles();
         };
+
+        const handleWindowResize = (): void => {
+            const map = mapInstance;
+            if (!map) {
+                return;
+            }
+
+            requestAnimationFrame(() => {
+                map.resize();
+                if (normalizedWaypoints.length >= 2) {
+                    fitMapToWaypoints(map, normalizedWaypoints, { animate: true, duration: 220, padding: isMapFullscreen ? 80 : 12 });
+                }
+            });
+        };
+
         window.addEventListener("online", handleOnline);
+        window.addEventListener("resize", handleWindowResize);
 
         const initializeMap = async () => {
             const { baseUrl, validFiles } = await discoverPmtilesBaseUrl();
@@ -286,6 +312,7 @@
             cancelled = true;
             unsubscribeTheme();
             window.removeEventListener("online", handleOnline);
+            window.removeEventListener("resize", handleWindowResize);
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
             resizeObserver?.disconnect();
             resizeObserver = undefined;

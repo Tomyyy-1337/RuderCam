@@ -19,7 +19,7 @@
         align-items: center;
         justify-content: center;
         gap: 0.2rem;
-        min-height: 6rem;
+        min-height: 5rem;
         padding: 0.9rem 0.7rem;
         border-radius: 0.75em;
         background-color: var(--background);

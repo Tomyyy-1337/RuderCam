@@ -87,7 +87,7 @@
         }
 
         activeTab = nextTab;
-        history.pushState({ appHistory: "tab", activeTab: nextTab }, "", window.location.href);
+        window.history.pushState({ activeTab: nextTab }, "", window.location.href);
     }
 
     onMount(() => {
@@ -95,21 +95,23 @@
         setTheme(theme);
 
         const storedActiveTab = localStorage.getItem("active_tab");
-        const initialTab = storedActiveTab ? (storedActiveTab as AppTab) : "camera";
-        activeTab = initialTab;
-        history.replaceState({ appHistory: "tab", activeTab: initialTab }, "", window.location.href);
+        if (storedActiveTab) {
+            activeTab = storedActiveTab as AppTab;
+        }
 
-        const handlePagePopstate = (): void => {
-            if (history.state?.accordionOverlay) {
-                return;
-            }
+        const previousHistoryState = (window.history.state as { activeTab?: AppTab } | null) ?? {};
+        if (previousHistoryState.activeTab !== activeTab) {
+            window.history.replaceState({ ...previousHistoryState, activeTab }, "", window.location.href);
+        }
 
-            if (history.state?.appHistory === "tab" && typeof history.state?.activeTab === "string") {
-                activeTab = history.state.activeTab as AppTab;
-                return;
+        const handlePopState = (): void => {
+            const nextTab = (window.history.state as { activeTab?: AppTab } | null)?.activeTab;
+            if (nextTab === "camera" || nextTab === "sessions" || nextTab === "settings") {
+                activeTab = nextTab;
             }
         };
-        window.addEventListener("popstate", handlePagePopstate);
+
+        window.addEventListener("popstate", handlePopState);
 
         const storedOverlaySettings = localStorage.getItem("overlay_settings");
         if (storedOverlaySettings) {
@@ -128,7 +130,7 @@
         return () => {
             clearSessionActivityTimeout();
             socket?.close();
-            window.removeEventListener("popstate", handlePagePopstate);
+            window.removeEventListener("popstate", handlePopState);
         };
     });
 
