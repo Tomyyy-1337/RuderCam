@@ -1,7 +1,24 @@
 <script lang="ts">
     import type { AppTab } from "../types";
 
-    let { activeTab = $bindable() }: { activeTab: AppTab } = $props();
+    let {
+        activeTab = $bindable(),
+        onTabSelect,
+    }: {
+        activeTab: AppTab;
+        onTabSelect?: (tab: AppTab) => void;
+    } = $props();
+
+    function selectTab(nextTab: AppTab, event?: MouseEvent): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
+        onTabSelect?.(nextTab);
+    }
 </script>
 
 <nav
@@ -14,7 +31,7 @@
     <div class="tabbar_indicator" aria-hidden="true"></div>
     <button
         type="button"
-        onclick={() => activeTab = 'camera'}
+        onclick={(event) => selectTab('camera', event)}
         class="tab"
         class:active={activeTab === 'camera'}
         aria-pressed={activeTab === 'camera'}
@@ -23,7 +40,7 @@
     </button>
     <button
         type="button"
-        onclick={() => activeTab = 'sessions'}
+        onclick={(event) => selectTab('sessions', event)}
         class="tab"
         class:active={activeTab === 'sessions'}
         aria-pressed={activeTab === 'sessions'}
@@ -32,7 +49,7 @@
     </button>
     <button
         type="button"
-        onclick={() => activeTab = 'settings'}
+        onclick={(event) => selectTab('settings', event)}
         class="tab"
         class:active={activeTab === 'settings'}
         aria-pressed={activeTab === 'settings'}
@@ -95,6 +112,8 @@
     }
 
     .tab {
+        -webkit-appearance: none;
+        appearance: none;
         -webkit-tap-highlight-color: transparent;
         display: flex;
         position: relative;
@@ -116,20 +135,18 @@
             border-color 160ms ease;
     }
 
+    .tab:active,
+    .tab:hover,
+    .tab:focus-visible {
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+        outline: none;
+        transform: none;
+    }
+
     .tab:focus {
         outline: none;
-    }
-
-    .tab:hover {
-        transform: none;
-        color: var(--text);
-        background: color-mix(in srgb, var(--text) 8%, transparent);
-        border-color: color-mix(in srgb, var(--text) 18%, transparent);
-    }
-
-    .tab:focus-visible {
-        outline: 2px solid color-mix(in srgb, var(--button-color) 88%, white 12%);
-        outline-offset: 2px;
     }
 
     .tab.active {

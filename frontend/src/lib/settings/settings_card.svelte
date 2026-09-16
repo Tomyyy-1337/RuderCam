@@ -57,6 +57,6 @@
     }
 
     .content :global(p) {
-        margin: 0.2rem;
+        margin: 0.4rem;
     }
 </style>

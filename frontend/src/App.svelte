@@ -1,6 +1,6 @@
 <main class="container">
-    <PageHeadder {deviceStatus} /> 
-    <Navbar bind:activeTab />
+    <PageHeadder {deviceStatus} />
+    <Navbar bind:activeTab onTabSelect={setActiveTab} />
 
     {#if activeTab === "camera"}
         {#if deviceStatus.isConnected}
@@ -81,27 +81,35 @@
     let socket: WebSocket | null = null;
     let sessionActivityTimeout: number | null = null;
 
+    function setActiveTab(nextTab: AppTab): void {
+        if (nextTab === activeTab) {
+            return;
+        }
+
+        activeTab = nextTab;
+        history.pushState({ appHistory: "tab", activeTab: nextTab }, "", window.location.href);
+    }
+
     onMount(() => {
         const theme = (localStorage.getItem("theme") as Theme | null) ?? "dark";
         setTheme(theme);
 
-        history.replaceState({ ...(history.state ?? {}), appHistory: "base" }, "");
-        history.pushState({ ...(history.state ?? {}), appHistory: "sentinel" }, "");
+        const storedActiveTab = localStorage.getItem("active_tab");
+        const initialTab = storedActiveTab ? (storedActiveTab as AppTab) : "camera";
+        activeTab = initialTab;
+        history.replaceState({ appHistory: "tab", activeTab: initialTab }, "", window.location.href);
+
         const handlePagePopstate = (): void => {
             if (history.state?.accordionOverlay) {
                 return;
             }
 
-            if (history.state?.appHistory === "base") {
-                history.pushState({ ...(history.state ?? {}), appHistory: "sentinel" }, "");
+            if (history.state?.appHistory === "tab" && typeof history.state?.activeTab === "string") {
+                activeTab = history.state.activeTab as AppTab;
+                return;
             }
         };
         window.addEventListener("popstate", handlePagePopstate);
-
-        const storedActiveTab = localStorage.getItem("active_tab");
-        if (storedActiveTab) {
-            activeTab = storedActiveTab as AppTab;
-        }
 
         const storedOverlaySettings = localStorage.getItem("overlay_settings");
         if (storedOverlaySettings) {

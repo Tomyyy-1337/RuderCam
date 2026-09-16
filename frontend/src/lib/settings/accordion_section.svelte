@@ -222,7 +222,6 @@
         padding: 1rem clamp(0.75rem, 1.5vw, 1.25rem);
         overflow: auto;
         background: var(--section-background);
-        border-inline: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
         box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
     }
 
