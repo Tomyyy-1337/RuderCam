@@ -44,7 +44,6 @@
                     ✕
                 </button>
             </div>
-
             <div class="trip-body">
                 <div class="map-shell">
                     {#if (fahrt.gps_positions && fahrt.gps_positions.length > 0)}
