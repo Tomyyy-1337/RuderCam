@@ -49,6 +49,7 @@
     let waitingSince: number | null = null;
     let stablePlaybackSince: number | null = null;
     let streamAttachedAt = 0;
+    let scrollPositionBeforeIOSFullscreen = 0;
 
     const MAX_RECONNECT_DELAY_MS = 4000;
     const PLAY_RETRY_DELAY_MS = 250;
@@ -108,6 +109,10 @@
             hardReconnect(100, "network-offline");
         };
 
+        const handleViewportChange = () => {
+            window.requestAnimationFrame(syncIOSFullscreenViewport);
+        };
+
         let cleanupVideoListeners: (() => void) | null = null;
 
         if (videoElement !== null) {
@@ -119,6 +124,9 @@
         window.addEventListener("online", handleOnline);
         window.addEventListener("offline", handleOffline);
         window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("orientationchange", handleViewportChange);
+        window.visualViewport?.addEventListener("resize", handleViewportChange);
+        window.visualViewport?.addEventListener("scroll", handleViewportChange);
 
         const video = document.getElementById("myvideo");
 
@@ -132,7 +140,11 @@
             window.removeEventListener("online", handleOnline);
             window.removeEventListener("offline", handleOffline);
             window.removeEventListener("beforeunload", handleBeforeUnload);
+            window.removeEventListener("orientationchange", handleViewportChange);
+            window.visualViewport?.removeEventListener("resize", handleViewportChange);
+            window.visualViewport?.removeEventListener("scroll", handleViewportChange);
             cleanupVideoListeners?.();
+            clearIOSFullscreenPage();
             handleBeforeUnload();
         };
     });
@@ -155,12 +167,59 @@
 
         iosFullscreen = true;
         fullscreen = true;
+        scrollPositionBeforeIOSFullscreen = window.scrollY;
+        document.documentElement.classList.add("ios-fullscreen-active");
+
+        window.requestAnimationFrame(() => {
+            window.scrollTo(0, 1);
+            syncIOSFullscreenViewport();
+        });
     };
 
     function deactivateIOSFullscreen() {
         iosFullscreen = false;
         fullscreen = false;
+        clearIOSFullscreenViewport();
+        clearIOSFullscreenPage();
         screen.orientation?.unlock?.();
+    }
+
+    function clearIOSFullscreenPage() {
+        if (!document.documentElement.classList.contains("ios-fullscreen-active")) {
+            return;
+        }
+
+        document.documentElement.classList.remove("ios-fullscreen-active");
+        window.scrollTo(0, scrollPositionBeforeIOSFullscreen);
+    }
+
+    function syncIOSFullscreenViewport() {
+        if (!iosFullscreen || videoShell === null) {
+            return;
+        }
+
+        const viewport = window.visualViewport;
+        const width = viewport?.width ?? window.innerWidth;
+        const height = viewport?.height ?? window.innerHeight;
+        const videoWidth = videoElement?.videoWidth || 16;
+        const videoHeight = videoElement?.videoHeight || 9;
+        const scale = Math.min(width / videoWidth, height / videoHeight);
+
+        videoShell.style.setProperty("--ios-viewport-width", `${width}px`);
+        videoShell.style.setProperty("--ios-viewport-height", `${height}px`);
+        videoShell.style.setProperty("--ios-video-width", `${videoWidth * scale}px`);
+        videoShell.style.setProperty("--ios-video-height", `${videoHeight * scale}px`);
+    }
+
+    function clearIOSFullscreenViewport() {
+        if (videoShell === null) {
+            return;
+        }
+
+        videoShell.style.removeProperty("--ios-viewport-width");
+        videoShell.style.removeProperty("--ios-viewport-height");
+        videoShell.style.removeProperty("--ios-video-width");
+        videoShell.style.removeProperty("--ios-video-height");
     }
 
     function resetVideo() {
@@ -299,6 +358,10 @@
     }
 
     function attachVideoEventListeners(video: HTMLVideoElement) {
+        const onVideoSizeChange = () => {
+            syncIOSFullscreenViewport();
+        };
+
         const onTimeUpdate = () => {
             if (video.currentTime > lastObservedVideoTime + 0.01) {
                 lastObservedVideoTime = video.currentTime;
@@ -331,6 +394,8 @@
         video.addEventListener("waiting", onWaiting);
         video.addEventListener("stalled", onStalled);
         video.addEventListener("ended", onEnded);
+        video.addEventListener("loadedmetadata", onVideoSizeChange);
+        video.addEventListener("resize", onVideoSizeChange);
 
         return () => {
             video.removeEventListener("timeupdate", onTimeUpdate);
@@ -338,6 +403,8 @@
             video.removeEventListener("waiting", onWaiting);
             video.removeEventListener("stalled", onStalled);
             video.removeEventListener("ended", onEnded);
+            video.removeEventListener("loadedmetadata", onVideoSizeChange);
+            video.removeEventListener("resize", onVideoSizeChange);
         };
     }
 
@@ -516,7 +583,7 @@
                 },
             });
 
-            if (generation !== reconnectGeneration) {
+                        if (generation !== reconnectGeneration) {
                 newReader.close();
                 return;
             }
@@ -539,6 +606,11 @@
 
 
 <style>
+    :global(html.ios-fullscreen-active),
+    :global(html.ios-fullscreen-active body) {
+        min-height: calc(100% + 1px);
+    }
+
     section {
         display: flex;
         flex-direction: column;
@@ -593,19 +665,28 @@
 
     .video-shell.ios-fullscreen {
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
         z-index: 1000;
-        width: 100vw;
-        height: 100dvh;
+        width: var(--ios-viewport-width, 100vw);
+        height: var(--ios-viewport-height, 100svh);
         max-width: none;
         max-height: none;
         aspect-ratio: auto;
         border-radius: 0;
-        overflow: visible;
+        overflow: hidden;
     }
 
     .video-shell.ios-fullscreen video {
-        object-fit: contain;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: var(--ios-video-width, 100%);
+        height: var(--ios-video-height, 100%);
+        max-width: 100%;
+        max-height: 100%;
+        transform: translate(-50%, -50%);
+        object-fit: fill;
     }
 
     .fullscreen-btn {
