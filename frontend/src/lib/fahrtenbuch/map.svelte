@@ -1,5 +1,14 @@
-<div bind:this={mapShellElement} class="map-shell">
+<div bind:this={mapShellElement} class:ios-fullscreen={iosFullscreen} class="map-shell">
     <div bind:this={mapElement} class="map"></div>
+    {#if usesIOSFullscreenFallback}
+        <button
+            type="button"
+            class="map-fullscreen-button"
+            onclick={toggleIOSFullscreen}
+            aria-label={iosFullscreen ? "Karte verkleinern" : "Karte vergroessern"}
+            title={iosFullscreen ? "Karte verkleinern" : "Karte vergroessern"}
+        >{iosFullscreen ? "x" : "+"}</button>
+    {/if}
 </div>
 
 <script lang="ts">
@@ -130,7 +139,9 @@
     let mapElement: HTMLDivElement | undefined;
     let mapInstance: Map | undefined;
     let resizeObserver: ResizeObserver | undefined;
-    let isMapFullscreen = false;
+    let isMapFullscreen = $state(false);
+    let iosFullscreen = $state(false);
+    let usesIOSFullscreenFallback = $state(false);
     let activePmtilesFiles: string[] = [];
 
     const setMapInteractionEnabled = (enabled: boolean): void => {
@@ -181,6 +192,26 @@
 
             map.resize();
             fitMapToWaypoints(map, normalizedWaypoints, { animate: true, duration: 300, padding: isMapFullscreen ? 80 : 12 });
+        });
+    };
+
+    const toggleIOSFullscreen = (): void => {
+        iosFullscreen = !iosFullscreen;
+        isMapFullscreen = iosFullscreen;
+        setMapInteractionEnabled(isMapFullscreen);
+
+        requestAnimationFrame(() => {
+            const map = mapInstance;
+            if (!map) {
+                return;
+            }
+
+            map.resize();
+            fitMapToWaypoints(map, normalizedWaypoints, {
+                animate: true,
+                duration: 300,
+                padding: isMapFullscreen ? 80 : 12
+            });
         });
     };
 
@@ -277,7 +308,10 @@
             });
 
             mapInstance = map;
-            map.addControl(new FullscreenControl({ container: mapShell }), "top-right");
+            usesIOSFullscreenFallback = typeof mapShell.requestFullscreen !== "function";
+            if (!usesIOSFullscreenFallback) {
+                map.addControl(new FullscreenControl({ container: mapShell }), "top-right");
+            }
             setMapInteractionEnabled(false);
             document.addEventListener("fullscreenchange", handleFullscreenChange);
             resizeObserver = new ResizeObserver(() => {
@@ -327,11 +361,45 @@
     .map-shell {
         width: 100%;
         height: 100%;
+        position: relative;
         overflow: hidden;
+    }
+
+    .map-shell.ios-fullscreen {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        width: 100vw;
+        height: 100dvh;
     }
 
     .map {
         width: 100%;
         height: 100%;
+    }
+
+    .map-fullscreen-button {
+        position: absolute;
+        top: 0.625rem;
+        right: 0.625rem;
+        z-index: 2;
+        display: grid;
+        place-items: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        padding: 0;
+        color: #202124;
+        background: #fff;
+        border: 0;
+        border-radius: 2px;
+        box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .map-fullscreen-button:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 2px;
     }
 </style>

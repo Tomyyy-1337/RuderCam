@@ -1,8 +1,17 @@
 <section>
-    <div class="video-shell" bind:this={videoShell}>
+    <div class:ios-fullscreen={iosFullscreen} class="video-shell" bind:this={videoShell}>
         <video id="myvideo" bind:this={videoElement} controls muted autoplay playsinline></video>
         {#if fullscreen}
             <Overlay {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
+            {#if iosFullscreen}
+                <button
+                    onclick={deactivateIOSFullscreen}
+                    class="exit-fullscreen-btn"
+                    type="button"
+                    title="Vollbild beenden"
+                    aria-label="Vollbild beenden"
+                >&times;</button>
+            {/if}
         {:else}
             <button
                 onclick={activateFullscreen}
@@ -50,6 +59,7 @@
     const STABLE_RECOVERY_MS = 2500;
 
     let fullscreen = $state(false);
+    let iosFullscreen = $state(false);
 
     let {
         deviceStatus,
@@ -129,19 +139,29 @@
 
     const activateFullscreen = async () => {
         if (videoShell?.requestFullscreen) {
-            await videoShell.requestFullscreen();
-
             try {
+                await videoShell.requestFullscreen();
+
                 const orientation = screen.orientation as ScreenOrientation & {
                     lock?: (value: string) => Promise<void>;
                 };
 
                 await orientation.lock?.("landscape");
             } catch (err) {
-                console.warn("Could not lock orientation to landscape", err);
+                console.warn("Could not open fullscreen video", err);
             }
+            return;
         }
+
+        iosFullscreen = true;
+        fullscreen = true;
     };
+
+    function deactivateIOSFullscreen() {
+        iosFullscreen = false;
+        fullscreen = false;
+        screen.orientation?.unlock?.();
+    }
 
     function resetVideo() {
         if (videoElement === null) {
@@ -571,6 +591,23 @@
         object-fit: contain;
     }
 
+    .video-shell.ios-fullscreen {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        width: 100vw;
+        height: 100dvh;
+        max-width: none;
+        max-height: none;
+        aspect-ratio: auto;
+        border-radius: 0;
+        overflow: visible;
+    }
+
+    .video-shell.ios-fullscreen video {
+        object-fit: contain;
+    }
+
     .fullscreen-btn {
         position: absolute;
         right: 0.75rem;
@@ -639,6 +676,23 @@
     .video-shell:fullscreen .fullscreen-btn {
         left: 1rem;
         bottom: 1rem;
+    }
+
+    .exit-fullscreen-btn {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        z-index: 6;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        color: #f2f5f8;
+        background: rgba(18, 20, 22, 0.62);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        font-size: 1.8rem;
+        line-height: 1;
+        cursor: pointer;
     }
 
     @media (max-width: 768px) {
