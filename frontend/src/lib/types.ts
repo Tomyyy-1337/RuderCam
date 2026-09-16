@@ -86,6 +86,7 @@ export interface AppConfig {
     auto_shutdown_time: number;
     focus_mode: FocusMode;
     metering_mode: MeteringMode;
+    bitrate: number;
 }
 
 export type Waypoint = [number, number]
@@ -149,6 +150,7 @@ export function isAppConfig(value: unknown): value is AppConfig {
         && typeof value.ssid === 'string'
         && typeof value.password === 'string'
         && typeof value.auto_shutdown_time === 'number'
-        && (value.focus_mode === undefined || value.focus_mode === 'Auto' || value.focus_mode === 'Fixed')
-        && (value.metering_mode === undefined || value.metering_mode === 'Average' || value.metering_mode === 'Center')
+        && (value.focus_mode === 'Auto' || value.focus_mode === 'Fixed' || value.focus_mode === undefined)
+        && (value.metering_mode === 'Average' || value.metering_mode === 'Center' || value.metering_mode === undefined)
+        && typeof value.bitrate === 'number'
 }

@@ -1,6 +1,4 @@
-<article>
-    <h4>Automatisches Herunterfahren</h4>
-    <p>Das Gerät fährt nach {config.auto_shutdown_time} Minuten automatisch herunter wenn keine Verbindung zum Smartphone besteht.</p>
+<SettingsCard title="Automatisches Herunterfahren" description="Das Gerät fährt nach {config.auto_shutdown_time} Minuten automatisch herunter wenn keine Verbindung zum Smartphone besteht.">
     <input id="shutdown-timer" name="shutdown-timer" type="number" placeholder="Zeit in Minuten" bind:value={shutdownTimerInput}>
     <button style="width:100%;" onclick={handleSaveShutdownTimer}>
         Speichern
@@ -13,11 +11,11 @@
         showCancel={false}
         tone="warning"
     />
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
+    import SettingsCard from "./settings_card.svelte";
     import type { AppConfig } from "../types";
 
     let { config }: { config: AppConfig } = $props();

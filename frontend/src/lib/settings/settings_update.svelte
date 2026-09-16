@@ -1,7 +1,4 @@
-<article>
-    <h4>Update Firmware</h4>
-
-    <p>Aktuelle Version: {currentVersion}</p>
+<SettingsCard title="Update Firmware" description="Aktuelle Version: {currentVersion}">
 
     <p>Um die aktuelle version der Firmware herunterzuladen trennen sie die WLAN Verbindung zur Ruder Kamera und verbinden sie sich mit Mobilen Daten oder einem anderen WLAN.</p>
 
@@ -11,11 +8,11 @@
 
     <button style="width:100%;" onclick={() => window.open(`http://${window.location.hostname}:4000`, '_blank')}>Update Service öffnen</button>
 
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 
 <script>
     import { onMount } from 'svelte';
+    import SettingsCard from './settings_card.svelte';
 
     let currentVersion = $state('Loading...');
 

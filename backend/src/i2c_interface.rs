@@ -151,9 +151,15 @@ impl I2CInterface {
 
         let formated_config_data = Self::format_config_data(&config_data);
 
+        let mut max_tries = 10;
         // Try to write the config to EEPROM, retrying on failure
         while self.write_eeprom_blocking(0x0000, &formated_config_data).is_err() {
             eprintln!("Failed to write config to EEPROM. Retrying...");
+            max_tries -= 1;
+            if max_tries == 0 {
+                eprintln!("Failed to write config to EEPROM after multiple attempts.");
+                break;
+            }
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
     }
@@ -193,10 +199,12 @@ impl I2CInterface {
 
         let mut offset = 0;
         while offset < data.len() {
-            let chunk_size = std::cmp::min(PAGE_SIZE, data.len() - offset);
-            let mut write_buffer = Vec::with_capacity(2 + chunk_size);
-            
             let addr = register + offset as u16;
+            let page_offset = (addr as usize) % PAGE_SIZE;
+            let page_remaining = PAGE_SIZE - page_offset;
+            let chunk_size = std::cmp::min(page_remaining, data.len() - offset);
+            let mut write_buffer = Vec::with_capacity(2 + chunk_size);
+
             write_buffer.push((addr >> 8) as u8);
             write_buffer.push(addr as u8);
             write_buffer.extend_from_slice(&data[offset..offset + chunk_size]);

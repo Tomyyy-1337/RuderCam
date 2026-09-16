@@ -1,27 +1,19 @@
-<article>
-    <h4>Overlay Aktivieren/Deaktivieren</h4>
-    <p>Overlay in der Vollbildansicht ein- oder ausblenden.</p>
+<SettingsCard title="Overlay Aktivieren/Deaktivieren" description="Overlay in der Vollbildansicht ein- oder ausblenden.">
     <select id="overlay-show-overlay" name="overlay-show-overlay" bind:value={overlay_settings.show_overlay}>
         <option value={true}>Overlay anzeigen</option>
         <option value={false}>Overlay ausblenden</option>
     </select>
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 
 {#if overlay_settings.show_overlay}
-<article>
-    <h4>Overlay Position</h4>
-    <p>Position des Overlays in der Vollbildansicht.</p>
+<SettingsCard title="Overlay Position" description="Position des Overlays in der Vollbildansicht.">
     <select id="overlay-position" name="overlay-position" bind:value={overlay_settings.position}>
         <option value="top">Overlay Oben</option>
         <option value="bottom">Overlay Unten</option>
     </select>
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 
-<article>
-    <h4>Overlay Elemente</h4>
-    <p>Verwalten welche Elemente im Overlay angezeigt werden sollen.</p>
+<SettingsCard title="Overlay Elemente" description="Verwalten welche Elemente im Overlay angezeigt werden sollen.">
 
     <label class:inactive={!overlay_settings.show_speed} class="toggle-card">
         <input id="overlay-show-speed" name="overlay-show-speed" type="checkbox" bind:checked={overlay_settings.show_speed} />
@@ -53,12 +45,12 @@
         <span>Fahrtzeit</span>
     </label>
 
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 {/if}
 
 <script lang="ts">
     import type { OverlaySettings } from "../types";
+    import SettingsCard from "./settings_card.svelte";
 
     let { overlay_settings = $bindable() }: { overlay_settings: OverlaySettings } = $props();
 </script>
@@ -68,7 +60,7 @@
         display: flex;
         align-items: center;
         width: 100%;
-        margin: 0.65rem 0;
+        margin: 0.1rem;
         padding: 0.9rem 1rem;
         border-radius: 0.9rem;
         background: rgba(255, 255, 255, 0.06);

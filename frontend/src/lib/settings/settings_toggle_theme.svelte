@@ -1,16 +1,14 @@
-<article>
-    <h4>Color Theme</h4>
-    <p>Wechseln zwischen hellem und dunklem Design.</p>
+<SettingsCard title="Color Theme" description="Wechseln zwischen hellem und dunklem Design.">
     <select id="theme-selector" name="theme-selector" bind:value={theme} onchange={handleThemeChange}>
         <option value="light">Helles Design</option>
         <option value="dark">Dunkles Design</option>
     </select>
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
     
 <script lang="ts">
     import { onMount } from "svelte";
     import { setTheme } from "./setTheme";
+    import SettingsCard from "./settings_card.svelte";
     import type { Theme } from "../types";
 
     let theme = $state<Theme>('light');

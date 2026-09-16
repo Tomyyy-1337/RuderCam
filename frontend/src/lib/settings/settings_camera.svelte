@@ -1,6 +1,4 @@
-<article>
-    <h4>Fokusmodus</h4>
-    <p>Autofokus oder festen Fokus für die Kamera auswählen.</p>
+<SettingsCard title="Fokusmodus" description="Autofokus oder festen Fokus für die Kamera auswählen.">
 
     <select id="camera-focus-mode" name="camera-focus-mode" bind:value={focusMode} onchange={saveFocusMode}>
         <option value="Auto">Autofokus</option>
@@ -15,12 +13,9 @@
         {/if}
     </p>
 
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 
-<article>
-    <h4>Belichtungsmessung</h4>
-    <p>Belichtungsmessung für die Kamera auswählen.</p>
+<SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
 
     <select id="camera-metering-mode" name="camera-metering-mode" bind:value={meteringMode} onchange={saveMeteringMode}>
         <option value="Average">Durchschnitt</option>
@@ -35,8 +30,28 @@
         {/if}
     </p>
 
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
+
+<SettingsCard title="Bitrate" description="Die Bitrate für den Livestream einstellen.">
+
+    <select id="camera-bitrate" name="camera-bitrate" bind:value={config.bitrate} onchange={saveBitrate}>
+        <option value={100000}>100kB/s</option>
+        <option value={400000}>400kB/s</option>
+        <option value={800000}>800kB/s</option>
+        <option value={1200000}>1,2MB/s</option>
+        <option value={1600000}>1,6MB/s</option>
+        <option value={2000000}>2,0MB/s</option>
+        <option value={2400000}>2,4MB/s</option>
+    </select>
+
+    <p class="hint">
+        Höhere Bitraten führen zu besserer Bildqualität aber können zu Verbindungsproblemen bei schlechter Netzwerkverbindung führen.
+    </p>
+    <p class="hint">
+        Niedrigere Bitraten schonen die Bandbreite, verschlechtern jedoch die Bildqualität.
+    </p>
+    
+</SettingsCard>
 
 <Dialog
     bind:open={dialogOpen}
@@ -49,6 +64,7 @@
 
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
+    import SettingsCard from "./settings_card.svelte";
     import type { AppConfig, FocusMode, MeteringMode } from "../types";
 
     let { config }: { config: AppConfig } = $props();
@@ -61,9 +77,17 @@
     let dialogTitle = $state("");
     let dialogMessage = $state("");
     let dialogTone = $state<DialogTone>("info");
+    let bitrate = $state<number>(1600000);
+
+    $effect(() => {
+        bitrate = config.bitrate;
+    });
 
     $effect(() => {
         focusMode = config.focus_mode;
+    });
+
+    $effect(() => {
         meteringMode = config.metering_mode;
     });
 
@@ -72,6 +96,30 @@
         dialogMessage = message;
         dialogTone = tone;
         dialogOpen = true;
+    }
+
+    async function saveBitrate(): Promise<void> {
+        const previousBitrate = config.bitrate;
+        config.bitrate = bitrate;
+
+        try {
+            const response = await fetch("/api/set_bitrate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ bitrate: bitrate }),
+            });
+
+            if (!response.ok) {
+                throw new Error("bitrate update failed");
+            }
+
+        } catch {
+            config.bitrate = previousBitrate;
+            bitrate = previousBitrate;
+            openDialog("Speichern fehlgeschlagen", "Die Bitrate konnte nicht gespeichert werden.", "danger");
+        }
     }
 
     async function saveFocusMode(): Promise<void> {

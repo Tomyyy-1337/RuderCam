@@ -1,6 +1,4 @@
-<article>
-    <h4>Fahrtenbuch löschen</h4>
-    <p>Lösche alle Fahrten aus dem Fahrtenbuch.</p>
+<SettingsCard title="Fahrtenbuch löschen" description="Lösche alle Fahrten aus dem Fahrtenbuch.">
     <button style="width:100%;" onclick={deleteFahrtenbuch}>
         Alle Fahrten löschen
     </button>
@@ -13,11 +11,11 @@
         tone="danger"
         onConfirm={deleteConfirmed}
     />
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
+    import SettingsCard from "./settings_card.svelte";
     import type { Writable } from "svelte/store";
     import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
 

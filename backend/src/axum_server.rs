@@ -40,6 +40,7 @@ pub async fn start_server() {
         .route("/api/set_focus_mode", post(change_focus_mode))
         .route("/api/set_metering_mode", post(change_metering_mode))
         .route("/api/get_firmware_version", get(get_current_firmware_version))
+        .route("/api/set_bitrate", post(change_bitrate))
         .route("/ws", get(websocket_handler))
         .nest_service("/maps", get_service(ServeDir::new("./maps")))    
         .fallback_service(ServeDir::new("./static").precompressed_gzip())
@@ -66,6 +67,20 @@ async fn get_current_firmware_version() -> String {
         Err(_) => "No Version".to_string(),
     };
     version
+}
+
+#[derive(serde::Deserialize)]
+struct BitrateMessage {
+    bitrate: u32,
+}
+
+async fn change_bitrate(
+    Json(payload): Json<BitrateMessage>,
+) -> StatusCode {
+    CONFIG.modify(|cfg| cfg.bitrate = payload.bitrate);
+    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
+    I2C_INTERFACE.write_config_to_eeprom().await;
+    StatusCode::OK
 }
 
 #[derive(serde::Deserialize)]

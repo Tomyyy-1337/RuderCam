@@ -57,8 +57,9 @@ impl CameraInterface {
         }
 
         let cmd = format!(
-            "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --intra 25 --hflip 1 --low-latency 1 --bitrate 2000000 --metering {} {} -o - | \
+            "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --intra 25 --hflip 1 --low-latency 1 --bitrate {} --metering {} {} -o - | \
              /usr/bin/ffmpeg -fflags +genpts -flags low_delay -fflags nobuffer -f h264 -i - -c copy -f rtsp -rtsp_transport udp rtsp://127.0.0.1:8554/stream",
+            CONFIG.bitrate,
             CONFIG.metering_mode.to_string(),
             CONFIG.focus_mode.to_arg()
         );

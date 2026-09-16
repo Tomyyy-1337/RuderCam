@@ -85,6 +85,19 @@
         const theme = (localStorage.getItem("theme") as Theme | null) ?? "dark";
         setTheme(theme);
 
+        history.replaceState({ ...(history.state ?? {}), appHistory: "base" }, "");
+        history.pushState({ ...(history.state ?? {}), appHistory: "sentinel" }, "");
+        const handlePagePopstate = (): void => {
+            if (history.state?.accordionOverlay) {
+                return;
+            }
+
+            if (history.state?.appHistory === "base") {
+                history.pushState({ ...(history.state ?? {}), appHistory: "sentinel" }, "");
+            }
+        };
+        window.addEventListener("popstate", handlePagePopstate);
+
         const storedActiveTab = localStorage.getItem("active_tab");
         if (storedActiveTab) {
             activeTab = storedActiveTab as AppTab;
@@ -107,6 +120,7 @@
         return () => {
             clearSessionActivityTimeout();
             socket?.close();
+            window.removeEventListener("popstate", handlePagePopstate);
         };
     });
 
@@ -163,7 +177,7 @@
         clearSessionActivityTimeout();
         sessionActivityTimeout = window.setTimeout(() => {
             deactivateSession();
-        }, 3000);
+        }, 10000);
     }
 
     function clearSessionActivityTimeout(): void {

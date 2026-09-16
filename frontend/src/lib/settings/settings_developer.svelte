@@ -1,13 +1,11 @@
-<article>
-    <h4>Fahrtenbuch Testeintrag</h4>
-    <p>Fügt einen gefälschten Eintrag in das Fahrtenbuch ein.</p>
+<SettingsCard title="Fahrtenbuch Testeintrag" description="Fügt einen gefälschten Eintrag in das Fahrtenbuch ein.">
     <button style="width:100%;" onclick={addFakeEntry}>
         Gefälschten Eintrag hinzufügen  
     </button>
-    <div class="spacer"></div>
-</article>
+</SettingsCard>
 
 <script lang="ts">
+    import SettingsCard from "./settings_card.svelte";
     import type { Writable } from "svelte/store";
     import { FahrtenbuchStore, Session } from "../fahrtenbuch/fahrtenbuchStore";
     import type { GpsPosition, SessionJson } from "../types";

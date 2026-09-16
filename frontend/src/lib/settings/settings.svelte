@@ -19,7 +19,6 @@
             title="Geräteverwaltung"
             description="Einstellungen für Automatisches Herunterfahren und Wlan"
         >
-            <SettingsPowerButton />
             <SettingsShutdownTimer {config} />
             <SettingsChangeSsid {config} />
             <SettingsChangePassword {config} />
@@ -59,7 +58,6 @@
     import SettingsOverlay from "./settings_overlay.svelte";
     import SettingsCamera from "./settings_camera.svelte";
     import SettingsShutdownTimer from "./settings_shutdown_timer.svelte";
-    import SettingsPowerButton from "./settings_power_button.svelte";
     import SettingsChangeSsid from "./settings_change_ssid.svelte";
     import SettingsChangePassword from "./settings_change_password.svelte";
     import SettingsFahrtenbuch from "./settings_fahrtenbuch.svelte";
@@ -72,6 +70,7 @@
         auto_shutdown_time: 5,
         focus_mode: "Fixed",
         metering_mode: "Average",
+        bitrate: 1600000,
     };
 
     function toConfig(value: unknown): AppConfig {
@@ -85,6 +84,7 @@
             auto_shutdown_time: Number(value.auto_shutdown_time || defaultConfig.auto_shutdown_time),
             focus_mode: value.focus_mode || defaultConfig.focus_mode,
             metering_mode: value.metering_mode || defaultConfig.metering_mode,
+            bitrate: Number(value.bitrate || defaultConfig.bitrate),
         };
     }
 

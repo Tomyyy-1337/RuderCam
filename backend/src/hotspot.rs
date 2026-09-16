@@ -21,39 +21,7 @@ impl Hotspot{
         }
     }
 
-    fn nmcli_get(setting: &str) -> Option<String> {
-        let output = Command::new("nmcli")
-            .args(["-t", "-s", "-g", setting, "connection", "show", Self::HOTSPOT_PROFILE_NAME])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .ok()?;
-
-        if !output.status.success() {
-            return None;
-        }
-
-        String::from_utf8(output.stdout)
-            .ok()
-            .map(|s| s.trim().to_string())
-    }
-
-    fn profile_matches(ssid: &str, password: &str) -> bool {
-        let existing_ssid = Self::nmcli_get("802-11-wireless.ssid");
-        let existing_password = Self::nmcli_get("802-11-wireless-security.psk");
-
-        matches!(
-            (existing_ssid, existing_password),
-            (Some(existing_ssid), Some(existing_password))
-                if existing_ssid == ssid && existing_password == password
-        )
-    }
-
     pub fn initialize(ssid: &str, password: &str) {
-        if Self::profile_matches(ssid, password) {
-            return;
-        }
-
         let _ = Self::nmcli(&["connection", "down", Self::HOTSPOT_PROFILE_NAME]);
 
         let _ = Self::nmcli(&["connection", "delete", Self::HOTSPOT_PROFILE_NAME]);
