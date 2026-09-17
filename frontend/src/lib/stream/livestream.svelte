@@ -1,11 +1,11 @@
 <section>
-    <div class:ios-fullscreen={iosFullscreen} class="video-shell" bind:this={videoShell}>
+    <div class="video-shell" class:ios-virtual-fullscreen={iosVirtualFullscreen} bind:this={videoShell}>
         <video id="myvideo" bind:this={videoElement} controls muted autoplay playsinline></video>
         {#if fullscreen}
             <Overlay {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
-            {#if iosFullscreen}
+            {#if iosVirtualFullscreen}
                 <button
-                    onclick={deactivateIOSFullscreen}
+                    onclick={exitIOSVirtualFullscreen}
                     class="exit-fullscreen-btn"
                     type="button"
                     title="Vollbild beenden"
@@ -23,6 +23,21 @@
                 <span class="fullscreen-icon" aria-hidden="true"></span>
                 <span>Vollbild</span>
             </button>
+            {#if showIOSInstallHint}
+                <div class="ios-install-hint">
+                    <button
+                        onclick={() => (showIOSInstallHint = false)}
+                        class="ios-install-hint-close"
+                        type="button"
+                        title="Schließen"
+                        aria-label="Schließen"
+                    >&times;</button>
+                    <p>
+                        Zum installieren auf "Teilen" tippen und "Zum Home-Bildschirm" auswählen.
+                        Danach kann die App im Vollbildmodus genutzt werden.
+                    </p>
+                </div>
+            {/if}
         {/if}
     </div>
 </section>
@@ -49,7 +64,6 @@
     let waitingSince: number | null = null;
     let stablePlaybackSince: number | null = null;
     let streamAttachedAt = 0;
-    let scrollPositionBeforeIOSFullscreen = 0;
 
     const MAX_RECONNECT_DELAY_MS = 4000;
     const PLAY_RETRY_DELAY_MS = 250;
@@ -60,7 +74,8 @@
     const STABLE_RECOVERY_MS = 2500;
 
     let fullscreen = $state(false);
-    let iosFullscreen = $state(false);
+    let showIOSInstallHint = $state(false);
+    let iosVirtualFullscreen = $state(false);
 
     let {
         deviceStatus,
@@ -77,6 +92,19 @@
     onMount(() => {
         setupVideoWatchdog();
         connectReader();
+        showIOSInstallHint = isIOSSafariBrowser();
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape" && iosVirtualFullscreen) {
+                exitIOSVirtualFullscreen();
+            }
+        };
+
+        const handlePopState = () => {
+            if (iosVirtualFullscreen) {
+                exitIOSVirtualFullscreen();
+            }
+        };
 
         const handleFullscreenChange = () => {
             fullscreen = document.fullscreenElement === videoShell;
@@ -109,10 +137,6 @@
             hardReconnect(100, "network-offline");
         };
 
-        const handleViewportChange = () => {
-            window.requestAnimationFrame(syncIOSFullscreenViewport);
-        };
-
         let cleanupVideoListeners: (() => void) | null = null;
 
         if (videoElement !== null) {
@@ -120,13 +144,12 @@
         }
 
         document.addEventListener("fullscreenchange", handleFullscreenChange);
+        document.addEventListener("keydown", handleKeyDown);
         document.addEventListener("visibilitychange", handleVisibilityChange);
         window.addEventListener("online", handleOnline);
         window.addEventListener("offline", handleOffline);
+        window.addEventListener("popstate", handlePopState);
         window.addEventListener("beforeunload", handleBeforeUnload);
-        window.addEventListener("orientationchange", handleViewportChange);
-        window.visualViewport?.addEventListener("resize", handleViewportChange);
-        window.visualViewport?.addEventListener("scroll", handleViewportChange);
 
         const video = document.getElementById("myvideo");
 
@@ -136,90 +159,62 @@
 
         return () => {
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            document.removeEventListener("keydown", handleKeyDown);
             document.removeEventListener("visibilitychange", handleVisibilityChange);
             window.removeEventListener("online", handleOnline);
             window.removeEventListener("offline", handleOffline);
+            window.removeEventListener("popstate", handlePopState);
             window.removeEventListener("beforeunload", handleBeforeUnload);
-            window.removeEventListener("orientationchange", handleViewportChange);
-            window.visualViewport?.removeEventListener("resize", handleViewportChange);
-            window.visualViewport?.removeEventListener("scroll", handleViewportChange);
             cleanupVideoListeners?.();
-            clearIOSFullscreenPage();
             handleBeforeUnload();
         };
     });
 
     const activateFullscreen = async () => {
-        if (videoShell?.requestFullscreen) {
-            try {
-                await videoShell.requestFullscreen();
-
-                const orientation = screen.orientation as ScreenOrientation & {
-                    lock?: (value: string) => Promise<void>;
-                };
-
-                await orientation.lock?.("landscape");
-            } catch (err) {
-                console.warn("Could not open fullscreen video", err);
-            }
-            return;
-        }
-
-        iosFullscreen = true;
-        fullscreen = true;
-        scrollPositionBeforeIOSFullscreen = window.scrollY;
-        document.documentElement.classList.add("ios-fullscreen-active");
-
-        window.requestAnimationFrame(() => {
-            window.scrollTo(0, 1);
-            syncIOSFullscreenViewport();
-        });
-    };
-
-    function deactivateIOSFullscreen() {
-        iosFullscreen = false;
-        fullscreen = false;
-        clearIOSFullscreenViewport();
-        clearIOSFullscreenPage();
-        screen.orientation?.unlock?.();
-    }
-
-    function clearIOSFullscreenPage() {
-        if (!document.documentElement.classList.contains("ios-fullscreen-active")) {
-            return;
-        }
-
-        document.documentElement.classList.remove("ios-fullscreen-active");
-        window.scrollTo(0, scrollPositionBeforeIOSFullscreen);
-    }
-
-    function syncIOSFullscreenViewport() {
-        if (!iosFullscreen || videoShell === null) {
-            return;
-        }
-
-        const viewport = window.visualViewport;
-        const width = viewport?.width ?? window.innerWidth;
-        const height = viewport?.height ?? window.innerHeight;
-        const videoWidth = videoElement?.videoWidth || 16;
-        const videoHeight = videoElement?.videoHeight || 9;
-        const scale = Math.min(width / videoWidth, height / videoHeight);
-
-        videoShell.style.setProperty("--ios-viewport-width", `${width}px`);
-        videoShell.style.setProperty("--ios-viewport-height", `${height}px`);
-        videoShell.style.setProperty("--ios-video-width", `${videoWidth * scale}px`);
-        videoShell.style.setProperty("--ios-video-height", `${videoHeight * scale}px`);
-    }
-
-    function clearIOSFullscreenViewport() {
         if (videoShell === null) {
             return;
         }
 
-        videoShell.style.removeProperty("--ios-viewport-width");
-        videoShell.style.removeProperty("--ios-viewport-height");
-        videoShell.style.removeProperty("--ios-video-width");
-        videoShell.style.removeProperty("--ios-video-height");
+        const orientation = screen.orientation as ScreenOrientation & {
+            lock?: (value: string) => Promise<void>;
+        };
+
+        // iOS never implements Element.requestFullscreen(), not even for standalone
+        // home-screen apps, so fall back to a manually toggled fullscreen layout there.
+        if (isIOSDevice()) {
+            iosVirtualFullscreen = true;
+            fullscreen = true;
+            window.history.pushState({ ...window.history.state, videoFullscreen: true }, "", window.location.href);
+            await orientation.lock?.("landscape").catch(() => {});
+            return;
+        }
+
+        try {
+            await videoShell.requestFullscreen();
+            await orientation.lock?.("landscape");
+        } catch (err) {
+            console.warn("Could not open fullscreen video", err);
+        }
+    };
+
+    function exitIOSVirtualFullscreen() {
+        iosVirtualFullscreen = false;
+        fullscreen = false;
+        screen.orientation?.unlock?.();
+    }
+
+    function isIOSDevice(): boolean {
+        return /iP(hone|od|ad)/.test(navigator.userAgent)
+            || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    }
+
+    // Neither Safari nor standalone home-screen apps support requestFullscreen() on iOS;
+    // the only way to get a chromeless view there is adding the page to the Home Screen.
+    function isIOSSafariBrowser(): boolean {
+        const runningStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true
+            || window.matchMedia("(display-mode: standalone)").matches;
+
+        return isIOSDevice() && !runningStandalone;
     }
 
     function resetVideo() {
@@ -358,10 +353,6 @@
     }
 
     function attachVideoEventListeners(video: HTMLVideoElement) {
-        const onVideoSizeChange = () => {
-            syncIOSFullscreenViewport();
-        };
-
         const onTimeUpdate = () => {
             if (video.currentTime > lastObservedVideoTime + 0.01) {
                 lastObservedVideoTime = video.currentTime;
@@ -394,8 +385,6 @@
         video.addEventListener("waiting", onWaiting);
         video.addEventListener("stalled", onStalled);
         video.addEventListener("ended", onEnded);
-        video.addEventListener("loadedmetadata", onVideoSizeChange);
-        video.addEventListener("resize", onVideoSizeChange);
 
         return () => {
             video.removeEventListener("timeupdate", onTimeUpdate);
@@ -403,8 +392,6 @@
             video.removeEventListener("waiting", onWaiting);
             video.removeEventListener("stalled", onStalled);
             video.removeEventListener("ended", onEnded);
-            video.removeEventListener("loadedmetadata", onVideoSizeChange);
-            video.removeEventListener("resize", onVideoSizeChange);
         };
     }
 
@@ -606,11 +593,6 @@
 
 
 <style>
-    :global(html.ios-fullscreen-active),
-    :global(html.ios-fullscreen-active body) {
-        min-height: calc(100% + 1px);
-    }
-
     section {
         display: flex;
         flex-direction: column;
@@ -643,7 +625,8 @@
         background: black;
     }
 
-    .video-shell:fullscreen {
+    .video-shell:fullscreen,
+    .video-shell.ios-virtual-fullscreen {
         width: 100vw;
         height: 100vh;
         max-width: none;
@@ -655,38 +638,20 @@
         overflow: visible;
     }
 
-    .video-shell:fullscreen video {
+    .video-shell.ios-virtual-fullscreen {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        height: 100dvh;
+    }
+
+    .video-shell:fullscreen video,
+    .video-shell.ios-virtual-fullscreen video {
         width: 100%;
         height: 100%;
         max-height: 100vh;
         max-width: 100vw;
         object-fit: contain;
-    }
-
-    .video-shell.ios-fullscreen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 1000;
-        width: var(--ios-viewport-width, 100vw);
-        height: var(--ios-viewport-height, 100svh);
-        max-width: none;
-        max-height: none;
-        aspect-ratio: auto;
-        border-radius: 0;
-        overflow: hidden;
-    }
-
-    .video-shell.ios-fullscreen video {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: var(--ios-video-width, 100%);
-        height: var(--ios-video-height, 100%);
-        max-width: 100%;
-        max-height: 100%;
-        transform: translate(-50%, -50%);
-        object-fit: fill;
     }
 
     .fullscreen-btn {
@@ -760,18 +725,57 @@
     }
 
     .exit-fullscreen-btn {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-        z-index: 6;
-        width: 2.5rem;
-        height: 2.5rem;
+        position: fixed;
+        top: calc(0.75rem + env(safe-area-inset-top));
+        right: calc(0.75rem + env(safe-area-inset-right));
+        z-index: 2147483647;
+        width: 3rem;
+        height: 3rem;
         padding: 0;
         color: #f2f5f8;
-        background: rgba(18, 20, 22, 0.62);
+        background: rgba(18, 20, 22, 0.84);
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 50%;
         font-size: 1.8rem;
+        line-height: 1;
+        cursor: pointer;
+        touch-action: manipulation;
+    }
+
+    .ios-install-hint {
+        position: absolute;
+        top: calc(0.75rem + env(safe-area-inset-top));
+        left: 0.75rem;
+        right: 0.75rem;
+        z-index: 6;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        color: #f2f5f8;
+        background: rgba(18, 20, 22, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.6rem;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        font-size: 0.85rem;
+        line-height: 1.35;
+    }
+
+    .ios-install-hint p {
+        margin: 0;
+    }
+
+    .ios-install-hint-close {
+        flex: 0 0 auto;
+        order: 2;
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0;
+        color: #f2f5f8;
+        background: transparent;
+        border: none;
+        font-size: 1.3rem;
         line-height: 1;
         cursor: pointer;
     }

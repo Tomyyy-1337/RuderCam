@@ -11,10 +11,10 @@
         {/if}
     {:else if activeTab === "sessions"}
         <Fahrtenbuch {fahrtenbuch} />
-        <div style="height: 30rem;"></div>
+        <div style="height: 10rem;"></div>
     {:else if activeTab === "settings"}
         <Settings {fahrtenbuch} {deviceStatus} bind:overlay_settings />
-        <div style="height: 30rem;"></div>
+        <div style="height: 10rem;"></div>
     {/if}
 </main>
 

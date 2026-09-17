@@ -315,6 +315,7 @@
         align-items: stretch;
         justify-content: center;
         padding: 0.7rem;
+        padding-top: calc(env(safe-area-inset-top) + 0.7rem);
     }
 
     .trip-fullscreen {

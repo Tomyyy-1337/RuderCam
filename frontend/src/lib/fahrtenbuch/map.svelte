@@ -195,9 +195,9 @@
         });
     };
 
-    const toggleIOSFullscreen = (): void => {
-        iosFullscreen = !iosFullscreen;
-        isMapFullscreen = iosFullscreen;
+    const setIOSFullscreen = (enabled: boolean): void => {
+        iosFullscreen = enabled;
+        isMapFullscreen = enabled;
         setMapInteractionEnabled(isMapFullscreen);
 
         requestAnimationFrame(() => {
@@ -215,6 +215,19 @@
         });
     };
 
+    const toggleIOSFullscreen = (): void => {
+        if (!iosFullscreen) {
+            window.history.pushState({ ...window.history.state, mapFullscreen: true }, "", window.location.href);
+            setIOSFullscreen(true);
+            return;
+        }
+
+        setIOSFullscreen(false);
+        if (window.history.state?.mapFullscreen === true) {
+            window.history.back();
+        }
+    };
+
     const registerPmtilesProtocol = (baseUrl: string, files: string[]): void => {
         removeProtocol("pmtiles");
         const protocol = new Protocol();
@@ -228,6 +241,13 @@
         a.length === b.length && a.every((filename) => b.includes(filename));
 
     onMount(() => {
+        const handlePopState = (): void => {
+            if (iosFullscreen) {
+                setIOSFullscreen(false);
+            }
+        };
+
+        window.addEventListener("popstate", handlePopState);
         if (!mapElement || !mapShellElement) {
             return undefined;
         }
@@ -345,6 +365,7 @@
         return () => {
             cancelled = true;
             unsubscribeTheme();
+            window.removeEventListener("popstate", handlePopState);
             window.removeEventListener("online", handleOnline);
             window.removeEventListener("resize", handleWindowResize);
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
@@ -401,5 +422,12 @@
     .map-fullscreen-button:focus-visible {
         outline: 2px solid #2563eb;
         outline-offset: 2px;
+    }
+
+    .map-shell.ios-fullscreen .map-fullscreen-button {
+        position: fixed;
+        top: calc(0.625rem + env(safe-area-inset-top));
+        right: calc(0.625rem + env(safe-area-inset-right));
+        z-index: 1001;
     }
 </style>

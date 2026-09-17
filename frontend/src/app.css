@@ -27,6 +27,8 @@ body {
   background-color: var(--background);
   font: 1em sans-serif;
   margin: 0;
+  /* Only non-zero in iOS standalone/fullscreen mode, keeps content clear of the notch/status bar. */
+  padding-top: env(safe-area-inset-top);
 }
 
 button {

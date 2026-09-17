@@ -219,7 +219,7 @@
         height: 100%;
         box-sizing: border-box;
         margin: 0 auto;
-        padding: 1rem clamp(0.75rem, 1.5vw, 1.25rem);
+        padding: calc(1rem + env(safe-area-inset-top)) clamp(0.75rem, 1.5vw, 1.25rem) 1rem;
         overflow: auto;
         background: var(--section-background);
         box-shadow: 0 24px 80px rgb(0 0 0 / 45%);

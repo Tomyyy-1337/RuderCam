@@ -72,6 +72,7 @@
         background: transparent;
         box-sizing: border-box;
         pointer-events: none;
+        padding-top: env(safe-area-inset-top);
     }
 
     .overlay.bottom {
