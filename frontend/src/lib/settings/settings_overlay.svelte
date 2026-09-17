@@ -76,13 +76,9 @@
         gap: 0.75rem;
         box-sizing: border-box;
         border: #0061c8 solid 2px;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
     }
-
-    .toggle-card:hover {
-        background: rgba(255, 255, 255, 0.1);
-        transform: translateY(-1px);
-    }
-
 
     .toggle-card input {
         position: absolute;
