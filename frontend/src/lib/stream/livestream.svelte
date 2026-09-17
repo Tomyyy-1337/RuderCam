@@ -1,6 +1,11 @@
 <section>
     <div class="video-shell" class:ios-virtual-fullscreen={iosVirtualFullscreen} bind:this={videoShell}>
-        <video id="myvideo" bind:this={videoElement} controls muted autoplay playsinline></video>
+        <video id="myvideo" bind:this={videoElement} onclick={handleVideoTap} controls muted autoplay playsinline></video>
+        {#if showFullscreenTapHint}
+            <div class="fullscreen-tap-hint" role="status">
+                Noch mal berühren, um Vollbild zu aktivieren
+            </div>
+        {/if}
         {#if fullscreen}
             <Overlay {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
             {#if iosVirtualFullscreen}
@@ -49,6 +54,7 @@
     let retryTimer: number | null = null;
     let playRetryTimer: number | null = null;
     let healthTimer: number | null = null;
+    let fullscreenTapTimer: number | null = null;
     let reconnectGeneration = 0;
 
     let reconnectAttempts = 0;
@@ -65,10 +71,12 @@
     const FREEZE_NO_PROGRESS_MS = 1400;
     const WAITING_TIMEOUT_MS = 1000;
     const STABLE_RECOVERY_MS = 2500;
+    const FULLSCREEN_TAP_WINDOW_MS = 1000;
 
     let fullscreen = $state(false);
     let showIOSInstallHint = $state(false);
     let iosVirtualFullscreen = $state(false);
+    let showFullscreenTapHint = $state(false);
 
     let {
         deviceStatus,
@@ -101,6 +109,7 @@
 
         const handleFullscreenChange = () => {
             fullscreen = document.fullscreenElement === videoShell;
+            clearFullscreenTapHint();
 
             if (!fullscreen) {
                 screen.orientation?.unlock?.();
@@ -159,9 +168,34 @@
             window.removeEventListener("popstate", handlePopState);
             window.removeEventListener("beforeunload", handleBeforeUnload);
             cleanupVideoListeners?.();
+            clearFullscreenTapHint();
             handleBeforeUnload();
         };
     });
+
+    function handleVideoTap(): void {
+        if (fullscreen) {
+            return;
+        }
+
+        if (showFullscreenTapHint) {
+            clearFullscreenTapHint();
+            void activateFullscreen();
+            return;
+        }
+
+        showFullscreenTapHint = true;
+        fullscreenTapTimer = window.setTimeout(clearFullscreenTapHint, FULLSCREEN_TAP_WINDOW_MS);
+    }
+
+    function clearFullscreenTapHint(): void {
+        showFullscreenTapHint = false;
+
+        if (fullscreenTapTimer !== null) {
+            clearTimeout(fullscreenTapTimer);
+            fullscreenTapTimer = null;
+        }
+    }
 
     const activateFullscreen = async () => {
         if (videoShell === null) {
@@ -612,6 +646,26 @@
         object-fit: cover;
         object-position: center;
         background: black;
+        touch-action: manipulation;
+    }
+
+    .fullscreen-tap-hint {
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        box-sizing: border-box;
+        color: #f2f5f8;
+        background: rgba(18, 20, 22, 0.72);
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.3;
+        text-align: center;
+        pointer-events: none;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
     }
 
     .video-shell::backdrop {

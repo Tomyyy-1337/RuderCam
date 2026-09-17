@@ -1,5 +1,10 @@
 <div bind:this={mapShellElement} class:ios-fullscreen={iosFullscreen} class="map-shell">
     <div bind:this={mapElement} class="map"></div>
+    {#if showFullscreenTapHint}
+        <div class="fullscreen-tap-hint" role="status">
+            Noch mal berühren, um Vollbild zu aktivieren
+        </div>
+    {/if}
     {#if usesIOSFullscreenFallback}
         <button
             type="button"
@@ -33,6 +38,7 @@
 
     const DEFAULT_CENTER: Waypoint = [8.472401705884762, 49.363691016649035];
     const MARKER_FIT_PADDING = 35;
+    const FULLSCREEN_TAP_WINDOW_MS = 1000;
 
     let { waypoints = [] }: { waypoints: GpsPosition[] } = $props();
 
@@ -142,7 +148,55 @@
     let isMapFullscreen = $state(false);
     let iosFullscreen = $state(false);
     let usesIOSFullscreenFallback = $state(false);
+    let showFullscreenTapHint = $state(false);
+    let fullscreenTapTimer: number | undefined;
     let activePmtilesFiles: string[] = [];
+
+    const clearFullscreenTapHint = (): void => {
+        showFullscreenTapHint = false;
+
+        if (fullscreenTapTimer !== undefined) {
+            clearTimeout(fullscreenTapTimer);
+            fullscreenTapTimer = undefined;
+        }
+    };
+
+    const activateMapFullscreen = async (): Promise<void> => {
+        if (!mapShellElement) {
+            return;
+        }
+
+        if (usesIOSFullscreenFallback) {
+            window.history.pushState({ ...window.history.state, mapFullscreen: true }, "", window.location.href);
+            setIOSFullscreen(true);
+            return;
+        }
+
+        try {
+            await mapShellElement.requestFullscreen();
+        } catch (error) {
+            console.warn("Could not open fullscreen map", error);
+        }
+    };
+
+    const handleMapTap = (event: MouseEvent): void => {
+        if (event.target instanceof Element && event.target.closest(".maplibregl-control-container")) {
+            return;
+        }
+
+        if (isMapFullscreen) {
+            return;
+        }
+
+        if (showFullscreenTapHint) {
+            clearFullscreenTapHint();
+            void activateMapFullscreen();
+            return;
+        }
+
+        showFullscreenTapHint = true;
+        fullscreenTapTimer = window.setTimeout(clearFullscreenTapHint, FULLSCREEN_TAP_WINDOW_MS);
+    };
 
     const setMapInteractionEnabled = (enabled: boolean): void => {
         if (!mapInstance) {
@@ -175,6 +229,8 @@
             return;
         }
 
+        clearFullscreenTapHint();
+
         const fullscreenElement = document.fullscreenElement;
         const isNowMapFullscreen = !!fullscreenElement
             && (fullscreenElement === mapShellElement || mapShellElement.contains(fullscreenElement));
@@ -196,6 +252,7 @@
     };
 
     const setIOSFullscreen = (enabled: boolean): void => {
+        clearFullscreenTapHint();
         iosFullscreen = enabled;
         isMapFullscreen = enabled;
         setMapInteractionEnabled(isMapFullscreen);
@@ -253,6 +310,8 @@
         }
 
         const mapShell = mapShellElement;
+        const mapTarget = mapElement;
+        mapTarget.addEventListener("click", handleMapTap);
         setWorkerUrl(workerUrl);
         let cancelled = false;
         const unsubscribeTheme = currentTheme.subscribe((theme) => {
@@ -369,6 +428,8 @@
             window.removeEventListener("online", handleOnline);
             window.removeEventListener("resize", handleWindowResize);
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            mapTarget.removeEventListener("click", handleMapTap);
+            clearFullscreenTapHint();
             resizeObserver?.disconnect();
             resizeObserver = undefined;
             mapInstance?.remove();
@@ -397,6 +458,26 @@
     .map {
         width: 100%;
         height: 100%;
+        touch-action: manipulation;
+    }
+
+    .fullscreen-tap-hint {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        box-sizing: border-box;
+        color: #f2f5f8;
+        background: rgba(18, 20, 22, 0.72);
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.3;
+        text-align: center;
+        pointer-events: none;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
     }
 
     .map-fullscreen-button {
