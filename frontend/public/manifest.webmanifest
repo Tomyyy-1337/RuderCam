@@ -1,12 +1,9 @@
 {
   "name": "Ruder Cam",
   "short_name": "Ruder Cam",
-  "id": "/",
   "start_url": "/",
   "scope": "/",
-  "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
-  "prefer_related_applications": false,
+  "display": "standalone",
   "orientation": "landscape",
   "background_color": "#0b0d10",
   "theme_color": "#0b0d10",
