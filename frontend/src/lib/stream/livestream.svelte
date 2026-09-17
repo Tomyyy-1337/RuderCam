@@ -42,6 +42,7 @@
 
 <script lang="ts">
     import { onMount } from "svelte";
+    import { createFullscreenTapController } from "../components/fullscreenTap";
     import Overlay from "./overlay.svelte";
     import { MediaMTXWebRTCReader } from "./reader";
     import type { ActiveSession, DeviceStatus, OverlaySettings } from "../types";
@@ -54,7 +55,6 @@
     let retryTimer: number | null = null;
     let playRetryTimer: number | null = null;
     let healthTimer: number | null = null;
-    let fullscreenTapTimer: number | null = null;
     let reconnectGeneration = 0;
 
     let reconnectAttempts = 0;
@@ -71,12 +71,19 @@
     const FREEZE_NO_PROGRESS_MS = 1400;
     const WAITING_TIMEOUT_MS = 1000;
     const STABLE_RECOVERY_MS = 2500;
-    const FULLSCREEN_TAP_WINDOW_MS = 1000;
 
     let fullscreen = $state(false);
     let showIOSInstallHint = $state(false);
     let iosVirtualFullscreen = $state(false);
     let showFullscreenTapHint = $state(false);
+
+    const fullscreenTapController = createFullscreenTapController({
+        isFullscreen: () => fullscreen,
+        activateFullscreen,
+        setHintVisible: (visible: boolean) => {
+            showFullscreenTapHint = visible;
+        },
+    });
 
     let {
         deviceStatus,
@@ -168,36 +175,20 @@
             window.removeEventListener("popstate", handlePopState);
             window.removeEventListener("beforeunload", handleBeforeUnload);
             cleanupVideoListeners?.();
-            clearFullscreenTapHint();
+            fullscreenTapController.destroy();
             handleBeforeUnload();
         };
     });
 
     function handleVideoTap(): void {
-        if (fullscreen) {
-            return;
-        }
-
-        if (showFullscreenTapHint) {
-            clearFullscreenTapHint();
-            void activateFullscreen();
-            return;
-        }
-
-        showFullscreenTapHint = true;
-        fullscreenTapTimer = window.setTimeout(clearFullscreenTapHint, FULLSCREEN_TAP_WINDOW_MS);
+        fullscreenTapController.handleTap();
     }
 
     function clearFullscreenTapHint(): void {
-        showFullscreenTapHint = false;
-
-        if (fullscreenTapTimer !== null) {
-            clearTimeout(fullscreenTapTimer);
-            fullscreenTapTimer = null;
-        }
+        fullscreenTapController.clearHint();
     }
 
-    const activateFullscreen = async () => {
+    async function activateFullscreen(): Promise<void> {
         if (videoShell === null) {
             return;
         }
@@ -222,7 +213,7 @@
         } catch (err) {
             console.warn("Could not open fullscreen video", err);
         }
-    };
+    }
 
     function exitIOSVirtualFullscreen() {
         iosVirtualFullscreen = false;

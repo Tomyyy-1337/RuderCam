@@ -19,6 +19,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { get } from "svelte/store";
+    import { createFullscreenTapController } from "../components/fullscreenTap";
     import {
         FullscreenControl,
         LngLatBounds,
@@ -38,7 +39,6 @@
 
     const DEFAULT_CENTER: Waypoint = [8.472401705884762, 49.363691016649035];
     const MARKER_FIT_PADDING = 35;
-    const FULLSCREEN_TAP_WINDOW_MS = 1000;
 
     let { waypoints = [] }: { waypoints: GpsPosition[] } = $props();
 
@@ -149,16 +149,18 @@
     let iosFullscreen = $state(false);
     let usesIOSFullscreenFallback = $state(false);
     let showFullscreenTapHint = $state(false);
-    let fullscreenTapTimer: number | undefined;
     let activePmtilesFiles: string[] = [];
 
-    const clearFullscreenTapHint = (): void => {
-        showFullscreenTapHint = false;
+    const fullscreenTapController = createFullscreenTapController({
+        isFullscreen: () => isMapFullscreen,
+        activateFullscreen: () => activateMapFullscreen(),
+        setHintVisible: (visible: boolean) => {
+            showFullscreenTapHint = visible;
+        },
+    });
 
-        if (fullscreenTapTimer !== undefined) {
-            clearTimeout(fullscreenTapTimer);
-            fullscreenTapTimer = undefined;
-        }
+    const clearFullscreenTapHint = (): void => {
+        fullscreenTapController.clearHint();
     };
 
     const activateMapFullscreen = async (): Promise<void> => {
@@ -188,14 +190,7 @@
             return;
         }
 
-        if (showFullscreenTapHint) {
-            clearFullscreenTapHint();
-            void activateMapFullscreen();
-            return;
-        }
-
-        showFullscreenTapHint = true;
-        fullscreenTapTimer = window.setTimeout(clearFullscreenTapHint, FULLSCREEN_TAP_WINDOW_MS);
+        fullscreenTapController.handleTap();
     };
 
     const setMapInteractionEnabled = (enabled: boolean): void => {
@@ -429,7 +424,7 @@
             window.removeEventListener("resize", handleWindowResize);
             document.removeEventListener("fullscreenchange", handleFullscreenChange);
             mapTarget.removeEventListener("click", handleMapTap);
-            clearFullscreenTapHint();
+            fullscreenTapController.destroy();
             resizeObserver?.disconnect();
             resizeObserver = undefined;
             mapInstance?.remove();
