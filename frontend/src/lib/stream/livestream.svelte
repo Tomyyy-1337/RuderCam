@@ -25,13 +25,6 @@
             </button>
             {#if showIOSInstallHint}
                 <div class="ios-install-hint">
-                    <button
-                        onclick={() => (showIOSInstallHint = false)}
-                        class="ios-install-hint-close"
-                        type="button"
-                        title="Schließen"
-                        aria-label="Schließen"
-                    >&times;</button>
                     <p>
                         Zum installieren auf "Teilen" tippen und "Zum Home-Bildschirm" auswählen.
                         Danach kann die App im Vollbildmodus genutzt werden.
@@ -754,7 +747,7 @@
         padding: 0.6rem 0.75rem;
         color: #f2f5f8;
         background: rgba(18, 20, 22, 0.82);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 0, 0, 0.8);
         border-radius: 0.6rem;
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
@@ -764,20 +757,6 @@
 
     .ios-install-hint p {
         margin: 0;
-    }
-
-    .ios-install-hint-close {
-        flex: 0 0 auto;
-        order: 2;
-        width: 1.5rem;
-        height: 1.5rem;
-        padding: 0;
-        color: #f2f5f8;
-        background: transparent;
-        border: none;
-        font-size: 1.3rem;
-        line-height: 1;
-        cursor: pointer;
     }
 
     @media (max-width: 768px) {
