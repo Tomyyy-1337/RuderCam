@@ -1,5 +1,5 @@
 <section>  
-    <ToggleSessionButton variant="primary" {frontend_state} />
+    <ToggleSessionButton variant="primary" />
 
     <div class="spacer"></div>
 
@@ -21,14 +21,8 @@
     
 <script lang="ts">
     import ToggleSessionButton from "./toggleSessionButton.svelte";
-    import type { FrontendState } from "../types";
     import { activeSession } from "../classes/active_session_store.svelte";
-
-    let {
-        frontend_state,
-    }: {
-        frontend_state: FrontendState;
-    } = $props();
+    import { frontend_state } from "../classes/frontend_state_store.svelte";
 
     let duration_secs = $derived(frontend_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) % 60)).padStart(2,'0') : '--');
     let duration_mins = $derived(frontend_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) / 60)).padStart(2,'0') : '--');

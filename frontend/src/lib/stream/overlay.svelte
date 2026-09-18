@@ -6,10 +6,10 @@
         <div class="icon-container">
             <BatteryStatusIcon value={battery_percentage} />
             <SateliteIcon value={satellite_count} />
-            <PauseIcon paused={activeSession.pausiert} {frontend_state} />
+            <PauseIcon paused={activeSession.pausiert} />
         </div>
 
-        <ToggleSessionButton variant="overlay" {frontend_state} />
+        <ToggleSessionButton variant="overlay" />
     </div>
 </div>
 {/if}
@@ -20,16 +20,10 @@
     import PauseIcon from "../icons/pauseIcon.svelte";
     import SateliteIcon from "../icons/sateliteIcon.svelte";
     import ToggleSessionButton from "../components/toggleSessionButton.svelte";
-    import type { FrontendState } from "../types";
     import { overlay_settings } from "../classes/overlay_settings_store.svelte";
     import { deviceStatus } from "../classes/device_status_store.svelte";
     import { activeSession } from "../classes/active_session_store.svelte";
-
-    let {
-        frontend_state,
-    }: {
-        frontend_state: FrontendState;
-    } = $props();
+    import { frontend_state } from "../classes/frontend_state_store.svelte";
 
     let fahrtzeit = $derived(frontend_state.session_is_active ? Math.floor(activeSession.duration_secs / 60) + ":" + String(Math.floor(activeSession.duration_secs % 60)).padStart(2,'0') : '--:--');
     let distanz = $derived(frontend_state.session_is_active ? activeSession.distance_traveled_km.toFixed(2) : '--.--');

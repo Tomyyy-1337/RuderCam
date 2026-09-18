@@ -11,14 +11,13 @@
 <script lang="ts">
     import { fahrtenbuch, FahrtenbuchStore, Session } from "../classes/fahrtenbuchStore";
     import { activeSession } from "../classes/active_session_store.svelte";
-    import type { FrontendState, SessionButtonVariant } from "../types";
+    import type { SessionButtonVariant } from "../types";
+    import { frontend_state } from "../classes/frontend_state_store.svelte";
 
     let {
         variant = "primary",
-        frontend_state,
     }: {
         variant?: SessionButtonVariant;
-        frontend_state: FrontendState;
     } = $props();
 
     function startSession(): void {

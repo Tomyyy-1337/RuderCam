@@ -1,11 +1,11 @@
 <main class="container">
-    <PageHeadder {frontend_state} />
+    <PageHeadder />
     <Navbar bind:activeTab />
 
     {#if activeTab === "camera"}
         {#if frontend_state.is_connected}
-            <Livestream {frontend_state} />
-            <Fahrt {frontend_state} />
+            <Livestream />
+            <Fahrt />
         {:else}
             <NotConnected />
         {/if}
@@ -13,7 +13,7 @@
         <Fahrtenbuch />
         <div style="height: 10rem;"></div>
     {:else if activeTab === "settings"}
-        <Settings {frontend_state} />
+        <Settings />
         <div style="height: 10rem;"></div>
     {/if}    
 </main>
@@ -30,7 +30,6 @@
 
     import {
         type AppTab,
-        type FrontendState,
         type Theme,
     } from "./lib/types";
     import { overlay_settings } from "./lib/classes/overlay_settings_store.svelte";   
@@ -38,11 +37,7 @@
     import { deviceStatus } from "./lib/classes/device_status_store.svelte";
     import { activeSession } from "./lib/classes/active_session_store.svelte";
     import { setTheme } from "./lib/classes/themeStore.svelte";
-
-    let frontend_state = $state<FrontendState>({
-        is_connected: true,
-        session_is_active: false
-    })
+    import { frontend_state } from "./lib/classes/frontend_state_store.svelte";
 
     let activeTab = $state<AppTab>("camera");
 

@@ -15,9 +15,9 @@
 </div>
 
 <script lang="ts">
-    import type { FrontendState } from "../types";
+    import { frontend_state } from "../classes/frontend_state_store.svelte";
 
-    let { paused, frontend_state }: { paused: boolean, frontend_state: FrontendState } = $props();
+    let { paused }: { paused: boolean } = $props();
 
     let style = $derived(frontend_state.session_is_active ? (paused ? "paused" : "running") : "inactive");
     let label = $derived(frontend_state.session_is_active ? (paused ? "Session paused" : "Session running") : "Session inactive");

@@ -49,7 +49,6 @@
 
 <script lang="ts">
     import { onMount } from "svelte";
-    import { type FrontendState } from "../types";
     import AccordionSection from "./accordion_section.svelte";
     import SettingsToggleTheme from "./settings_toggle_theme.svelte";
     import SettingsOverlay from "./settings_overlay.svelte";
@@ -61,10 +60,7 @@
     import SettingsDeveloper from "./settings_developer.svelte";
     import SettingsUpdate from "./settings_update.svelte";
     import { app_config } from "../classes/app_config.svelte";
-
-    let { frontend_state }: {
-        frontend_state: FrontendState;
-    } = $props();
+    import { frontend_state } from "../classes/frontend_state_store.svelte";
 
     onMount(async () => {
         await app_config.fetch();

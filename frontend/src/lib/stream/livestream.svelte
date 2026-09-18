@@ -24,7 +24,7 @@
             </div>
         {/if}
         {#if fullscreen}
-            <Overlay {frontend_state}/>
+            <Overlay/>
             {#if iosVirtualFullscreen}
                 <button
                     onclick={exitIOSVirtualFullscreen}
@@ -62,7 +62,6 @@
     import { createFullscreenTapController } from "../components/fullscreenTap";
     import Overlay from "./overlay.svelte";
     import { MediaMTXWebRTCReader } from "./reader";
-    import type { FrontendState } from "../types";
     import { overlay_settings } from "../classes/overlay_settings_store.svelte";
     import { highFrequencyUpdate } from "../classes/high_frequency_update_store.svelte";
 
@@ -106,12 +105,6 @@
             showFullscreenTapHint = visible;
         },
     });
-
-    let {
-        frontend_state
-    }: {
-        frontend_state: FrontendState;
-    } = $props();
 
     let effectiveRotation = $derived(overlay_settings.auto_level ? highFrequencyUpdate.roll - overlay_settings.rotation_offset : -overlay_settings.rotation_offset);
 

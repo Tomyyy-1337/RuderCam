@@ -16,9 +16,7 @@
     import BatteryStatusIcon from "../icons/batteryStatusIcon.svelte";
     import SateliteIcon from "../icons/sateliteIcon.svelte";
     import { deviceStatus } from "../classes/device_status_store.svelte";
-    import type { FrontendState } from "../types";
-
-    let { frontend_state }: { frontend_state: FrontendState } = $props();
+    import { frontend_state } from "../classes/frontend_state_store.svelte";
 
     let battery_percentage = $derived(deviceStatus.battery_percentage);
     let satellite_count = $derived(deviceStatus.satellite_count);
