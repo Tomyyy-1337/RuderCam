@@ -8,7 +8,7 @@ mod session;
 mod hotspot;
 mod camera_interface;
 
-use crate::{bpm_fft::FFTBPMDetector, camera_interface::CameraInterface, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, InternalState}}; 
+use crate::{bpm_fft::FFTBPMDetector, camera_interface::CameraInterface, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, HighFrequencyUpdate, InternalState}}; 
 
 use std::{sync::Mutex};
 use futures::stream::StreamExt;
@@ -19,6 +19,7 @@ use tokio::{pin, runtime::LocalOptions, task, time::MissedTickBehavior};
 /// Only access CONFIG, SHARED_STATE and INTERNAL_STATE variables through their provided methods (`modify` and `get`) 
 static CONFIG: Global<Config> = Global::new(Config::new_uninitialized());
 static SHARED_STATE: Global<DeviceState> = Global::new(DeviceState::default());
+static HIGH_FREQUENCY_UPDATE: Global<HighFrequencyUpdate> = Global::new(HighFrequencyUpdate::default());
 static INTERNAL_STATE: Global<InternalState> = Global::new(InternalState::new());
 static I2C_INTERFACE: I2CInterface = I2CInterface::new_uninitialized();
 static CAMERA_INTERFACE: Global<CameraInterface> = Global::new(CameraInterface::new());
@@ -130,23 +131,29 @@ async fn read_gps_task() {
 async fn read_accelerometer_task(
     accelerometer_sender: tokio::sync::mpsc::Sender<(i16, i16, i16)>,
 ) {
-    let mut timer = tokio::time::interval(tokio::time::Duration::from_millis(5));
+    let mut timer = tokio::time::interval(tokio::time::Duration::from_millis(50));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-    let mut last_values = (0i16, 0i16, 0i16);
+    let mut orientation_history = [0.0f32; 8];
+    let mut orientation_index = 0;
 
     loop {
         timer.tick().await;
 
-        let accelerometer_data = I2C_INTERFACE.read_accelerometer_data().await;
+        let accelerometer_data@(_,y,z) = I2C_INTERFACE.read_accelerometer_data().await;
+        let roll = (y as f32).atan2(z as f32).to_degrees();
+        orientation_history[orientation_index] = roll;
+        orientation_index = (orientation_index + 1) % orientation_history.len();
+        
+        let average_roll = orientation_history.iter().sum::<f32>() / orientation_history.len() as f32;
 
-        if accelerometer_data != last_values {
-            accelerometer_sender.send(accelerometer_data).await.unwrap_or_else(|e| {
-                println!("Failed to send accelerometer data: {}", e);
-            });
-            last_values = accelerometer_data;
-        } 
+        const SENSOR_ROLL_OFFSET: f32 = 2.2;
 
+        HIGH_FREQUENCY_UPDATE.modify(|state| state.roll = average_roll + SENSOR_ROLL_OFFSET);
+        
+        accelerometer_sender.send(accelerometer_data).await.unwrap_or_else(|e| {
+            println!("Failed to send accelerometer data: {}", e);
+        });
     }
 }
 

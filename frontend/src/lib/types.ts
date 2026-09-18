@@ -37,6 +37,8 @@ export interface OverlaySettings {
     show_fahrtzeit: boolean;
     show_distanz: boolean;
     show_distanc_per_stroke: boolean;
+    auto_level: boolean;
+    rotation_offset: number;
 }
 
 export interface GpsPosition {
@@ -77,6 +79,10 @@ export interface RunningSessionMessage {
     pausiert: boolean;
 }
 
+export interface HighFrequencyUpdate {
+    roll: number;
+}
+
 export type FocusMode = 'Auto' | 'Fixed'
 export type MeteringMode = 'Average' | 'Center'
 
@@ -96,6 +102,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === 'object'
 }
 
+export function isHighFrequencyUpdate(value: unknown): value is HighFrequencyUpdate {
+    return isRecord(value)
+        && typeof value.roll === 'number'
+}
+
 export function isGpsPosition(value: unknown): value is GpsPosition {
     return isRecord(value)
         && typeof value.lat === 'number'
@@ -113,6 +124,8 @@ export function isOverlaySettings(value: unknown): value is OverlaySettings {
         && typeof value.show_fahrtzeit === 'boolean'
         && typeof value.show_distanz === 'boolean'
         && typeof value.show_distanc_per_stroke === 'boolean'
+        && typeof value.auto_level === 'boolean'
+        && typeof value.rotation_offset === 'number'
 }
 
 export function isDeviceStateMessage(value: unknown): value is DeviceStateMessage {

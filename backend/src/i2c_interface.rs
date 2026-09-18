@@ -89,7 +89,7 @@ impl I2CInterface {
         let z = i16::from_le_bytes([bytes[4], bytes[5]]) >> 4;
         (x, y, z)
     }
-    
+
     /// Read N bytes from the specified I2C address and register asynchronously 
     async fn read_async<const N: usize>(
         address: u8,

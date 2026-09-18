@@ -4,9 +4,9 @@ use regex::Regex;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
 
-use std::{net::SocketAddr, time::{Duration}};
+use std::{net::SocketAddr, time::Duration};
 
-use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
+use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, HIGH_FREQUENCY_UPDATE, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
 
 lazy_static!(
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9!@#$%^&*()_+\-=?]*$").expect("Failed to compile password regex");
@@ -255,13 +255,28 @@ async fn websocket_handler(
 async fn handle_socket(
     mut socket: WebSocket, 
 ) {
-    let mut timer = tokio::time::interval(Duration::from_secs(1));
+    let mut timer = tokio::time::interval(Duration::from_millis(50));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+    let mut conter: u8 = 0;
 
     INTERNAL_STATE.modify(|state| state.new_client_connected());
 
     loop {
         timer.tick().await;
+
+        // Send high-frequency update data to the frontend every 50ms
+        let json_data = serde_json::to_string(&*HIGH_FREQUENCY_UPDATE).unwrap();
+        if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
+            INTERNAL_STATE.modify(|state| state.client_disconnected());
+            break;
+        }
+        
+        // Skip sending the shared state and session summary for 19 out of 20 ticks (every 50ms)
+        conter = if conter == 20 { 0 } else { conter + 1 };
+        if conter != 0 {
+            continue;
+        }
 
         // Send the current shared state to the frontend every second
         let json_data = serde_json::to_string(&*SHARED_STATE).unwrap();

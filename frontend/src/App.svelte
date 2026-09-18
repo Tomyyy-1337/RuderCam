@@ -4,7 +4,7 @@
 
     {#if activeTab === "camera"}
         {#if deviceStatus.isConnected}
-            <Livestream {deviceStatus} bind:activeSession {overlay_settings} />
+            <Livestream {deviceStatus} bind:activeSession {overlay_settings} {highFrequencyUpdate} />
             <Fahrt bind:activeSession />
         {:else}
             <NotConnected />
@@ -16,6 +16,8 @@
         <Settings {deviceStatus} bind:overlay_settings />
         <div style="height: 10rem;"></div>
     {/if}
+
+    
 </main>
 
 <script lang="ts">
@@ -30,6 +32,7 @@
     import { setTheme } from "./lib/settings/setTheme";
     import {
         isDeviceStateMessage,
+        isHighFrequencyUpdate,
         isOverlaySettings,
         isRunningSessionMessage,
     } from "./lib/types";
@@ -37,9 +40,14 @@
         ActiveSession,
         AppTab,
         DeviceStatus,
+        HighFrequencyUpdate,
         OverlaySettings,
         Theme,
     } from "./lib/types";
+
+    let highFrequencyUpdate = $state<HighFrequencyUpdate>({
+        roll: 0,
+    });
 
     let deviceStatus = $state<DeviceStatus>({
         isConnected: true,
@@ -70,6 +78,8 @@
         show_fahrtzeit: true,
         show_distanz: true,
         show_distanc_per_stroke: true,
+        auto_level: false,
+        rotation_offset: 0
     });
 
     let activeTab = $state<AppTab>("camera");
@@ -143,7 +153,9 @@
     function socketEventListener(event: MessageEvent<string>): void {
         const payload: unknown = JSON.parse(event.data);
         deviceStatus.isConnected = true;
-        if (isDeviceStateMessage(payload)) {
+        if (isHighFrequencyUpdate(payload)) {
+            highFrequencyUpdate.roll = payload.roll;
+        } else if (isDeviceStateMessage(payload)) {
             deviceStatus.battery_percentage = payload.battery_percentage;
             deviceStatus.speed_kmh = payload.velocity;
             deviceStatus.schlagzahl = payload.schlagzahl;

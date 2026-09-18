@@ -12,7 +12,7 @@
             title="Kamera"
             description="Einstellungen für Fokus und Belichtungsmessung"
         >
-            <SettingsCamera {config} />
+            <SettingsCamera {config} bind:overlay_settings />
         </AccordionSection>
 
         <AccordionSection

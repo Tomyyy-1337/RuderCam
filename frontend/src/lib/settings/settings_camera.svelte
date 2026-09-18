@@ -27,8 +27,39 @@
     </div>
 </SettingsCard>
 
-<SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
+<SettingsCard title="Bildausrichtung" description="Das Kamerabild automatisch ausrichten oder manuell drehen.">
+    <label class:inactive={!overlay_settings.auto_level} class="toggle-card">
+        <input id="camera-auto-level" name="camera-auto-level" type="checkbox" bind:checked={overlay_settings.auto_level} />
+        <span>Auto-Level</span>
+    </label>
 
+    <div class="rotation-slider">
+        <div class="slider-header">
+            <label for="camera-rotation-offset">Drehwinkel</label>
+            <output for="camera-rotation-offset">{overlay_settings.rotation_offset}°</output>
+        </div>
+        <input
+            id="camera-rotation-offset"
+            name="camera-rotation-offset"
+            type="range"
+            min="-10"
+            max="10"
+            step="0.5"
+            bind:value={overlay_settings.rotation_offset}
+        />
+        <div class="rotation-legend" aria-hidden="true">
+            <span>-10°</span>
+            <span>0°</span>
+            <span>10°</span>
+        </div>
+    </div>
+
+    <p class="hint">
+        Der Drehwinkel hat auch im Automatikmodus Einfluss auf die Bildausrichtung.
+    </p>
+</SettingsCard>
+
+<SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
     <select id="camera-metering-mode" name="camera-metering-mode" bind:value={config.metering_mode} onchange={saveMeteringMode}>
         <option value="Average">Durchschnitt</option>
         <option value="Center">Mitte</option>
@@ -45,7 +76,6 @@
 </SettingsCard>
 
 <SettingsCard title="Fokusmodus" description="Autofokus oder festen Fokus für die Kamera auswählen.">
-
     <select id="camera-focus-mode" name="camera-focus-mode" bind:value={config.focus_mode} onchange={saveFocusMode}>
         <option value="Auto">Autofokus</option>
         <option value="Fixed">Fester Fokus</option>
@@ -58,7 +88,6 @@
             Die Kamera bleibt auf Hyperfokalpunkt eingestellt. Nahe Objekte können unscharf erscheinen.
         {/if}
     </p>
-
 </SettingsCard>
 
 <SettingsCard title="Bitrate" description="Die Bitrate für den Livestream einstellen.">
@@ -94,9 +123,9 @@
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import type { AppConfig } from "../types";
+    import type { AppConfig, OverlaySettings } from "../types";
 
-    let { config }: { config: AppConfig } = $props();
+    let { config, overlay_settings = $bindable() }: { config: AppConfig; overlay_settings: OverlaySettings } = $props();
 
     type DialogTone = "info" | "warning" | "danger";
 
@@ -198,6 +227,80 @@
         line-height: 1.45;
     }
 
+    .toggle-card {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        margin: 0.1rem;
+        padding: 0.9rem 1rem;
+        border-radius: 0.9rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 2px solid #0061c8;
+        color: var(--text);
+        cursor: pointer;
+        user-select: none;
+        gap: 0.75rem;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
+    }
+
+    .toggle-card input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+        width: 0;
+        height: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .toggle-card span {
+        flex: 1;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    .toggle-card.inactive {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.05);
+        opacity: 0.55;
+    }
+
+    .rotation-slider {
+        margin-top: 1rem;
+    }
+
+    .slider-header,
+    .rotation-legend {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .slider-header {
+        margin-bottom: 0.35rem;
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    .slider-header output {
+        color: color-mix(in srgb, var(--text) 72%, transparent);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .rotation-slider input[type="range"] {
+        width: 100%;
+        accent-color: var(--button-color);
+        cursor: pointer;
+    }
+
+    .rotation-legend {
+        color: color-mix(in srgb, var(--text) 62%, transparent);
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+    }
+
     .slider-wrap {
         position: relative;
         width: calc(100% + 1.5rem);
@@ -215,6 +318,7 @@
         -webkit-appearance: none;
         background: transparent;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
     }
 
     input[type="range"]::-webkit-slider-runnable-track {

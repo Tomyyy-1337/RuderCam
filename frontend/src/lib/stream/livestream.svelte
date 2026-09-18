@@ -1,6 +1,23 @@
 <section>
-    <div class="video-shell" class:ios-virtual-fullscreen={iosVirtualFullscreen} bind:this={videoShell}>
-        <video id="myvideo" bind:this={videoElement} onclick={handleVideoTap} controls muted autoplay playsinline></video>
+    <div
+        class="video-shell"
+        class:ios-virtual-fullscreen={iosVirtualFullscreen}
+        bind:this={videoShell}
+        role="region"
+        aria-label="Videostream"
+        ontouchstart={handleTouchStart}
+        ontouchend={handleTouchEnd}
+    >
+        <video
+            id="myvideo"
+            bind:this={videoElement}
+            onclick={handleVideoTap}
+            controls
+            muted
+            autoplay
+            playsinline
+            style={`transform: rotate(${effectiveRotation}deg);`}
+        ></video>
         {#if showFullscreenTapHint}
             <div class="fullscreen-tap-hint" role="status">
                 Noch mal berühren, um Vollbild zu aktivieren
@@ -45,7 +62,7 @@
     import { createFullscreenTapController } from "../components/fullscreenTap";
     import Overlay from "./overlay.svelte";
     import { MediaMTXWebRTCReader } from "./reader";
-    import type { ActiveSession, DeviceStatus, OverlaySettings } from "../types";
+    import type { ActiveSession, DeviceStatus, HighFrequencyUpdate, OverlaySettings } from "../types";
 
     let videoShell: HTMLDivElement | null = null;
     let videoElement: HTMLVideoElement | null = null;
@@ -74,6 +91,11 @@
     let showIOSInstallHint = $state(false);
     let iosVirtualFullscreen = $state(false);
     let showFullscreenTapHint = $state(false);
+    let touchStart: { x: number; y: number; isLeftSide: boolean } | null = null;
+    let suppressNextTap = false;
+
+    const ROTATION_STEP = 1.0;
+    const SWIPE_DISTANCE = 24;
 
     const fullscreenTapController = createFullscreenTapController({
         isFullscreen: () => fullscreen,
@@ -87,11 +109,15 @@
         deviceStatus,
         activeSession = $bindable(),
         overlay_settings,
+        highFrequencyUpdate,
     }: {
         deviceStatus: DeviceStatus;
         activeSession: ActiveSession;
         overlay_settings: OverlaySettings;
+        highFrequencyUpdate: HighFrequencyUpdate;
     } = $props();
+
+    let effectiveRotation = $derived(overlay_settings.auto_level ? highFrequencyUpdate.roll - overlay_settings.rotation_offset : -overlay_settings.rotation_offset);
 
     onMount(() => {
         setupVideoWatchdog();
@@ -177,7 +203,51 @@
     });
 
     function handleVideoTap(): void {
+        if (suppressNextTap) {
+            suppressNextTap = false;
+            return;
+        }
+
         fullscreenTapController.handleTap();
+    }
+
+    function handleTouchStart(event: TouchEvent): void {
+        if (!fullscreen) {
+            touchStart = null;
+            return;
+        }
+
+        const touch = event.changedTouches[0];
+
+        if (touch !== undefined && videoShell !== null) {
+            const shellBounds = videoShell.getBoundingClientRect();
+            touchStart = {
+                x: touch.clientX,
+                y: touch.clientY,
+                isLeftSide: touch.clientX < shellBounds.left + shellBounds.width / 2,
+            };
+        }
+    }
+
+    function handleTouchEnd(event: TouchEvent): void {
+        const start = touchStart;
+        const touch = event.changedTouches[0];
+        touchStart = null;
+
+        if (!fullscreen || start === null || touch === undefined) {
+            return;
+        }
+
+        const deltaX = touch.clientX - start.x;
+        const deltaY = touch.clientY - start.y;
+
+        if (Math.abs(deltaY) < SWIPE_DISTANCE || Math.abs(deltaY) <= Math.abs(deltaX)) {
+            return;
+        }
+
+        const rotationDirection = deltaY < 0 ? 1 : -1;
+        overlay_settings.rotation_offset += (start.isLeftSide ? -rotationDirection : rotationDirection) * ROTATION_STEP;
+        suppressNextTap = true;
     }
 
     function clearFullscreenTapHint(): void {
@@ -634,6 +704,7 @@
         object-position: center;
         background: black;
         touch-action: manipulation;
+        transition: transform 55ms linear;
     }
 
     .fullscreen-tap-hint {

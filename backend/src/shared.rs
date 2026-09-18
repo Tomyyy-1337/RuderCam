@@ -12,13 +12,26 @@ pub struct DeviceState {
     pub battery_percentage: u8,
 }
 
+#[derive(serde::Serialize, Clone)]
+pub struct HighFrequencyUpdate {
+    pub roll: f32,
+}
+
+impl HighFrequencyUpdate {
+    pub const fn default() -> Self {
+        HighFrequencyUpdate {
+            roll: 0.0,
+        }
+    }
+}
+
 impl DeviceState {
     pub const fn default() -> Self {
         DeviceState {
             velocity: 0.0,
             satellite_count: 0,
             schlagzahl: 0.0,
-            battery_percentage: 95
+            battery_percentage: 95,
         }
     }
 
