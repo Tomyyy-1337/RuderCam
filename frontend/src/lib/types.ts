@@ -87,6 +87,7 @@ export interface AppConfig {
     focus_mode: FocusMode;
     metering_mode: MeteringMode;
     bitrate: number;
+    exposure_compenstion: number;
 }
 
 export type Waypoint = [number, number]
@@ -153,4 +154,5 @@ export function isAppConfig(value: unknown): value is AppConfig {
         && (value.focus_mode === 'Auto' || value.focus_mode === 'Fixed' || value.focus_mode === undefined)
         && (value.metering_mode === 'Average' || value.metering_mode === 'Center' || value.metering_mode === undefined)
         && typeof value.bitrate === 'number'
+        && typeof value.exposure_compenstion === 'number'
 }

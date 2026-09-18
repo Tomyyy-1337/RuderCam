@@ -1,32 +1,61 @@
-<SettingsCard title="Fokusmodus" description="Autofokus oder festen Fokus für die Kamera auswählen.">
-
-    <select id="camera-focus-mode" name="camera-focus-mode" bind:value={focusMode} onchange={saveFocusMode}>
-        <option value="Auto">Autofokus</option>
-        <option value="Fixed">Fester Fokus</option>
-    </select>
-
-    <p class="hint">
-        {#if focusMode === "Auto"}
-            Die Kamera passt den Fokus automatisch an.
-        {:else}
-            Die Kamera bleibt auf Hyperfokalpunkt eingestellt. Nahe Objekte können unscharf erscheinen.
-        {/if}
-    </p>
-
+<SettingsCard title="Belichtungskorrektur" description="Die Belichtungskorrektur für die Kamera einstellen.">
+    <div class="slider-wrap">
+        <div class="slider-value" aria-hidden="true">
+            {config.exposure_compenstion >= 0 ? "+" : ""}{config.exposure_compenstion.toFixed(1)} EV
+        </div>
+        <input
+            id="camera-exposure-compensation"
+            name="camera-exposure-compensation"
+            type="range"
+            min="-3"
+            max="3"
+            step="0.5"
+            bind:value={config.exposure_compenstion}
+            onchange={saveExposureCompensation}
+            aria-label="Belichtungskorrektur"
+        />
+        <div class="slider-legend" aria-hidden="true">
+            {#each exposureSteps as value, index}
+                <span class:major={index % 2 === 0} class="slider-step">
+                    <i></i>
+                    {#if index % 2 === 0}
+                        <b>{value > 0 ? "+" : ""}{value}</b>
+                    {/if}
+                </span>
+            {/each}
+        </div>
+    </div>
 </SettingsCard>
 
 <SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
 
-    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={meteringMode} onchange={saveMeteringMode}>
+    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={config.metering_mode} onchange={saveMeteringMode}>
         <option value="Average">Durchschnitt</option>
         <option value="Center">Mitte</option>
     </select>
 
     <p class="hint">
-        {#if meteringMode === "Average"}
+        {#if config.metering_mode === "Average"}
             Die Kamera misst die Helligkeit über das gesamte Bild.
         {:else}
             Die Kamera gewichtet die Bildmitte stärker.
+        {/if}
+    </p>
+
+</SettingsCard>
+
+<SettingsCard title="Fokusmodus" description="Autofokus oder festen Fokus für die Kamera auswählen.">
+
+    <select id="camera-focus-mode" name="camera-focus-mode" bind:value={config.focus_mode} onchange={saveFocusMode}>
+        <option value="Auto">Autofokus</option>
+        <option value="Fixed">Fester Fokus</option>
+    </select>
+
+    <p class="hint">
+        {#if config.focus_mode === "Auto"}
+            Die Kamera passt den Fokus automatisch an.
+        {:else}
+            Die Kamera bleibt auf Hyperfokalpunkt eingestellt. Nahe Objekte können unscharf erscheinen.
         {/if}
     </p>
 
@@ -65,31 +94,36 @@
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import type { AppConfig, FocusMode, MeteringMode } from "../types";
+    import type { AppConfig } from "../types";
 
     let { config }: { config: AppConfig } = $props();
 
     type DialogTone = "info" | "warning" | "danger";
 
-    let focusMode = $state<FocusMode>("Fixed");
-    let meteringMode = $state<MeteringMode>("Average");
     let dialogOpen = $state(false);
     let dialogTitle = $state("");
     let dialogMessage = $state("");
     let dialogTone = $state<DialogTone>("info");
-    let bitrate = $state<number>(1600000);
+    const exposureSteps = [-3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3];
 
-    $effect(() => {
-        bitrate = config.bitrate;
-    });
+    async function saveExposureCompensation(): Promise<void> {
+        try {
+            const response = await fetch("/api/set_exposure_compensation", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ exposure_compensation: config.exposure_compenstion }),
+            });
 
-    $effect(() => {
-        focusMode = config.focus_mode;
-    });
+            if (!response.ok) {
+                throw new Error("exposure compensation update failed");
+            }
 
-    $effect(() => {
-        meteringMode = config.metering_mode;
-    });
+        } catch {
+            openDialog("Speichern fehlgeschlagen", "Die Belichtungskorrektur konnte nicht gespeichert werden.", "danger");
+        }
+    }
 
     function openDialog(title: string, message: string, tone: DialogTone): void {
         dialogTitle = title;
@@ -99,16 +133,13 @@
     }
 
     async function saveBitrate(): Promise<void> {
-        const previousBitrate = config.bitrate;
-        config.bitrate = bitrate;
-
         try {
             const response = await fetch("/api/set_bitrate", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ bitrate: bitrate }),
+                body: JSON.stringify({ bitrate: config.bitrate }),
             });
 
             if (!response.ok) {
@@ -116,23 +147,18 @@
             }
 
         } catch {
-            config.bitrate = previousBitrate;
-            bitrate = previousBitrate;
             openDialog("Speichern fehlgeschlagen", "Die Bitrate konnte nicht gespeichert werden.", "danger");
         }
     }
 
     async function saveFocusMode(): Promise<void> {
-        const previousFocusMode = config.focus_mode;
-        config.focus_mode = focusMode;
-
         try {
             const response = await fetch("/api/set_focus_mode", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ focus_mode: focusMode }),
+                body: JSON.stringify({ focus_mode: config.focus_mode }),
             });
 
             if (!response.ok) {
@@ -140,23 +166,18 @@
             }
 
         } catch {
-            config.focus_mode = previousFocusMode;
-            focusMode = previousFocusMode;
             openDialog("Speichern fehlgeschlagen", "Der Fokusmodus konnte nicht gespeichert werden.", "danger");
         }
     }
 
     async function saveMeteringMode(): Promise<void> {
-        const previousMeteringMode = config.metering_mode;
-        config.metering_mode = meteringMode;
-
         try {
             const response = await fetch("/api/set_metering_mode", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ metering_mode: meteringMode }),
+                body: JSON.stringify({ metering_mode: config.metering_mode }),
             });
 
             if (!response.ok) {
@@ -164,8 +185,6 @@
             }
 
         } catch {
-            config.metering_mode = previousMeteringMode;
-            meteringMode = previousMeteringMode;
             openDialog("Speichern fehlgeschlagen", "Die Belichtungsmessung konnte nicht gespeichert werden.", "danger");
         }
     }
@@ -177,5 +196,118 @@
         color: color-mix(in srgb, var(--text) 70%, transparent);
         font-size: 0.92rem;
         line-height: 1.45;
+    }
+
+    .slider-wrap {
+        position: relative;
+        width: calc(100% + 1.5rem);
+        margin: 0 -0.75rem;
+        padding: 0 0.75rem;
+        box-sizing: border-box;
+    }
+
+    input[type="range"] {
+        width: 100%;
+        height: 1.5rem;
+        margin: 0;
+        padding: 0;
+        appearance: none;
+        -webkit-appearance: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+        height: 0.45rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text) 18%, var(--section-background));
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
+    }
+
+    input[type="range"]::-moz-range-track {
+        height: 0.45rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text) 18%, var(--section-background));
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
+    }
+
+    input[type="range"]::-moz-range-progress {
+        height: 0.45rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text) 18%, var(--section-background));
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        width: 1.25rem;
+        height: 1.25rem;
+        margin-top: -0.4rem;
+        appearance: none;
+        -webkit-appearance: none;
+        border: 3px solid var(--section-background);
+        border-radius: 50%;
+        background: var(--button-color);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--button-color) 70%, white 30%), 0 3px 10px rgba(0, 0, 0, 0.35);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 1rem;
+        height: 1rem;
+        border: 3px solid var(--section-background);
+        border-radius: 50%;
+        background: var(--button-color);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--button-color) 70%, white 30%), 0 3px 10px rgba(0, 0, 0, 0.35);
+    }
+
+    input[type="range"]:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--button-color) 88%, white 12%);
+        outline-offset: 4px;
+        border-radius: 0.4rem;
+    }
+
+    .slider-value {
+        display: block;
+        margin: 0 0 0.25rem;
+        color: var(--text);
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1.1;
+        text-align: center;
+        letter-spacing: 0.02em;
+        pointer-events: none;
+    }
+
+    .slider-legend {
+        display: grid;
+        grid-template-columns: repeat(13, minmax(0, 1fr));
+        height: 1.65rem;
+        margin-top: 0.1rem;
+        color: color-mix(in srgb, var(--text) 62%, transparent);
+    }
+
+    .slider-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        min-width: 0;
+        font-size: 0.7rem;
+        line-height: 1;
+    }
+
+    .slider-step i {
+        display: block;
+        width: 1px;
+        height: 0.3rem;
+        background: color-mix(in srgb, var(--text) 35%, transparent);
+    }
+
+    .slider-step.major i {
+        height: 0.5rem;
+        background: color-mix(in srgb, var(--text) 62%, transparent);
+    }
+
+    .slider-step b {
+        font-weight: 600;
+        white-space: nowrap;
     }
 </style>

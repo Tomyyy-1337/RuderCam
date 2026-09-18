@@ -54,7 +54,8 @@ pub struct Config {
     pub auto_shutdown_time: u64, // in minutes
     pub focus_mode: FocusMode,
     pub metering_mode: Metering,
-    pub bitrate: u32
+    pub bitrate: u32,
+    pub exposure_compenstion: f32
 }
 
 impl Config {
@@ -66,6 +67,7 @@ impl Config {
             focus_mode: FocusMode::Fixed,
             metering_mode: Metering::Average,
             bitrate: 1600000, 
+            exposure_compenstion: 0.0,
         }
     }
 
@@ -76,6 +78,7 @@ impl Config {
         self.focus_mode = FocusMode::Fixed;
         self.metering_mode = Metering::Average;
         self.bitrate = 1600000;
+        self.exposure_compenstion = 0.0;
     } 
 }
 

@@ -69,6 +69,7 @@
         focus_mode: "Fixed",
         metering_mode: "Average",
         bitrate: 1600000,
+        exposure_compenstion: 0,
     };
 
     function toConfig(value: unknown): AppConfig {
@@ -83,6 +84,7 @@
             focus_mode: value.focus_mode || defaultConfig.focus_mode,
             metering_mode: value.metering_mode || defaultConfig.metering_mode,
             bitrate: Number(value.bitrate || defaultConfig.bitrate),
+            exposure_compenstion: Number(value.exposure_compenstion || defaultConfig.exposure_compenstion),
         };
     }
 
