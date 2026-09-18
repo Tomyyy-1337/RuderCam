@@ -3,7 +3,7 @@ import { hasRequiredFields } from "./json_helpers";
 const highFrequencyUpdateFields = ["roll"] as const;
 
 export class HighFrequencyUpdate {
-    roll = $state(0);
+    roll: number = $state(0);
 
     updateFromJson(json: Record<string, unknown>): boolean {
         if (!hasRequiredFields(json, highFrequencyUpdateFields)) {

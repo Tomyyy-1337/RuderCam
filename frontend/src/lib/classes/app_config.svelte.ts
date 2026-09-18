@@ -14,13 +14,13 @@ const appConfigFields = [
 ] as const;
 
 export class AppConfig {
-    ssid = $state("");
-    password = $state("");
-    auto_shutdown_time = $state(0);
-    focus_mode = $state<FocusMode>("Auto");
-    metering_mode = $state<MeteringMode>("Average");
-    bitrate = $state(0);
-    exposure_compenstion = $state(0);
+    ssid: string = $state("");
+    password: string = $state("");
+    auto_shutdown_time: number = $state(0);
+    focus_mode: FocusMode = $state<FocusMode>("Auto");
+    metering_mode: MeteringMode = $state<MeteringMode>("Average");
+    bitrate: number = $state(0);
+    exposure_compenstion: number = $state(0);
 
     updateFromJson(json: Record<string, unknown>): boolean {
         if (!hasRequiredFields(json, appConfigFields)) {

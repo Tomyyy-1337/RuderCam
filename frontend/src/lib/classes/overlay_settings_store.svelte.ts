@@ -16,16 +16,16 @@ const overlaySettingsFields = [
 ] as const;
 
 export class OverlaySettings {
-    show_overlay = $state(true);
-    position = $state<OverlayPosition>("top");
-    show_speed = $state(true);
-    show_split_time = $state(true);
-    show_schlagzahl = $state(true);
-    show_fahrtzeit = $state(true);
-    show_distanz = $state(true);
-    show_distanc_per_stroke = $state(true);
-    auto_level = $state(false);
-    rotation_offset = $state(0);
+    show_overlay: boolean = $state(true);
+    position: OverlayPosition = $state<OverlayPosition>("top");
+    show_speed: boolean = $state(true);
+    show_split_time: boolean = $state(true);
+    show_schlagzahl: boolean = $state(true);
+    show_fahrtzeit: boolean = $state(true);
+    show_distanz: boolean = $state(true);
+    show_distanc_per_stroke: boolean = $state(true);
+    auto_level: boolean = $state(false);
+    rotation_offset: number = $state(0);
 
     updateFromJson(json: Record<string, unknown>): boolean {
         if (!hasRequiredFields(json, overlaySettingsFields)) {

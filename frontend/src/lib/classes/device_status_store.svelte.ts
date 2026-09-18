@@ -8,10 +8,10 @@ const deviceStatusFields = [
 ] as const;
 
 export class DeviceStatus {
-    battery_percentage = $state(0);
-    speed_kmh = $state(0);
-    schlagzahl = $state(0);
-    satellite_count = $state(0);
+    battery_percentage: number = $state(0);
+    speed_kmh: number = $state(0);
+    schlagzahl: number = $state(0);
+    satellite_count: number = $state(0);
 
     updateFromJson(json: Record<string, unknown>): boolean {
         if (!hasRequiredFields(json, deviceStatusFields)) {
