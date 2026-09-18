@@ -6,11 +6,8 @@
 
 <script lang="ts">
     import SettingsCard from "./settings_card.svelte";
-    import type { Writable } from "svelte/store";
-    import { FahrtenbuchStore, Session } from "../fahrtenbuch/fahrtenbuchStore";
+    import { fahrtenbuch, Session } from "../fahrtenbuch/fahrtenbuchStore";
     import type { GpsPosition, SessionJson } from "../types";
-
-    let { fahrtenbuch = $bindable() }: { fahrtenbuch: Writable<FahrtenbuchStore> } = $props();
 
     const rheinRoute: GpsPosition[] = [
         { lat: 50.364000, lon: 7.607292, speed_kmh: 5.8 },

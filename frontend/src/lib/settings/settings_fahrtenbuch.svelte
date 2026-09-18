@@ -16,10 +16,8 @@
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
+    import { fahrtenbuch } from "../fahrtenbuch/fahrtenbuchStore";
 
-    let { fahrtenbuch = $bindable() }: { fahrtenbuch: Writable<FahrtenbuchStore> } = $props();
     let confirmOpen = $state(false);
 
     function deleteFahrtenbuch(): void {

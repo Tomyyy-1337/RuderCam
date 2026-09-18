@@ -9,7 +9,7 @@
             <PauseIcon paused={activeSession.pausiert} session={activeSession} />
         </div>
 
-        <ToggleSessionButton {fahrtenbuch} bind:activeSession variant="overlay" />
+        <ToggleSessionButton bind:activeSession variant="overlay" />
     </div>
 </div>
 {/if}
@@ -20,19 +20,15 @@
     import PauseIcon from "../icons/pauseIcon.svelte";
     import SateliteIcon from "../icons/sateliteIcon.svelte";
     import ToggleSessionButton from "../components/toggleSessionButton.svelte";
-    import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
     import type { ActiveSession, DeviceStatus, OverlaySettings } from "../types";
 
     let {
         deviceStatus,
         activeSession = $bindable(),
-        fahrtenbuch,
         overlay_settings,
     }: {
         deviceStatus: DeviceStatus;
         activeSession: ActiveSession;
-        fahrtenbuch: Writable<FahrtenbuchStore>;
         overlay_settings: OverlaySettings;
     } = $props();
 

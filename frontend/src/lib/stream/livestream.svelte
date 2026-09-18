@@ -7,7 +7,7 @@
             </div>
         {/if}
         {#if fullscreen}
-            <Overlay {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
+            <Overlay {deviceStatus} bind:activeSession {overlay_settings} />
             {#if iosVirtualFullscreen}
                 <button
                     onclick={exitIOSVirtualFullscreen}
@@ -46,8 +46,6 @@
     import Overlay from "./overlay.svelte";
     import { MediaMTXWebRTCReader } from "./reader";
     import type { ActiveSession, DeviceStatus, OverlaySettings } from "../types";
-    import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
 
     let videoShell: HTMLDivElement | null = null;
     let videoElement: HTMLVideoElement | null = null;
@@ -88,12 +86,10 @@
     let {
         deviceStatus,
         activeSession = $bindable(),
-        fahrtenbuch,
         overlay_settings,
     }: {
         deviceStatus: DeviceStatus;
         activeSession: ActiveSession;
-        fahrtenbuch: Writable<FahrtenbuchStore>;
         overlay_settings: OverlaySettings;
     } = $props();
 

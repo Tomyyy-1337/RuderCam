@@ -1,5 +1,5 @@
 <section>  
-    <ToggleSessionButton {fahrtenbuch} bind:activeSession variant="primary" />
+    <ToggleSessionButton bind:activeSession variant="primary" />
 
     <div class="spacer"></div>
 
@@ -21,15 +21,11 @@
     
 <script lang="ts">
     import ToggleSessionButton from "./toggleSessionButton.svelte";
-    import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
     import type { ActiveSession } from "../types";
 
     let {
-        fahrtenbuch = $bindable(),
         activeSession = $bindable(),
     }: {
-        fahrtenbuch: Writable<FahrtenbuchStore>;
         activeSession: ActiveSession;
     } = $props();
 

@@ -9,17 +9,14 @@
 {/if}
 
 <script lang="ts">
-    import type { Writable } from "svelte/store";
-    import { FahrtenbuchStore, Session } from "../fahrtenbuch/fahrtenbuchStore";
+    import { fahrtenbuch, Session } from "../fahrtenbuch/fahrtenbuchStore";
     import { isSessionJson } from "../types";
     import type { ActiveSession, SessionButtonVariant, SessionJson } from "../types";
 
     let {
-        fahrtenbuch,
         activeSession = $bindable(),
         variant = "primary",
     }: {
-        fahrtenbuch: Writable<FahrtenbuchStore>;
         activeSession: ActiveSession;
         variant?: SessionButtonVariant;
     } = $props();

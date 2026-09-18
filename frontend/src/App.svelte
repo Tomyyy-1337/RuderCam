@@ -4,26 +4,24 @@
 
     {#if activeTab === "camera"}
         {#if deviceStatus.isConnected}
-            <Livestream {deviceStatus} bind:activeSession {fahrtenbuch} {overlay_settings} />
-            <Fahrt {fahrtenbuch} bind:activeSession />
+            <Livestream {deviceStatus} bind:activeSession {overlay_settings} />
+            <Fahrt bind:activeSession />
         {:else}
             <NotConnected />
         {/if}
     {:else if activeTab === "sessions"}
-        <Fahrtenbuch {fahrtenbuch} />
+        <Fahrtenbuch />
         <div style="height: 10rem;"></div>
     {:else if activeTab === "settings"}
-        <Settings {fahrtenbuch} {deviceStatus} bind:overlay_settings />
+        <Settings {deviceStatus} bind:overlay_settings />
         <div style="height: 10rem;"></div>
     {/if}
 </main>
 
 <script lang="ts">
     import { onMount } from "svelte";
-    import { writable, type Writable } from "svelte/store";
     import Fahrt from "./lib/components/aktuelle_fahrt.svelte";
     import Fahrtenbuch from "./lib/fahrtenbuch/fahrtenbuch.svelte";
-    import { FahrtenbuchStore } from "./lib/fahrtenbuch/fahrtenbuchStore";
     import Livestream from "./lib/stream/livestream.svelte";
     import Navbar from "./lib/components/navbar.svelte";
     import NotConnected from "./lib/components/not_connected.svelte";
@@ -42,8 +40,6 @@
         OverlaySettings,
         Theme,
     } from "./lib/types";
-
-    let fahrtenbuch: Writable<FahrtenbuchStore> = writable(new FahrtenbuchStore());
 
     let deviceStatus = $state<DeviceStatus>({
         isConnected: true,

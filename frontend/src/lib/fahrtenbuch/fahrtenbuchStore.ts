@@ -1,3 +1,4 @@
+import { writable } from 'svelte/store'
 import { isSessionJson, type GpsPosition, type SessionJson } from '../types'
 
 function parseStoredSessions(): SessionJson[] {
@@ -89,3 +90,5 @@ export class FahrtenbuchStore {
         localStorage.setItem('fahrtenbuch', JSON.stringify(this.sessionHistory))
     }
 }
+
+export const fahrtenbuch = writable(new FahrtenbuchStore())

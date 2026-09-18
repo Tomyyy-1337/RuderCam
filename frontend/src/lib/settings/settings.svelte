@@ -29,7 +29,7 @@
         title="Fahrtenbuch"
         description="Gespeicherte Fahrten verwalten"
     >
-        <SettingsFahrtenbuch {fahrtenbuch} />
+        <SettingsFahrtenbuch />
     </AccordionSection>
 
     <AccordionSection
@@ -43,14 +43,12 @@
         title="Entwickleroptionen"
         description="Optionen für Entwickler"
     >
-        <SettingsDeveloper {fahrtenbuch} />
+        <SettingsDeveloper />
     </AccordionSection>
 </div>
 
 <script lang="ts">
     import { onMount } from "svelte";
-    import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "../fahrtenbuch/fahrtenbuchStore";
     import { isAppConfig } from "../types";
     import type { AppConfig, DeviceStatus, OverlaySettings } from "../types";
     import AccordionSection from "./accordion_section.svelte";
@@ -88,8 +86,7 @@
         };
     }
 
-    let { fahrtenbuch, deviceStatus, overlay_settings = $bindable() }: {
-        fahrtenbuch: Writable<FahrtenbuchStore>;
+    let { deviceStatus, overlay_settings = $bindable() }: {
         deviceStatus: DeviceStatus;
         overlay_settings: OverlaySettings;
     } = $props();

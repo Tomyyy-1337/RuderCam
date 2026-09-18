@@ -87,15 +87,14 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import type { Component } from "svelte";
-    import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore, Session } from "./fahrtenbuchStore";
+    import { fahrtenbuch } from "./fahrtenbuchStore";
+    import type { Session } from "./fahrtenbuchStore";
     import type { GpsPosition } from "../types";
     import StatCard from "./stat_card.svelte";
 
-    let { fahrt, index, fahrtenbuch }: {
+    let { fahrt, index }: {
         fahrt: Session;
         index: number;
-        fahrtenbuch: Writable<FahrtenbuchStore>;
     } = $props();
 
     let MapComponent = $state<Component<{ waypoints: GpsPosition[] }>>();

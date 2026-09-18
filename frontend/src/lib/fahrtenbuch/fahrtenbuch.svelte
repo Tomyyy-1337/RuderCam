@@ -1,6 +1,6 @@
 <div class="entries">
     {#each $fahrtenbuch.getSessions().slice().reverse() as fahrt, index (fahrt)}
-        <FahrtenbuchEintrag {fahrt} {index} {fahrtenbuch}/>
+        <FahrtenbuchEintrag {fahrt} {index}/>
     {:else}
         <div class="no-entries-container">
             <p>Es wurden noch keine Fahrten aufgezeichnet.</p>
@@ -10,10 +10,7 @@
 
 <script lang="ts">
     import FahrtenbuchEintrag from "./fahrtenbuch_eintrag.svelte";
-    import type { Writable } from "svelte/store";
-    import type { FahrtenbuchStore } from "./fahrtenbuchStore";
-
-    let { fahrtenbuch }: { fahrtenbuch: Writable<FahrtenbuchStore> } = $props();
+    import { fahrtenbuch } from "./fahrtenbuchStore";
 </script>
 
 <style>
