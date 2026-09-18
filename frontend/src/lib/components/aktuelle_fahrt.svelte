@@ -1,5 +1,5 @@
 <section>  
-    <ToggleSessionButton bind:activeSession variant="primary" />
+    <ToggleSessionButton variant="primary" {frontend_state} />
 
     <div class="spacer"></div>
 
@@ -21,17 +21,18 @@
     
 <script lang="ts">
     import ToggleSessionButton from "./toggleSessionButton.svelte";
-    import type { ActiveSession } from "../types";
+    import type { FrontendState } from "../types";
+    import { activeSession } from "../classes/active_session_store.svelte";
 
     let {
-        activeSession = $bindable(),
+        frontend_state,
     }: {
-        activeSession: ActiveSession;
+        frontend_state: FrontendState;
     } = $props();
 
-    let duration_secs = $derived(activeSession.isActive ? String(Math.floor(Math.round(activeSession.duration_secs) % 60)).padStart(2,'0') : '--');
-    let duration_mins = $derived(activeSession.isActive ? String(Math.floor(Math.round(activeSession.duration_secs) / 60)).padStart(2,'0') : '--');
-    let distance_traveled_km = $derived(activeSession.isActive ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
+    let duration_secs = $derived(frontend_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) % 60)).padStart(2,'0') : '--');
+    let duration_mins = $derived(frontend_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) / 60)).padStart(2,'0') : '--');
+    let distance_traveled_km = $derived(frontend_state.session_is_active ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
 </script>
 
 <style>

@@ -1,6 +1,6 @@
 <div class="pause-icon {style}" role="status" aria-live="polite" aria-label={label}>
     <svg viewBox="0 0 24 24" aria-hidden="true">
-        {#if session.isActive}
+        {#if frontend_state.session_is_active}
             {#if paused}
                 <rect x="7" y="5" width="3" height="14" rx="1.2" />
                 <rect x="14" y="5" width="3" height="14" rx="1.2" />
@@ -15,12 +15,12 @@
 </div>
 
 <script lang="ts">
-    import type { ActiveSession } from "../types";
+    import type { FrontendState } from "../types";
 
-    let { paused, session }: { paused: boolean, session: ActiveSession } = $props();
+    let { paused, frontend_state }: { paused: boolean, frontend_state: FrontendState } = $props();
 
-    let style = $derived(session.isActive ? (paused ? "paused" : "running") : "inactive");
-    let label = $derived(session.isActive ? (paused ? "Session paused" : "Session running") : "Session inactive");
+    let style = $derived(frontend_state.session_is_active ? (paused ? "paused" : "running") : "inactive");
+    let label = $derived(frontend_state.session_is_active ? (paused ? "Session paused" : "Session running") : "Session inactive");
 </script>
 
 <style>

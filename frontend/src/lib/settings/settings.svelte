@@ -4,24 +4,24 @@
         description="Einstellungen für Theme und das Livestream Overlay"
     >
         <SettingsToggleTheme />
-        <SettingsOverlay bind:overlay_settings />
+        <SettingsOverlay />
     </AccordionSection>
 
-    {#if deviceStatus.isConnected}
+    {#if frontend_state.is_connected}
         <AccordionSection
             title="Kamera"
             description="Einstellungen für Fokus und Belichtungsmessung"
         >
-            <SettingsCamera {config} bind:overlay_settings />
+            <SettingsCamera />
         </AccordionSection>
 
         <AccordionSection
             title="Geräteverwaltung"
             description="Einstellungen für Automatisches Herunterfahren und Wlan"
         >
-            <SettingsShutdownTimer {config} />
-            <SettingsChangeSsid {config} />
-            <SettingsChangePassword {config} />
+            <SettingsShutdownTimer />
+            <SettingsChangeSsid />
+            <SettingsChangePassword />
         </AccordionSection>
     {/if}
 
@@ -49,8 +49,7 @@
 
 <script lang="ts">
     import { onMount } from "svelte";
-    import { isAppConfig } from "../types";
-    import type { AppConfig, DeviceStatus, OverlaySettings } from "../types";
+    import { type FrontendState } from "../types";
     import AccordionSection from "./accordion_section.svelte";
     import SettingsToggleTheme from "./settings_toggle_theme.svelte";
     import SettingsOverlay from "./settings_overlay.svelte";
@@ -61,71 +60,15 @@
     import SettingsFahrtenbuch from "./settings_fahrtenbuch.svelte";
     import SettingsDeveloper from "./settings_developer.svelte";
     import SettingsUpdate from "./settings_update.svelte";
+    import { app_config } from "../classes/app_config.svelte";
 
-    const defaultConfig: AppConfig = {
-        ssid: "TestSSID",
-        password: "TestPassword",
-        auto_shutdown_time: 5,
-        focus_mode: "Fixed",
-        metering_mode: "Average",
-        bitrate: 1600000,
-        exposure_compenstion: 0,
-    };
-
-    function toConfig(value: unknown): AppConfig {
-        if (!isAppConfig(value)) {
-            return defaultConfig;
-        }
-
-        return {
-            ssid: value.ssid || defaultConfig.ssid,
-            password: value.password || defaultConfig.password,
-            auto_shutdown_time: Number(value.auto_shutdown_time || defaultConfig.auto_shutdown_time),
-            focus_mode: value.focus_mode || defaultConfig.focus_mode,
-            metering_mode: value.metering_mode || defaultConfig.metering_mode,
-            bitrate: Number(value.bitrate || defaultConfig.bitrate),
-            exposure_compenstion: Number(value.exposure_compenstion || defaultConfig.exposure_compenstion),
-        };
-    }
-
-    let { deviceStatus, overlay_settings = $bindable() }: {
-        deviceStatus: DeviceStatus;
-        overlay_settings: OverlaySettings;
+    let { frontend_state }: {
+        frontend_state: FrontendState;
     } = $props();
 
-    let config = $state<AppConfig>(defaultConfig);
-
     onMount(async () => {
-        const storedConfig = localStorage.getItem("config");
-        if (storedConfig) {
-            try {
-                const parsedConfig: unknown = JSON.parse(storedConfig);
-                config = toConfig(parsedConfig);
-            } catch {
-                config = defaultConfig;
-            }
-        }
-
-        await fetchConfig();
+        await app_config.fetch();
     });
-
-    $effect(() => {
-        localStorage.setItem("config", JSON.stringify(config));
-    });
-
-    async function fetchConfig(): Promise<void> {
-        const response = await fetch("/api/get_config", {
-            method: "GET",
-            headers: {
-                "Content-Type": "application/json",
-            },
-        });
-
-        if (response.ok) {
-            const parsedConfig: unknown = await response.json();
-            config = toConfig(parsedConfig);
-        }
-    }
 </script>
 
 <style>

@@ -7,7 +7,7 @@
     
 <script lang="ts">
     import { onMount } from "svelte";
-    import { setTheme } from "./setTheme";
+    import { setTheme } from "../classes/themeStore.svelte";
     import SettingsCard from "./settings_card.svelte";
     import type { Theme } from "../types";
 

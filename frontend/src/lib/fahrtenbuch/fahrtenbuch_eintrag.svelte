@@ -87,10 +87,10 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import type { Component } from "svelte";
-    import { fahrtenbuch } from "./fahrtenbuchStore";
-    import type { Session } from "./fahrtenbuchStore";
-    import type { GpsPosition } from "../types";
+    import { fahrtenbuch } from "../classes/fahrtenbuchStore";
+    import type { FahrtenbuchStore, Session } from "../classes/fahrtenbuchStore";
     import StatCard from "./stat_card.svelte";
+    import type { GpsPosition } from "../types";
 
     let { fahrt, index }: {
         fahrt: Session;
@@ -203,7 +203,7 @@
     }
 
     function deleteSession(index: number) {
-        fahrtenbuch.update((store) => {
+        fahrtenbuch.update((store: FahrtenbuchStore) => {
             store.deleteSession(store.length() - 1 - index);
             return store;
         });

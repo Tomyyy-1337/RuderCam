@@ -1,4 +1,4 @@
-<SettingsCard title="SSID (Wlan Name) ändern" description="Aktuelle SSID: {config.ssid}">
+<SettingsCard title="SSID (Wlan Name) ändern" description="Aktuelle SSID: {app_config.ssid}">
     <p>Das Ändern der SSID wird nach dem nächsten Neustart des Geräts wirksam.</p>
     <p>Die Verbindung zur Kamera ist nach dem Ändern der SSID nur noch über den neuen Netzwerknamen möglich. Um sich wieder zu verbinden, müssen Sie in den Netzwerkeinstellungen Ihres Geräts das neue WLAN auswählen und das Passwort eingeben.</p>
 
@@ -18,11 +18,9 @@
 </SettingsCard>
 
 <script lang="ts">
+    import { app_config } from "../classes/app_config.svelte";
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import type { AppConfig } from "../types";
-
-    let { config }: { config: AppConfig } = $props();
 
     let SSIDInput = $state('');
     let alertOpen = $state(false);
@@ -35,7 +33,7 @@
             alertOpen = true;
             return;
         }
-        config.ssid = SSIDInput;
+        app_config.ssid = SSIDInput;
         await fetch('/api/set_wifi_ssid', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', },

@@ -10,7 +10,7 @@
 
 <script lang="ts">
     import FahrtenbuchEintrag from "./fahrtenbuch_eintrag.svelte";
-    import { fahrtenbuch } from "./fahrtenbuchStore";
+    import { fahrtenbuch } from "../classes/fahrtenbuchStore";
 </script>
 
 <style>

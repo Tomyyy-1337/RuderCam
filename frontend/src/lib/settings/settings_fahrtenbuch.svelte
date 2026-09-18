@@ -16,7 +16,7 @@
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import { fahrtenbuch } from "../fahrtenbuch/fahrtenbuchStore";
+    import { fahrtenbuch, FahrtenbuchStore } from "../classes/fahrtenbuchStore";
 
     let confirmOpen = $state(false);
 
@@ -25,7 +25,7 @@
     }
 
     function deleteConfirmed(): void {
-        fahrtenbuch.update((store) => {
+        fahrtenbuch.update((store: FahrtenbuchStore) => {
             store.clearHistory();
             return store;
         });

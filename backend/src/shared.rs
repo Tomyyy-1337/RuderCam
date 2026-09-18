@@ -6,7 +6,7 @@ use crate::camera_interface::{FocusMode, Metering};
 /// Data that is send to the frontend periodically
 #[derive(serde::Serialize, Clone)]
 pub struct DeviceState {
-    pub velocity: f32,
+    pub speed_kmh: f32,
     pub satellite_count: u8,
     pub schlagzahl: f32,
     pub battery_percentage: u8,
@@ -28,7 +28,7 @@ impl HighFrequencyUpdate {
 impl DeviceState {
     pub const fn default() -> Self {
         DeviceState {
-            velocity: 0.0,
+            speed_kmh: 0.0,
             satellite_count: 0,
             schlagzahl: 0.0,
             battery_percentage: 95,
@@ -36,7 +36,7 @@ impl DeviceState {
     }
 
     pub fn set_schlagzahl(&mut self, schlagzahl: f32) {
-        self.schlagzahl = if self.velocity > 0.0 {
+        self.schlagzahl = if self.speed_kmh > 0.0 {
             let new_schlagzahl = schlagzahl.round();
             if schlagzahl - new_schlagzahl >= 0.5 {
                 new_schlagzahl + 0.5
@@ -49,7 +49,7 @@ impl DeviceState {
     }
 
     pub fn set_velocity(&mut self, velocity: f32) {
-        self.velocity = if velocity >= 2.0 {
+        self.speed_kmh = if velocity >= 2.0 {
             (velocity * 10.0).round() / 10.0
         } else {
             0.0

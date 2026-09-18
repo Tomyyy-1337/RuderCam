@@ -1,7 +1,7 @@
 <SettingsCard title="Belichtungskorrektur" description="Die Belichtungskorrektur für die Kamera einstellen.">
     <div class="slider-wrap">
         <div class="slider-value" aria-hidden="true">
-            {config.exposure_compenstion >= 0 ? "+" : ""}{config.exposure_compenstion.toFixed(1)} EV
+            {app_config.exposure_compenstion >= 0 ? "+" : ""}{app_config.exposure_compenstion.toFixed(1)} EV
         </div>
         <input
             id="camera-exposure-compensation"
@@ -10,7 +10,7 @@
             min="-3"
             max="3"
             step="0.5"
-            bind:value={config.exposure_compenstion}
+            bind:value={app_config.exposure_compenstion}
             onchange={saveExposureCompensation}
             aria-label="Belichtungskorrektur"
         />
@@ -60,13 +60,13 @@
 </SettingsCard>
 
 <SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
-    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={config.metering_mode} onchange={saveMeteringMode}>
+    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={app_config.metering_mode} onchange={saveMeteringMode}>
         <option value="Average">Durchschnitt</option>
         <option value="Center">Mitte</option>
     </select>
 
     <p class="hint">
-        {#if config.metering_mode === "Average"}
+        {#if app_config.metering_mode === "Average"}
             Die Kamera misst die Helligkeit über das gesamte Bild.
         {:else}
             Die Kamera gewichtet die Bildmitte stärker.
@@ -76,13 +76,13 @@
 </SettingsCard>
 
 <SettingsCard title="Fokusmodus" description="Autofokus oder festen Fokus für die Kamera auswählen.">
-    <select id="camera-focus-mode" name="camera-focus-mode" bind:value={config.focus_mode} onchange={saveFocusMode}>
+    <select id="camera-focus-mode" name="camera-focus-mode" bind:value={app_config.focus_mode} onchange={saveFocusMode}>
         <option value="Auto">Autofokus</option>
         <option value="Fixed">Fester Fokus</option>
     </select>
 
     <p class="hint">
-        {#if config.focus_mode === "Auto"}
+        {#if app_config.focus_mode === "Auto"}
             Die Kamera passt den Fokus automatisch an.
         {:else}
             Die Kamera bleibt auf Hyperfokalpunkt eingestellt. Nahe Objekte können unscharf erscheinen.
@@ -92,7 +92,7 @@
 
 <SettingsCard title="Bitrate" description="Die Bitrate für den Livestream einstellen.">
 
-    <select id="camera-bitrate" name="camera-bitrate" bind:value={config.bitrate} onchange={saveBitrate}>
+    <select id="camera-bitrate" name="camera-bitrate" bind:value={app_config.bitrate} onchange={saveBitrate}>
         <option value={100000}>100kB/s</option>
         <option value={400000}>400kB/s</option>
         <option value={800000}>800kB/s</option>
@@ -123,9 +123,8 @@
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import type { AppConfig, OverlaySettings } from "../types";
-
-    let { config, overlay_settings = $bindable() }: { config: AppConfig; overlay_settings: OverlaySettings } = $props();
+    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
+    import { app_config } from "../classes/app_config.svelte";
 
     type DialogTone = "info" | "warning" | "danger";
 
@@ -142,7 +141,7 @@
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ exposure_compensation: config.exposure_compenstion }),
+                body: JSON.stringify({ exposure_compensation: app_config.exposure_compenstion }),
             });
 
             if (!response.ok) {
@@ -168,7 +167,7 @@
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ bitrate: config.bitrate }),
+                body: JSON.stringify({ bitrate: app_config.bitrate }),
             });
 
             if (!response.ok) {
@@ -187,7 +186,7 @@
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ focus_mode: config.focus_mode }),
+                body: JSON.stringify({ focus_mode: app_config.focus_mode }),
             });
 
             if (!response.ok) {
@@ -206,7 +205,7 @@
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ metering_mode: config.metering_mode }),
+                body: JSON.stringify({ metering_mode: app_config.metering_mode }),
             });
 
             if (!response.ok) {

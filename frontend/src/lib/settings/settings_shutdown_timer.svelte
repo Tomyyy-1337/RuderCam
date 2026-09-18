@@ -1,4 +1,4 @@
-<SettingsCard title="Automatisches Herunterfahren" description="Das Gerät fährt nach {config.auto_shutdown_time} Minuten automatisch herunter wenn keine Verbindung zum Smartphone besteht.">
+<SettingsCard title="Automatisches Herunterfahren" description="Das Gerät fährt nach {app_config.auto_shutdown_time} Minuten automatisch herunter wenn keine Verbindung zum Smartphone besteht.">
     <input id="shutdown-timer" name="shutdown-timer" type="number" placeholder="Zeit in Minuten" bind:value={shutdownTimerInput}>
     <button style="width:100%;" onclick={handleSaveShutdownTimer}>
         Speichern
@@ -14,11 +14,10 @@
 </SettingsCard>
 
 <script lang="ts">
+    import { app_config } from "../classes/app_config.svelte";
     import Dialog from "../components/dialog.svelte";
-    import SettingsCard from "./settings_card.svelte";
-    import type { AppConfig } from "../types";
+    import SettingsCard from "./settings_card.svelte"
 
-    let { config }: { config: AppConfig } = $props();
     let shutdownTimerInput = $state('');
     let alertOpen = $state(false);
     let alertTitle = $state('Ungültige Eingabe');
@@ -32,7 +31,7 @@
             alertOpen = true;
             return;
         }
-        config.auto_shutdown_time = minutes;
+        app_config.auto_shutdown_time = minutes;
         await fetch('/api/set_shutdown_timer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', },

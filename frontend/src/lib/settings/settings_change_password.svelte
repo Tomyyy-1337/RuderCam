@@ -1,4 +1,4 @@
-<SettingsCard title="Wlan Passwort ändern" description="Aktuelles Passwort: {config.password}">
+<SettingsCard title="Wlan Passwort ändern" description="Aktuelles Passwort: {app_config.password}">
     <p>Das Ändern des Passworts wird nach dem nächsten Neustart des Geräts wirksam.</p>
     <p>Die Verbindung zur Kamera ist nach dem Ändern des Passworts nur noch mit dem neuen Passwort möglich. Um sich wieder zu verbinden, müssen Sie in den Netzwerkeinstellungen Ihres Geräts das derzeitige WLAN entfernen und sich erneut mit dem neuen Passwort verbinden.</p>
     <p class="warning">Achtung: Verlieren sie das neue Passwort, können Sie sich nicht mehr mit dem WLAN verbinden. Es wird dringend empfohlen, das neue Passwort sicher zu notieren. Das Passwort lässt sich nicht ohne Support durch den Hersteller zurücksetzen.</p>
@@ -23,11 +23,9 @@
 </SettingsCard>
 
 <script lang="ts">
+    import { app_config } from "../classes/app_config.svelte";
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import type { AppConfig } from "../types";
-
-    let { config }: { config: AppConfig } = $props();
 
     let passwordInput = $state('');
     let passwordConfirmInput = $state('');
@@ -47,7 +45,7 @@
             alertOpen = true;
             return;
         }
-        config.password = passwordInput;
+        app_config.password = passwordInput;
         await fetch('/api/set_wifi_password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', },

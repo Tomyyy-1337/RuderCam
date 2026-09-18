@@ -1,11 +1,11 @@
 <main class="container">
-    <PageHeadder {deviceStatus} />
+    <PageHeadder {frontend_state} />
     <Navbar bind:activeTab />
 
     {#if activeTab === "camera"}
-        {#if deviceStatus.isConnected}
-            <Livestream {deviceStatus} bind:activeSession {overlay_settings} {highFrequencyUpdate} />
-            <Fahrt bind:activeSession />
+        {#if frontend_state.is_connected}
+            <Livestream {frontend_state} />
+            <Fahrt {frontend_state} />
         {:else}
             <NotConnected />
         {/if}
@@ -13,11 +13,9 @@
         <Fahrtenbuch />
         <div style="height: 10rem;"></div>
     {:else if activeTab === "settings"}
-        <Settings {deviceStatus} bind:overlay_settings />
+        <Settings {frontend_state} />
         <div style="height: 10rem;"></div>
-    {/if}
-
-    
+    {/if}    
 </main>
 
 <script lang="ts">
@@ -29,58 +27,22 @@
     import NotConnected from "./lib/components/not_connected.svelte";
     import PageHeadder from "./lib/components/pageHeadder.svelte";
     import Settings from "./lib/settings/settings.svelte";
-    import { setTheme } from "./lib/settings/setTheme";
+
     import {
-        isDeviceStateMessage,
-        isHighFrequencyUpdate,
-        isOverlaySettings,
-        isRunningSessionMessage,
+        type AppTab,
+        type FrontendState,
+        type Theme,
     } from "./lib/types";
-    import type {
-        ActiveSession,
-        AppTab,
-        DeviceStatus,
-        HighFrequencyUpdate,
-        OverlaySettings,
-        Theme,
-    } from "./lib/types";
+    import { overlay_settings } from "./lib/classes/overlay_settings_store.svelte";   
+    import { highFrequencyUpdate } from "./lib/classes/high_frequency_update_store.svelte";
+    import { deviceStatus } from "./lib/classes/device_status_store.svelte";
+    import { activeSession } from "./lib/classes/active_session_store.svelte";
+    import { setTheme } from "./lib/classes/themeStore.svelte";
 
-    let highFrequencyUpdate = $state<HighFrequencyUpdate>({
-        roll: 0,
-    });
-
-    let deviceStatus = $state<DeviceStatus>({
-        isConnected: true,
-        battery_percentage: 0,
-        speed_kmh: 0,
-        schlagzahl: 0,
-        satellite_count: 0,
-    });
-
-    let activeSession = $state<ActiveSession>({
-        isActive: false,
-        end_time: new Date(),
-        client_time: null,
-        distance_traveled_km: 0,
-        average_speed_kmh: 0,
-        max_speed_kmh: 0,
-        average_bpm: 0,
-        duration_secs: 0,
-        pausiert: true,
-    });
-
-    let overlay_settings = $state<OverlaySettings>({
-        show_overlay: true,
-        position: "top",
-        show_speed: true,
-        show_split_time: true,
-        show_schlagzahl: true,
-        show_fahrtzeit: true,
-        show_distanz: true,
-        show_distanc_per_stroke: true,
-        auto_level: false,
-        rotation_offset: 0
-    });
+    let frontend_state = $state<FrontendState>({
+        is_connected: true,
+        session_is_active: false
+    })
 
     let activeTab = $state<AppTab>("camera");
 
@@ -112,14 +74,8 @@
 
         const storedOverlaySettings = localStorage.getItem("overlay_settings");
         if (storedOverlaySettings) {
-            try {
-                const parsedSettings: unknown = JSON.parse(storedOverlaySettings);
-                if (isOverlaySettings(parsedSettings)) {
-                    overlay_settings = parsedSettings;
-                }
-            } catch (error) {
-                console.error("Failed to parse overlay settings from localStorage:", error);
-            }
+            const parsedSettings = JSON.parse(storedOverlaySettings);
+            overlay_settings.updateFromJson(parsedSettings);
         }
 
         connectWebSocket();
@@ -136,7 +92,7 @@
     });
 
     $effect(() => {
-        localStorage.setItem("overlay_settings", JSON.stringify(overlay_settings));
+        localStorage.setItem("overlay_settings", overlay_settings.toJSONstring());
     });
 
     function connectWebSocket(): void {
@@ -151,33 +107,20 @@
     }
 
     function socketEventListener(event: MessageEvent<string>): void {
-        const payload: unknown = JSON.parse(event.data);
-        deviceStatus.isConnected = true;
-        if (isHighFrequencyUpdate(payload)) {
-            highFrequencyUpdate.roll = payload.roll;
-        } else if (isDeviceStateMessage(payload)) {
-            deviceStatus.battery_percentage = payload.battery_percentage;
-            deviceStatus.speed_kmh = payload.velocity;
-            deviceStatus.schlagzahl = payload.schlagzahl;
-            deviceStatus.satellite_count = payload.satellite_count;
-        } else if (isRunningSessionMessage(payload)) {
-            if (!activeSession.isActive || Math.abs(Date.parse(payload.client_time) - Date.now()) > 2000) {
-                activeSession.isActive = true;
+        const payload = JSON.parse(event.data);
+        frontend_state.is_connected = true;
+        deviceStatus.updateFromJson(payload);
+        highFrequencyUpdate.updateFromJson(payload);
+        if (activeSession.updateFromJson(payload)) {
+            if (!frontend_state.session_is_active || Math.abs(Date.parse(payload.client_time) - Date.now()) > 2000) {
+                frontend_state.session_is_active = true;
             }
-
             scheduleSessionActivityTimeout();
-            activeSession.client_time = Date.parse(payload.client_time);
-            activeSession.distance_traveled_km = payload.distance_traveled_km;
-            activeSession.average_speed_kmh = payload.average_speed_kmh;
-            activeSession.max_speed_kmh = payload.max_speed_kmh;
-            activeSession.average_bpm = payload.average_bpm;
-            activeSession.duration_secs = payload.duration_secs;
-            activeSession.pausiert = payload.pausiert;
         }
     }
 
     function socketCloseListener(): void {
-        deviceStatus.isConnected = false;
+        frontend_state.is_connected = false;
         deactivateSession();
         scheduleReconnect();
     }
@@ -198,7 +141,7 @@
 
     function deactivateSession(): void {
         clearSessionActivityTimeout();
-        activeSession.isActive = false;
+        frontend_state.session_is_active = false;
     }
 
     function scheduleReconnect(): void {

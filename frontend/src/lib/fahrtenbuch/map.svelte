@@ -32,10 +32,12 @@
     import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
     import { PMTiles, Protocol } from "pmtiles";
     import "maplibre-gl/dist/maplibre-gl.css";
-    import { currentTheme } from "../settings/themeStore";
+    import { currentTheme } from "../classes/themeStore.svelte";
     import { applyThemeToMap, buildLayers, buildSources, getMapPalette } from "./mapStyle";
     import { discoverPmtilesBaseUrl } from "./pmtilesDiscovery";
-    import type { GpsPosition, Waypoint } from "../types";
+    import type { GpsPosition } from "../types";
+    
+    type Waypoint = [number, number];
 
     const DEFAULT_CENTER: Waypoint = [8.472401705884762, 49.363691016649035];
     const MARKER_FIT_PADDING = 35;

@@ -49,10 +49,8 @@
 {/if}
 
 <script lang="ts">
-    import type { OverlaySettings } from "../types";
+    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
     import SettingsCard from "./settings_card.svelte";
-
-    let { overlay_settings = $bindable() }: { overlay_settings: OverlaySettings } = $props();
 </script>
 
 <style>

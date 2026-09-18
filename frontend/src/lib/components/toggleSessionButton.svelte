@@ -1,4 +1,4 @@
-{#if !activeSession.isActive}
+{#if !frontend_state.session_is_active}
     <button class="green {variant}" onclick={startSession}>
         Fahrt starten
     </button>
@@ -9,20 +9,20 @@
 {/if}
 
 <script lang="ts">
-    import { fahrtenbuch, Session } from "../fahrtenbuch/fahrtenbuchStore";
-    import { isSessionJson } from "../types";
-    import type { ActiveSession, SessionButtonVariant, SessionJson } from "../types";
+    import { fahrtenbuch, FahrtenbuchStore, Session } from "../classes/fahrtenbuchStore";
+    import { activeSession } from "../classes/active_session_store.svelte";
+    import type { FrontendState, SessionButtonVariant } from "../types";
 
     let {
-        activeSession = $bindable(),
         variant = "primary",
+        frontend_state,
     }: {
-        activeSession: ActiveSession;
         variant?: SessionButtonVariant;
+        frontend_state: FrontendState;
     } = $props();
 
     function startSession(): void {
-        activeSession.isActive = true;
+        frontend_state.session_is_active = true;
         const currentTime = new Date().toISOString();
         activeSession.distance_traveled_km = 0;
         activeSession.average_speed_kmh = 0;
@@ -38,8 +38,7 @@
     }
 
     async function endSession(): Promise<void> {
-        activeSession.isActive = false;
-        activeSession.end_time = new Date();
+        frontend_state.session_is_active = false;
 
         const response = await fetch('/api/stop_session', {
             method: 'POST',
@@ -52,14 +51,9 @@
             return;
         }
 
-        const payload: unknown = await response.json();
-        if (!isSessionJson(payload)) {
-            return;
-        }
-
-        const sessionSummary: SessionJson = payload;
-        const session = new Session(sessionSummary);
-        fahrtenbuch.update((store) => {
+        const payload = await response.json();
+        const session = new Session().fromJSON(payload);
+        fahrtenbuch.update((store: FahrtenbuchStore) => {
             store.addSession(session);
             return store;
         });

@@ -24,7 +24,7 @@
             </div>
         {/if}
         {#if fullscreen}
-            <Overlay {deviceStatus} bind:activeSession {overlay_settings} />
+            <Overlay {frontend_state}/>
             {#if iosVirtualFullscreen}
                 <button
                     onclick={exitIOSVirtualFullscreen}
@@ -62,7 +62,9 @@
     import { createFullscreenTapController } from "../components/fullscreenTap";
     import Overlay from "./overlay.svelte";
     import { MediaMTXWebRTCReader } from "./reader";
-    import type { ActiveSession, DeviceStatus, HighFrequencyUpdate, OverlaySettings } from "../types";
+    import type { FrontendState } from "../types";
+    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
+    import { highFrequencyUpdate } from "../classes/high_frequency_update_store.svelte";
 
     let videoShell: HTMLDivElement | null = null;
     let videoElement: HTMLVideoElement | null = null;
@@ -106,15 +108,9 @@
     });
 
     let {
-        deviceStatus,
-        activeSession = $bindable(),
-        overlay_settings,
-        highFrequencyUpdate,
+        frontend_state
     }: {
-        deviceStatus: DeviceStatus;
-        activeSession: ActiveSession;
-        overlay_settings: OverlaySettings;
-        highFrequencyUpdate: HighFrequencyUpdate;
+        frontend_state: FrontendState;
     } = $props();
 
     let effectiveRotation = $derived(overlay_settings.auto_level ? highFrequencyUpdate.roll - overlay_settings.rotation_offset : -overlay_settings.rotation_offset);

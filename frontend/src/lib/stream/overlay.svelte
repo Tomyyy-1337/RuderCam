@@ -6,10 +6,10 @@
         <div class="icon-container">
             <BatteryStatusIcon value={battery_percentage} />
             <SateliteIcon value={satellite_count} />
-            <PauseIcon paused={activeSession.pausiert} session={activeSession} />
+            <PauseIcon paused={activeSession.pausiert} {frontend_state} />
         </div>
 
-        <ToggleSessionButton bind:activeSession variant="overlay" />
+        <ToggleSessionButton variant="overlay" {frontend_state} />
     </div>
 </div>
 {/if}
@@ -20,20 +20,19 @@
     import PauseIcon from "../icons/pauseIcon.svelte";
     import SateliteIcon from "../icons/sateliteIcon.svelte";
     import ToggleSessionButton from "../components/toggleSessionButton.svelte";
-    import type { ActiveSession, DeviceStatus, OverlaySettings } from "../types";
+    import type { FrontendState } from "../types";
+    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
+    import { deviceStatus } from "../classes/device_status_store.svelte";
+    import { activeSession } from "../classes/active_session_store.svelte";
 
     let {
-        deviceStatus,
-        activeSession = $bindable(),
-        overlay_settings,
+        frontend_state,
     }: {
-        deviceStatus: DeviceStatus;
-        activeSession: ActiveSession;
-        overlay_settings: OverlaySettings;
+        frontend_state: FrontendState;
     } = $props();
 
-    let fahrtzeit = $derived(activeSession.isActive ? Math.floor(activeSession.duration_secs / 60) + ":" + String(Math.floor(activeSession.duration_secs % 60)).padStart(2,'0') : '--:--');
-    let distanz = $derived(activeSession.isActive ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
+    let fahrtzeit = $derived(frontend_state.session_is_active ? Math.floor(activeSession.duration_secs / 60) + ":" + String(Math.floor(activeSession.duration_secs % 60)).padStart(2,'0') : '--:--');
+    let distanz = $derived(frontend_state.session_is_active ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
     let battery_percentage = $derived(deviceStatus.battery_percentage);
     let satellite_count = $derived(deviceStatus.satellite_count);
     let speed_kmh = $derived(deviceStatus.speed_kmh.toFixed(1));
@@ -49,8 +48,8 @@
         ...(overlay_settings.show_split_time ? [{ id: 'split', label: 'Split', unit: '500m', value: time_per_500m_formatted }] : []),
         ...(overlay_settings.show_schlagzahl ? [{ id: 'schlagzahl', label: 'Schlagzahl', unit: 'bpm', value: schlagzahl }] : []),
         ...(overlay_settings.show_distanc_per_stroke ? [{ id: 'distanz_per_schlag', label: 'Distanz/Schlag', unit: 'm', value: distance_per_stroke_m }] : []),
-        ...(activeSession.isActive && overlay_settings.show_distanz ? [{ id: 'distanz', label: 'Distanz', unit: 'km', value: distanz }] : []),
-        ...(activeSession.isActive && overlay_settings.show_fahrtzeit ? [{ id: 'fahrtzeit', label: 'Fahrtzeit', unit: '', value: fahrtzeit }] : [])
+        ...(frontend_state.session_is_active && overlay_settings.show_distanz ? [{ id: 'distanz', label: 'Distanz', unit: 'km', value: distanz }] : []),
+        ...(frontend_state.session_is_active && overlay_settings.show_fahrtzeit ? [{ id: 'fahrtzeit', label: 'Fahrtzeit', unit: '', value: fahrtzeit }] : [])
     ]);
 
 </script>
