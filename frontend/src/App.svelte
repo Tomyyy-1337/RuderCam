@@ -1,6 +1,6 @@
 <main class="container">
     <PageHeadder {deviceStatus} />
-    <Navbar bind:activeTab onTabSelect={setActiveTab} />
+    <Navbar bind:activeTab />
 
     {#if activeTab === "camera"}
         {#if deviceStatus.isConnected}
@@ -76,15 +76,6 @@
 
     let socket: WebSocket | null = null;
     let sessionActivityTimeout: number | null = null;
-
-    function setActiveTab(nextTab: AppTab): void {
-        if (nextTab === activeTab) {
-            return;
-        }
-
-        activeTab = nextTab;
-        window.history.pushState({ activeTab: nextTab }, "", window.location.href);
-    }
 
     onMount(() => {
         const theme = (localStorage.getItem("theme") as Theme | null) ?? "dark";

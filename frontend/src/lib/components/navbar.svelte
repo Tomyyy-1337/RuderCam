@@ -1,26 +1,3 @@
-<script lang="ts">
-    import type { AppTab } from "../types";
-
-    let {
-        activeTab = $bindable(),
-        onTabSelect,
-    }: {
-        activeTab: AppTab;
-        onTabSelect?: (tab: AppTab) => void;
-    } = $props();
-
-    function selectTab(nextTab: AppTab, event?: MouseEvent): void {
-        event?.preventDefault();
-        event?.stopPropagation();
-
-        if (document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-        }
-
-        onTabSelect?.(nextTab);
-    }
-</script>
-
 <nav
     aria-label="Navigation"
     class="tabbar"
@@ -57,6 +34,33 @@
         <span class="tab_label">Settings</span>
     </button>
 </nav>
+
+<script lang="ts">
+    import type { AppTab } from "../types";
+
+    let {
+        activeTab = $bindable(),
+    }: {
+        activeTab: AppTab;
+        onTabSelect?: (tab: AppTab) => void;
+    } = $props();
+
+    function selectTab(nextTab: AppTab, event?: MouseEvent): void {
+        event?.preventDefault();
+        event?.stopPropagation();
+
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+
+        if (nextTab === activeTab) {
+            return;
+        }
+
+        activeTab = nextTab;
+        window.history.pushState({ activeTab: nextTab }, "", window.location.href);
+    }
+</script>
 
 <style>
     nav {
