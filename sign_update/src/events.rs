@@ -39,4 +39,5 @@ pub enum AppEvent {
     ParallelOutput(Task, String),
     ParallelTaskFinished(Task, Result<(), String>),
     ParallelFinished,
+    GitPushFinished(Result<(), String>),
 }

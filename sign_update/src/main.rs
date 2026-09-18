@@ -1,4 +1,5 @@
 mod events;
+mod git;
 mod pipeline;
 mod ui;
 mod upload;

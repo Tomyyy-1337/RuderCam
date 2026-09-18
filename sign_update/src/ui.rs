@@ -26,6 +26,7 @@ use ratatui::{
 };
 
 use crate::events::{AppEvent, Task, TaskStatus};
+use crate::git;
 use crate::pipeline::{read_version_number, write_version_number};
 use crate::upload::{self, FlashEvent};
 use text::{parse_output_lines, wrap_line};
@@ -63,6 +64,17 @@ enum FlashState {
     Hidden,
     ChangingVersion {
         input: String,
+    },
+    GitCommit {
+        input: String,
+    },
+    GitWorking {
+        log: Vec<String>,
+        cancel: Arc<AtomicBool>,
+    },
+    GitFinished {
+        log: Vec<String>,
+        result: Result<(), String>,
     },
     Scanning,
     SelectNetwork {
@@ -245,6 +257,7 @@ impl App {
             AppEvent::ParallelFinished => {
                 self.parallel_active = false;
             }
+            AppEvent::GitPushFinished(_) => {}
         }
     }
 
@@ -294,11 +307,29 @@ pub fn run_app(
     let mut original_ssid: Option<String> = None;
     let mut auto_upload_pending = false;
     let (flash_tx, flash_rx): (_, Receiver<FlashEvent>) = mpsc::channel();
+    let (git_tx, git_rx): (_, Receiver<AppEvent>) = mpsc::channel();
 
     loop {
         let was_finished = app.finished;
         while let Ok(event) = rx.try_recv() {
             app.handle_event(event);
+        }
+        while let Ok(event) = git_rx.try_recv() {
+            if let AppEvent::GitPushFinished(result) = event {
+                if let FlashState::GitWorking { log, .. } = &flash_state {
+                    flash_state = FlashState::GitFinished {
+                        log: log.clone(),
+                        result,
+                    };
+                }
+            } else {
+                if let FlashState::GitWorking { log, .. } = &mut flash_state {
+                    if let AppEvent::Output(line) = &event {
+                        log.push(line.clone());
+                    }
+                }
+                app.handle_event(event);
+            }
         }
 
         if !was_finished && app.finished && !app.has_error() && upload::auto_upload_enabled() {
@@ -434,10 +465,16 @@ pub fn run_app(
                 None => "auto upload unavailable",
             };
             let mut hint_lines = if show_flash_hint {
-                vec![Line::from(Span::styled(
-                    "f: upload to pi",
-                    Style::default().fg(Color::DarkGray),
-                ))]
+                vec![
+                    Line::from(Span::styled(
+                        "f: upload to pi",
+                        Style::default().fg(Color::DarkGray),
+                    )),
+                    Line::from(Span::styled(
+                        "a: toggle auto upload",
+                        Style::default().fg(Color::DarkGray),
+                    )),
+                ]
             } else {
                 Vec::new()
             };
@@ -500,7 +537,7 @@ pub fn run_app(
                     .title(if app.has_error() {
                         "Output (failed, press Enter/r to retry or q to quit)"
                     } else {
-                        "Output (q: quit, r: restart, v: version number)"
+                        "Output (q: quit, r: restart, v: version number, p: git push)"
                     });
                 let output_area = output_block.inner(right_chunks[0]);
                 visible_height = output_area.height;
@@ -555,7 +592,10 @@ pub fn run_app(
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind != KeyEventKind::Release {
-                    if key.code == KeyCode::Char('a') && upload::last_network().is_some() {
+                    if key.code == KeyCode::Char('a')
+                        && upload::last_network().is_some()
+                        && matches!(flash_state, FlashState::Hidden)
+                    {
                         app.auto_upload_status =
                             upload::toggle_auto_upload().then_some(TaskStatus::Pending);
                         continue;
@@ -566,6 +606,7 @@ pub fn run_app(
                             &mut flash_state,
                             key.code,
                             &flash_tx,
+                            &git_tx,
                             &original_ssid,
                             &mut app.version,
                         ) {
@@ -585,6 +626,11 @@ pub fn run_app(
                         KeyCode::Char('v') => {
                             flash_state = FlashState::ChangingVersion {
                                 input: app.version.clone(),
+                            };
+                        }
+                        KeyCode::Char('p') if app.finished => {
+                            flash_state = FlashState::GitCommit {
+                                input: String::new(),
                             };
                         }
                         KeyCode::Enter if app.finished => return Ok(RunOutcome::Retry),
@@ -642,6 +688,7 @@ fn handle_flash_key(
     flash_state: &mut FlashState,
     code: KeyCode,
     flash_tx: &std::sync::mpsc::Sender<FlashEvent>,
+    git_tx: &std::sync::mpsc::Sender<AppEvent>,
     original_ssid: &Option<String>,
     version: &mut String,
 ) -> bool {
@@ -671,6 +718,35 @@ fn handle_flash_key(
             }
             _ => {}
         },
+        FlashState::GitCommit { input } => {
+            if let KeyCode::Char(character) = code {
+                input.push(character);
+            } else if code == KeyCode::Backspace {
+                input.pop();
+            } else if code == KeyCode::Enter {
+                let message = input.trim();
+                if !message.is_empty() {
+                    let cancel = git::push_async(git_tx.clone(), message.to_string(), git::repo_dir());
+                    *flash_state = FlashState::GitWorking {
+                        log: Vec::new(),
+                        cancel,
+                    };
+                }
+            } else if code == KeyCode::Esc {
+                *flash_state = FlashState::Hidden;
+            }
+        }
+        FlashState::GitWorking { cancel, .. } => {
+            if code == KeyCode::Esc {
+                cancel.store(true, Ordering::Relaxed);
+                *flash_state = FlashState::Hidden;
+            }
+        }
+        FlashState::GitFinished { result: _, .. } => {
+            if matches!(code, KeyCode::Enter | KeyCode::Esc) {
+                *flash_state = FlashState::Hidden;
+            }
+        }
         FlashState::Scanning => {
             if code == KeyCode::Esc {
                 *flash_state = FlashState::Hidden;
@@ -748,6 +824,59 @@ fn render_flash_overlay(
             ],
             Color::White,
         ),
+        FlashState::GitCommit { input } => (
+            "Git commit (Enter to push, Esc to cancel)",
+            vec![
+                Line::from(format!("Message: {input}")),
+                Line::default(),
+                Line::from(Span::styled(
+                    "Runs git add . | git commit -m <msg> | git push",
+                    Style::default().fg(Color::DarkGray),
+                )),
+            ],
+            Color::White,
+        ),
+        FlashState::GitWorking { log, .. } => {
+            let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
+            lines.push(Line::from(Span::styled(
+                "Working...",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )));
+            lines.push(Line::default());
+            lines.push(Line::from(Span::styled(
+                "Esc to cancel",
+                Style::default().fg(Color::DarkGray),
+            )));
+            ("Git push", lines, Color::Yellow)
+        }
+        FlashState::GitFinished { log, result } => {
+            let mut lines: Vec<Line> = log.iter().map(|l| Line::from(l.clone())).collect();
+            match result {
+                Ok(()) => lines.push(Line::from(Span::styled(
+                    "✓ Git push completed",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ))),
+                Err(e) => lines.push(Line::from(Span::styled(
+                    format!("✗ Git push failed: {e}"),
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ))),
+            }
+            lines.push(Line::default());
+            lines.push(Line::from("Press Enter or Esc to close"));
+            (
+                "Git push finished",
+                lines,
+                if result.is_ok() {
+                    Color::Cyan
+                } else {
+                    Color::Red
+                },
+            )
+        }
         FlashState::Scanning => (
             "Select WLAN network (r to refresh, Esc to cancel)",
             vec![Line::from("Scanning for WLAN networks...")],
