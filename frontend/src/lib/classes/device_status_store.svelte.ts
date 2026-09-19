@@ -18,10 +18,8 @@ export class DeviceStatus {
             return false;
         }
 
-        this.battery_percentage = Number(json.battery_percentage);
-        this.speed_kmh = Number(json.speed_kmh);
-        this.schlagzahl = Number(json.schlagzahl);
-        this.satellite_count = Number(json.satellite_count);
+        Object.assign(this, json);
+        
         return true;
     }
 }

@@ -10,7 +10,8 @@ export class HighFrequencyUpdate {
             return false;
         }
 
-        this.roll = Number(json.roll);
+        Object.assign(this, json);
+        
         return true;
     }
 }

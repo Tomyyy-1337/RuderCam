@@ -27,13 +27,8 @@ export class AppConfig {
             return false;
         }
 
-        this.ssid = String(json.ssid);
-        this.password = String(json.password);
-        this.auto_shutdown_time = Number(json.auto_shutdown_time);
-        this.focus_mode = String(json.focus_mode) as FocusMode;
-        this.metering_mode = String(json.metering_mode) as MeteringMode;
-        this.bitrate = Number(json.bitrate);
-        this.exposure_compenstion = Number(json.exposure_compenstion);
+        Object.assign(this, json);
+        
         return true;
     }
 

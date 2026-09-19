@@ -32,16 +32,8 @@ export class OverlaySettings {
             return false;
         }
 
-        this.show_overlay = Boolean(json.show_overlay);
-        this.position = String(json.position) as OverlayPosition;
-        this.show_speed = Boolean(json.show_speed);
-        this.show_split_time = Boolean(json.show_split_time);
-        this.show_schlagzahl = Boolean(json.show_schlagzahl);
-        this.show_fahrtzeit = Boolean(json.show_fahrtzeit);
-        this.show_distanz = Boolean(json.show_distanz);
-        this.show_distanc_per_stroke = Boolean(json.show_distanc_per_stroke);
-        this.auto_level = Boolean(json.auto_level);
-        this.rotation_offset = Number(json.rotation_offset);
+        Object.assign(this, json);
+        
         return true;
     }
 

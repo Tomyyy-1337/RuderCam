@@ -1,7 +1,6 @@
 import { hasRequiredFields } from "./json_helpers";
 
 const activeSessionFields = [
-    "client_time",
     "distance_traveled_km",
     "average_speed_kmh",
     "max_speed_kmh",
@@ -11,7 +10,6 @@ const activeSessionFields = [
 ] as const;
 
 export class ActiveSession {
-    client_time: number = $state(0);
     distance_traveled_km: number = $state(0);
     average_speed_kmh: number = $state(0);
     max_speed_kmh: number = $state(0);
@@ -24,13 +22,8 @@ export class ActiveSession {
             return false;
         }
 
-        this.client_time = Date.parse(String(json.client_time));
-        this.distance_traveled_km = Number(json.distance_traveled_km);
-        this.average_speed_kmh = Number(json.average_speed_kmh);
-        this.max_speed_kmh = Number(json.max_speed_kmh);
-        this.average_bpm = Number(json.average_bpm);
-        this.duration_secs = Number(json.duration_secs);
-        this.pausiert = Boolean(json.pausiert);
+        Object.assign(this, json);
+
         return true;
     }
 }

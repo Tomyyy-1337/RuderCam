@@ -29,7 +29,6 @@ pub struct FinishedSession {
 
 #[derive(serde::Serialize)]
 pub struct SessionInfo {
-    client_time: String,
     distance_traveled_km: f32,
     average_speed_kmh: f32,
     max_speed_kmh: f32,
@@ -59,7 +58,6 @@ impl ActiveSession {
 
     pub fn get_summary(&self) -> SessionInfo {
         SessionInfo {
-            client_time: self.client_time.clone(),
             distance_traveled_km: self.distance_traveled_km,
             average_speed_kmh: self.average_speed_kmh,
             max_speed_kmh: self.max_speed,
