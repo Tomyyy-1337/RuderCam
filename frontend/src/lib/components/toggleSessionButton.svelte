@@ -11,8 +11,9 @@
 <script lang="ts">
     import { fahrtenbuch, FahrtenbuchStore, Session } from "../classes/fahrtenbuchStore";
     import { activeSession } from "../classes/active_session_store.svelte";
-    import type { SessionButtonVariant } from "../types";
     import { frontend_state } from "../classes/frontend_state_store.svelte";
+    
+    type SessionButtonVariant = 'primary' | 'overlay'
 
     let {
         variant = "primary",

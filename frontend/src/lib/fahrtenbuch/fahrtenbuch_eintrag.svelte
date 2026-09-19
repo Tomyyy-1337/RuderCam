@@ -90,7 +90,7 @@
     import { fahrtenbuch } from "../classes/fahrtenbuchStore";
     import type { FahrtenbuchStore, Session } from "../classes/fahrtenbuchStore";
     import StatCard from "./stat_card.svelte";
-    import type { GpsPosition } from "../types";
+    import type { GpsPosition } from "../classes/gps_position";
 
     let { fahrt, index }: {
         fahrt: Session;

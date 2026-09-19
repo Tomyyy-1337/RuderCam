@@ -1,5 +1,5 @@
 import type { LayerSpecification, Map, SourceSpecification } from "maplibre-gl";
-import type { Theme } from "../types";
+import type { Theme } from "../classes/themeStore.svelte";
 
 export interface MapPalette {
     background: string;

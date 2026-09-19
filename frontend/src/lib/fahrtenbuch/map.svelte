@@ -35,7 +35,7 @@
     import { currentTheme } from "../classes/themeStore.svelte";
     import { applyThemeToMap, buildLayers, buildSources, getMapPalette } from "./mapStyle";
     import { discoverPmtilesBaseUrl } from "./pmtilesDiscovery";
-    import type { GpsPosition } from "../types";
+    import type { GpsPosition } from "../classes/gps_position";
     
     type Waypoint = [number, number];
 

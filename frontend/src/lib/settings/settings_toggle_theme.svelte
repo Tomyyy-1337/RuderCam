@@ -9,7 +9,7 @@
     import { onMount } from "svelte";
     import { setTheme } from "../classes/themeStore.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import type { Theme } from "../types";
+    import type { Theme } from "../classes/themeStore.svelte";
 
     let theme = $state<Theme>('light');
 

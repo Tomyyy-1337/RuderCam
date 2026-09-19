@@ -1,18 +1,18 @@
 <main class="container">
     <PageHeadder />
-    <Navbar bind:activeTab />
+    <Navbar />
 
-    {#if activeTab === "camera"}
+    {#if frontend_state.active_tab === "camera"}
         {#if frontend_state.is_connected}
             <Livestream />
             <Fahrt />
         {:else}
             <NotConnected />
         {/if}
-    {:else if activeTab === "sessions"}
+    {:else if frontend_state.active_tab === "sessions"}
         <Fahrtenbuch />
         <div style="height: 10rem;"></div>
-    {:else if activeTab === "settings"}
+    {:else if frontend_state.active_tab === "settings"}
         <Settings />
         <div style="height: 10rem;"></div>
     {/if}    
@@ -28,18 +28,12 @@
     import PageHeadder from "./lib/components/pageHeadder.svelte";
     import Settings from "./lib/settings/settings.svelte";
 
-    import {
-        type AppTab,
-        type Theme,
-    } from "./lib/types";
     import { overlay_settings } from "./lib/classes/overlay_settings_store.svelte";   
     import { highFrequencyUpdate } from "./lib/classes/high_frequency_update_store.svelte";
     import { deviceStatus } from "./lib/classes/device_status_store.svelte";
     import { activeSession } from "./lib/classes/active_session_store.svelte";
-    import { setTheme } from "./lib/classes/themeStore.svelte";
-    import { frontend_state } from "./lib/classes/frontend_state_store.svelte";
-
-    let activeTab = $state<AppTab>("camera");
+    import { setTheme, type Theme } from "./lib/classes/themeStore.svelte";
+    import { frontend_state, type AppTab } from "./lib/classes/frontend_state_store.svelte";
 
     let socket: WebSocket | null = null;
     let sessionActivityTimeout: number | null = null;
@@ -50,18 +44,18 @@
 
         const storedActiveTab = localStorage.getItem("active_tab");
         if (storedActiveTab) {
-            activeTab = storedActiveTab as AppTab;
+            frontend_state.active_tab = storedActiveTab as AppTab;
         }
 
         const previousHistoryState = (window.history.state as { activeTab?: AppTab } | null) ?? {};
-        if (previousHistoryState.activeTab !== activeTab) {
-            window.history.replaceState({ ...previousHistoryState, activeTab }, "", window.location.href);
+        if (previousHistoryState.activeTab !== frontend_state.active_tab) {
+            window.history.replaceState({ ...previousHistoryState, activeTab: frontend_state.active_tab }, "", window.location.href);
         }
 
         const handlePopState = (): void => {
             const nextTab = (window.history.state as { activeTab?: AppTab } | null)?.activeTab;
             if (nextTab === "camera" || nextTab === "sessions" || nextTab === "settings") {
-                activeTab = nextTab;
+                frontend_state.active_tab = nextTab;
             }
         };
 
@@ -83,7 +77,7 @@
     });
 
     $effect(() => {
-        localStorage.setItem("active_tab", activeTab);
+        localStorage.setItem("active_tab", frontend_state.active_tab);
     });
 
     $effect(() => {

@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
-import type { Theme } from '../types'
+
+export type Theme = 'light' | 'dark'
 
 export function setTheme(newTheme: Theme): void {
     if (newTheme === 'light') {

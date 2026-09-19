@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store'
-import { type GpsPosition } from '../types'
+import { type GpsPosition } from '../classes/gps_position'
 
 function parseStoredSessions(): Record<string, unknown>[] {
     const raw = localStorage.getItem('fahrtenbuch')

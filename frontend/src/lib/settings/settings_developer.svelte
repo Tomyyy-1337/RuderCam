@@ -7,7 +7,7 @@
 <script lang="ts">
     import SettingsCard from "./settings_card.svelte";
     import { fahrtenbuch, Session } from "../classes/fahrtenbuchStore";
-    import type { GpsPosition } from "../types";
+    import type { GpsPosition } from "../classes/gps_position";
 
     const rheinRoute: GpsPosition[] = [
         { lat: 50.364000, lon: 7.607292, speed_kmh: 5.8 },
