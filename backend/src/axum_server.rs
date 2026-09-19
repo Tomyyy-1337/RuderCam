@@ -258,11 +258,9 @@ async fn handle_socket(
     let mut timer = tokio::time::interval(Duration::from_millis(50));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
-    let mut conter: u8 = 0;
-
     INTERNAL_STATE.modify(|state| state.new_client_connected());
 
-    loop {
+    for conter in 0usize.. {
         timer.tick().await;
 
         // Send high-frequency update data to the frontend every 50ms
@@ -273,7 +271,6 @@ async fn handle_socket(
         }
         
         // Skip sending the shared state and session summary for 19 out of 20 ticks (every 50ms)
-        conter = if conter == 20 { 0 } else { conter + 1 };
         if conter != 0 {
             continue;
         }

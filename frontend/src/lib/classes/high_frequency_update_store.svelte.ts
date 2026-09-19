@@ -1,6 +1,6 @@
 import { hasRequiredFields } from "./json_helpers";
 
-const highFrequencyUpdateFields = ["roll"] as const;
+const highFrequencyUpdateFields = ["roll"];
 
 export class HighFrequencyUpdate {
     roll = $state(0);
@@ -10,7 +10,8 @@ export class HighFrequencyUpdate {
             return false;
         }
 
-        this.roll = Number(json.roll);
+        Object.assign(this, json);
+        
         return true;
     }
 }

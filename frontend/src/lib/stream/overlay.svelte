@@ -37,13 +37,16 @@
     let time_per_500m_s = $derived(deviceStatus.speed_kmh > 0.1 ? (500 / 1000) / (deviceStatus.speed_kmh / 3600) : 0);
     let time_per_500m_formatted = $derived(time_per_500m_s > 0 ? Math.floor(time_per_500m_s / 60) + ":" + String(Math.floor(time_per_500m_s % 60)).padStart(2,'0') : '0:00');
 
+    let schlag_count = $derived(activeSession.schlag_count);
+
     let visibleCards = $derived([
         ...(persistant_state.show_speed ? [{ id: 'speed', label: 'Geschwindigkeit', unit: 'km/h', value: speed_kmh }] : []),
         ...(persistant_state.show_split_time ? [{ id: 'split', label: 'Split', unit: '500m', value: time_per_500m_formatted }] : []),
         ...(persistant_state.show_schlagzahl ? [{ id: 'schlagzahl', label: 'Schlagzahl', unit: 'bpm', value: schlagzahl }] : []),
         ...(persistant_state.show_distanc_per_stroke ? [{ id: 'distanz_per_schlag', label: 'Distanz/Schlag', unit: 'm', value: distance_per_stroke_m }] : []),
         ...(temporary_state.session_is_active && persistant_state.show_distanz ? [{ id: 'distanz', label: 'Distanz', unit: 'km', value: distanz }] : []),
-        ...(temporary_state.session_is_active && persistant_state.show_fahrtzeit ? [{ id: 'fahrtzeit', label: 'Fahrtzeit', unit: '', value: fahrtzeit }] : [])
+        ...(temporary_state.session_is_active && persistant_state.show_fahrtzeit ? [{ id: 'fahrtzeit', label: 'Fahrtzeit', unit: '', value: fahrtzeit }] : []),
+        ...(temporary_state.session_is_active && persistant_state.show_schlag_count ? [{ id: 'schlag_count', label: 'Schläge', unit: '', value: schlag_count }] : [])
     ]);
 
 </script>

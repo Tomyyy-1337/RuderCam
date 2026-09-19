@@ -45,6 +45,11 @@
         <span>Fahrtzeit</span>
     </label>
 
+    <label class:inactive={!persistant_state.show_schlag_count} class="toggle-card">
+        <input id="overlay-show-schlag-count" name="overlay-show-schlag-count" type="checkbox" bind:checked={persistant_state.show_schlag_count} />
+        <span>Schläge</span>
+    </label>
+
 </SettingsCard>
 {/if}
 

@@ -1,102 +1,129 @@
-use std::{collections::VecDeque, time::Instant};
+use std::{collections::VecDeque, time::{Duration, Instant}};
 
+const SAMPLE_INTERVAL: Duration = Duration::from_millis(100);
+const PEAK_HISTORY: Duration = Duration::from_secs(60);
+const FILTER_ALPHA: f32 = 0.4;
+const BASELINE_ALPHA: f32 = 0.02;
+const NOISE_ALPHA: f32 = 0.05;
+// The expected rowing range is 10-60 strokes per minute.
+const MIN_PEAK_DISTANCE: Duration = Duration::from_secs(1);
+const NOISE_MULTIPLIER: f32 = 1.2;
+const MIN_SIGNAL_AMPLITUDE: f32 = 0.5;
+const POLARITY_CONFIRMATION_SAMPLES: u8 = 1;
 
-pub struct BpmPeak {
-    sample_rate: f32,
-    peak_count: usize,
-    sample_index: usize,
-    previous_previous: Option<f32>,
-    previous: Option<f32>,
-    baseline: Option<f32>,
-    noise_level: f32,
-    candidate_peak_index: Option<usize>,
-    timestamps: VecDeque<Instant>,
-    pub bpm: f32,
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AccelerationPhase {
+    Unknown,
+    Positive,
+    Negative,
 }
 
-impl BpmPeak {
-    pub fn new() -> Self {
+pub struct BpmPeak {
+    filtered_sample: Option<f32>,
+    baseline: Option<f32>,
+    noise: f32,
+    phase: AccelerationPhase,
+    pending_phase: AccelerationPhase,
+    pending_samples: u8,
+    last_peak: Option<Instant>,
+    peaks: VecDeque<Instant>,
+    total_strokes: u32,
+    next_sample: Instant,
+    schläge_at_last_poll: u32,
+}
+
+impl Default for BpmPeak {
+    fn default() -> Self {
         Self {
-            sample_rate: 10.0,// Hz
-            peak_count: 0,
-            sample_index: 0,
-            previous_previous: None,
-            previous: None,
+            filtered_sample: None,
             baseline: None,
-            noise_level: 0.0,
-            candidate_peak_index: None,
-            timestamps: VecDeque::new(),
-            bpm: 0.0,
+            noise: 0.0,
+            phase: AccelerationPhase::Unknown,
+            pending_phase: AccelerationPhase::Unknown,
+            pending_samples: 0,
+            last_peak: None,
+            peaks: VecDeque::new(),
+            total_strokes: 0,
+            next_sample: Instant::now(),
+            schläge_at_last_poll: 0
         }
     }
+}
 
-    /// Inserts one sample and returns true only for a peak in the 10..=50 BPM range.
-    pub fn new_data_point(&mut self, data_point: f32) -> bool {
-        if !data_point.is_finite() {
-            return false;
-        }
+
+impl BpmPeak {
+    pub fn add_sample(&mut self, sample: i16) {
+        let now = self.next_sample;
+        self.next_sample += SAMPLE_INTERVAL;
+
+        let sample = sample as f32;
+        let filtered = match self.filtered_sample {
+            Some(previous) => previous + FILTER_ALPHA * (sample - previous),
+            None => sample,
+        };
+        self.filtered_sample = Some(filtered);
 
         let baseline = match self.baseline {
-            Some(baseline) => baseline * 0.98 + data_point * 0.02,
-            None => data_point,
+            Some(previous) => previous + BASELINE_ALPHA * (filtered - previous),
+            None => filtered,
         };
         self.baseline = Some(baseline);
-        let signal = data_point - baseline;
-        let peak_index = self.sample_index.saturating_sub(1);
-        let is_local_maximum = match (self.previous_previous, self.previous) {
-            (Some(left), Some(center)) => {
-                center > left
-                    && center >= signal
-                    && center - left >= Self::minimum_prominence(self.noise_level)
-                    && center - signal >= Self::minimum_prominence(self.noise_level)
-            }
-            _ => false,
-        };
 
-        let confirmed = if is_local_maximum {
-            match self.candidate_peak_index {
-                Some(previous_peak) => {
-                    let distance = peak_index - previous_peak;
-                    let min_distance = (self.sample_rate * 60.0 / 50.0).ceil() as usize;
-                    let max_distance = (self.sample_rate * 60.0 / 10.0).floor() as usize;
+        let deviation = filtered - baseline;
+        self.noise += NOISE_ALPHA * (deviation.abs() - self.noise);
+        let threshold = (self.noise * NOISE_MULTIPLIER).max(MIN_SIGNAL_AMPLITUDE);
 
-                    if (min_distance..=max_distance).contains(&distance) {
-                        self.peak_count += 1;
-                        self.candidate_peak_index = Some(peak_index);
-                        self.timestamps.push_back(Instant::now());
-                        if self.timestamps.len() > 3 {
-                            self.timestamps.pop_front();
-                        }
-                        self.bpm = 30.0 / ((self.timestamps.back().unwrap().duration_since(*self.timestamps.front().unwrap()).as_secs_f32()) / (self.timestamps.len() - 1) as f32);
-                        true
-                    } else if distance > max_distance {
-                        self.candidate_peak_index = Some(peak_index);
-                        false
-                    } else {
-                        false
-                    }
-                }
-                None => {
-                    self.candidate_peak_index = Some(peak_index);
-                    false
-                }
-            }
+        let detected_phase = if deviation > threshold {
+            AccelerationPhase::Positive
+        } else if deviation < -threshold {
+            AccelerationPhase::Negative
         } else {
-            false
+            AccelerationPhase::Unknown
         };
 
-        if let Some(previous) = self.previous {
-            let sample_difference = (signal - previous).abs();
-            self.noise_level = self.noise_level * 0.95 + sample_difference * 0.05;
+        if detected_phase == AccelerationPhase::Unknown {
+            // Brief zero crossings are common in a weak signal. Do not discard
+            // a pending polarity change because of one such sample.
+        } else if detected_phase == self.pending_phase {
+            self.pending_samples = self.pending_samples.saturating_add(1);
+        } else {
+            self.pending_phase = detected_phase;
+            self.pending_samples = 1;
         }
 
-        self.previous_previous = self.previous;
-        self.previous = Some(signal);
-        self.sample_index += 1;
-        confirmed
+        if self.pending_samples >= POLARITY_CONFIRMATION_SAMPLES
+            && self.phase != self.pending_phase
+        {
+            let previous_phase = self.phase;
+            self.phase = self.pending_phase;
+
+            if previous_phase == AccelerationPhase::Negative
+                && self.phase == AccelerationPhase::Positive
+                && self.last_peak.is_none_or(|last| now.duration_since(last) >= MIN_PEAK_DISTANCE)
+            {
+                self.peaks.push_back(now);
+                self.last_peak = Some(now);
+                self.total_strokes += 1;
+            }
+        }
+
+        self.remove_old_peaks(now);
     }
 
-    fn minimum_prominence(noise_level: f32) -> f32 {
-        0.5_f32.max(noise_level * 2.0)
+    pub fn get_incremental_schläge(&mut self) -> u32 {
+        let incr = self.total_strokes.saturating_sub(self.schläge_at_last_poll);
+        self.schläge_at_last_poll = self.total_strokes;
+        incr
+    }
+
+    pub fn get_current_schläge_pro_minute(&mut self) -> f32 {
+        self.remove_old_peaks(self.next_sample);
+        self.peaks.len() as f32
+    }
+
+    fn remove_old_peaks(&mut self, now: Instant) {
+        while self.peaks.front().is_some_and(|peak| now.duration_since(*peak) > PEAK_HISTORY) {
+            self.peaks.pop_front();
+        }
     }
 }

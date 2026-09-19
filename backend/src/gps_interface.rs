@@ -12,7 +12,7 @@ pub struct GPSModule {
     line: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct GPSPositionalData {
     pub lat: f64,
     pub lon: f64,

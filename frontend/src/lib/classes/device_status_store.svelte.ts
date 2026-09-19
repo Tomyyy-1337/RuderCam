@@ -4,7 +4,7 @@ const deviceStatusFields = [
     "battery_percentage",
     "speed_kmh",
     "schlagzahl",
-    "satellite_count",
+    "satellite_count"
 ] as const;
 
 export class DeviceStatus {

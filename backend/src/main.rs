@@ -1,5 +1,5 @@
 mod gps_interface;
-mod bpm_fft;
+// mod bpm_fft;
 mod i2c_interface;
 mod axum_server;
 mod shared;
@@ -7,12 +7,12 @@ mod pi_interface;
 mod session;
 mod hotspot;
 mod camera_interface;
+mod bpm_peak;
 
-use crate::{bpm_fft::FFTBPMDetector, camera_interface::CameraInterface, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, HighFrequencyUpdate, InternalState}}; 
+use crate::{camera_interface::CameraInterface, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, HighFrequencyUpdate, InternalState}}; 
 
-use std::{sync::Mutex};
 use futures::stream::StreamExt;
-use tokio::{pin, runtime::LocalOptions, task, time::MissedTickBehavior};
+use tokio::{pin, runtime::LocalOptions, task};
 
 /// Only use these static variables once they have been initialized by calling `initialize_statics()`, otherwise it will lead to undefined behavior.
 /// Only use these static variables on the main thread, as they are not thread-safe. Accessing them from multiple threads will lead to undefined behavior.
@@ -37,10 +37,7 @@ fn main() {
         .build_local(LocalOptions::default())
         .unwrap()
         .block_on(async {
-            let (accelerometer_sender, accelerometer_receiver) = tokio::sync::mpsc::channel(100);
-
-            task::spawn_local(read_accelerometer_task(accelerometer_sender));
-            task::spawn_local(accelerometer_processing_task(accelerometer_receiver));
+            task::spawn_local(read_accelerometer_task());
             task::spawn_local(read_battery_task());
             task::spawn_local(read_gps_task());
             task::spawn_local(idle_auto_shutdown());
@@ -128,66 +125,40 @@ async fn read_gps_task() {
 }
 
 /// Continuously read raw accelerometer data and send it through a channel to the BPM processing task
-async fn read_accelerometer_task(
-    accelerometer_sender: tokio::sync::mpsc::Sender<(i16, i16, i16)>,
-) {
+async fn read_accelerometer_task() {
     let mut timer = tokio::time::interval(tokio::time::Duration::from_millis(50));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-    let mut orientation_history = [0.0f32; 8];
+    // Has to be even length
+    let mut orientation_history = [0.0f32; 60];
     let mut orientation_index = 0;
 
-    loop {
+    let mut bpm_processor = bpm_peak::BpmPeak::default();
+
+    for loop_counter in 0usize.. {
+        // every 50ms
         timer.tick().await;
 
-        let accelerometer_data@(_,y,z) = I2C_INTERFACE.read_accelerometer_data().await;
+        let (_x,y,z) = I2C_INTERFACE.read_accelerometer_data().await;
+        
         let roll = (y as f32).atan2(z as f32).to_degrees();
         orientation_history[orientation_index] = roll;
         orientation_index = (orientation_index + 1) % orientation_history.len();
-        
         let average_roll = orientation_history.iter().sum::<f32>() / orientation_history.len() as f32;
-
         const SENSOR_ROLL_OFFSET: f32 = 2.2;
 
         HIGH_FREQUENCY_UPDATE.modify(|state| state.roll = average_roll + SENSOR_ROLL_OFFSET);
-        
-        accelerometer_sender.send(accelerometer_data).await.unwrap_or_else(|e| {
-            println!("Failed to send accelerometer data: {}", e);
-        });
-    }
-}
 
-/// BPM Processing Task 
-/// Reveive raw accelerometer data and proccess it to calculate BPM, 
-/// then update the shared state with the latest BPM value
-async fn accelerometer_processing_task(
-    mut accelerometer_receiver: tokio::sync::mpsc::Receiver<(i16, i16, i16)>,
-) {
-    static BPM_FFT: Mutex<FFTBPMDetector> = Mutex::new(FFTBPMDetector::new(50.0, 12.0));
-
-    let mut timer = tokio::time::interval(tokio::time::Duration::from_secs(1));
-    timer.set_missed_tick_behavior(MissedTickBehavior::Delay);
-    loop {
-        timer.tick().await;
-
-        {
-            let mut bpm_fft = BPM_FFT.lock().unwrap();
-            while let Ok((x, y, z)) = accelerometer_receiver.try_recv() {
-                bpm_fft.add_accelerometer_data(x, y, z);
-            }
+        // every 100ms 
+        if loop_counter % 2 == 0 {
+            bpm_processor.add_sample(roll as i16);
         }
 
-        let bpm = tokio::task::spawn_blocking(|| {
-            let bpm_fft = BPM_FFT.lock().unwrap();
-            bpm_fft.get_current_bpm()
-        }).await.unwrap_or(0.0);
-        
-        SHARED_STATE.modify(|state| state.set_schlagzahl(bpm));
-        CURRENT_SESSION.modify_option(|session| {
-            if SHARED_STATE.schlagzahl > 0.0 {
-                session.add_bpm_data(bpm as u8);
-            }
-        });
+        // every 500ms 
+        if loop_counter % 10 == 0 {
+            SHARED_STATE.modify(|state| state.set_schlagzahl(bpm_processor.get_current_schläge_pro_minute()));
+            CURRENT_SESSION.modify_option(|session| session.update_bpm_data(bpm_processor.get_incremental_schläge()));
+        }
     }
 }
 

@@ -25,8 +25,8 @@
         temporary_state.session_is_active = true;
         const currentTime = new Date().toISOString();
         activeSession.distance_traveled_km = 0;
-        activeSession.average_speed_kmh = 0;
         activeSession.duration_secs = 0;
+        activeSession.schlag_count = 0;
 
         fetch('/api/start_session', {
             method: 'POST',

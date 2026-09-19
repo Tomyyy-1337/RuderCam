@@ -12,6 +12,7 @@ const persistantStateFields = [
     "show_fahrtzeit",
     "show_distanz",
     "show_distanc_per_stroke",
+    "show_schlag_count",
     "auto_level",
     "rotation_offset",
     "active_tab",
@@ -26,6 +27,7 @@ export class PersistantState {
     show_fahrtzeit: boolean = $state(true);
     show_distanz: boolean = $state(true);
     show_distanc_per_stroke: boolean = $state(true);
+    show_schlag_count: boolean = $state(true);
     auto_level: boolean = $state(false);
     rotation_offset: number = $state(0);
     active_tab: AppTab = $state<AppTab>("camera");

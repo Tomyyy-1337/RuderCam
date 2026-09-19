@@ -20,7 +20,6 @@ export class Session {
     client_time: Date = new Date();
     duration_secs: number = 0;
     distance_traveled_km: number = 0;
-    max_speed_kmh: number = 0;
     average_speed_kmh: number = 0;
     average_bpm: number = 0
     gps_positions: GpsPosition[] = []
