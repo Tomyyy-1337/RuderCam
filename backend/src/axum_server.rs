@@ -269,12 +269,6 @@ async fn handle_socket(
             INTERNAL_STATE.modify(|state| state.client_disconnected());
             break;
         }
-
-        // let json_data = serde_json::to_string(&*HIGH_FREQUENCY_UPDATE).unwrap();
-        // if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
-        //     INTERNAL_STATE.modify(|state| state.client_disconnected());
-        //     break;
-        // }
         
         // Skip sending the shared state and session summary for 19 out of 20 ticks (every 50ms)
         if conter % 20 != 0 {
@@ -288,12 +282,6 @@ async fn handle_socket(
             break;
         }
 
-        // let json_data = serde_json::to_string(&*SHARED_STATE).unwrap();
-        // if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
-        //     INTERNAL_STATE.modify(|state| state.client_disconnected());
-        //     break;
-        // }
-
         // Send running session summary if a session is active
         if let Some(current_session) = &*CURRENT_SESSION {
             let session_summary = current_session.get_summary();
@@ -303,12 +291,6 @@ async fn handle_socket(
                 INTERNAL_STATE.modify(|state| state.client_disconnected());
                 break;
             }
-            // let json_data = serde_json::to_string(&session_summary).unwrap();
-            
-            // if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
-            //     INTERNAL_STATE.modify(|state| state.client_disconnected());
-            //     break;
-            // }
         }
     }
 }
