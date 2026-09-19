@@ -1,4 +1,3 @@
-import { decode } from "@msgpack/msgpack";
 import { hasRequiredFields } from "./json_helpers";
 
 const activeSessionFields = [
@@ -14,18 +13,12 @@ export class ActiveSession {
     pausiert: boolean = $state(false);
     schlag_count: number = $state(0);
 
-    updateFromMsgpack(data: Uint8Array): boolean {
-        try {            
-            let record = decode(data) as Record<string, unknown>;
-
-            if (!hasRequiredFields(record, activeSessionFields)) {
-                return false;
-            }
-            Object.assign(this, record);
-            return true;
-        } catch {
+    updateFromMsgpack(record: Record<string, unknown>): boolean {
+        if (!hasRequiredFields(record, activeSessionFields)) {
             return false;
         }
+        Object.assign(this, record);
+        return true;
     }
 }
 

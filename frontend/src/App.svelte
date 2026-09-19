@@ -35,6 +35,7 @@
     import { temporary_state } from "./lib/classes/temporary_state_store.svelte";
     import type { AppTab } from "./lib/classes/persistant_state_store.svelte";
     import { setTheme, type Theme } from "./lib/classes/themeStore.svelte";
+    import { decode } from "@msgpack/msgpack";
 
     let socket: WebSocket | null = null;
     let sessionActivityTimeout: number | null = null;
@@ -89,11 +90,11 @@
     }
 
     function socketEventListener(event: MessageEvent<ArrayBuffer>): void {
-        const payload = new Uint8Array(event.data);
+        let record = decode(event.data) as Record<string, unknown>
         temporary_state.is_connected = true;
-        deviceStatus.updateFromMsgpack(payload);
-        highFrequencyUpdate.updateFromMsgpack(payload);
-        if (activeSession.updateFromMsgpack(payload)) {
+        deviceStatus.updateFromMsgpack(record);
+        highFrequencyUpdate.updateFromMsgpack(record);
+        if (activeSession.updateFromMsgpack(record)) {
             temporary_state.session_is_active = true;
             scheduleSessionActivityTimeout();
         }
