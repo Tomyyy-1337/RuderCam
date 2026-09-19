@@ -23,7 +23,7 @@ export class ActiveSession {
         }
 
         Object.assign(this, json);
-
+        
         return true;
     }
 }

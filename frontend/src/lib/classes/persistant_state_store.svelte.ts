@@ -1,8 +1,9 @@
 import { hasRequiredFields } from "./json_helpers";
 
 export type OverlayPosition = 'top' | 'bottom'
+export type AppTab = 'sessions' | 'settings' | 'camera'
 
-const overlaySettingsFields = [
+const persistantStateFields = [
     "show_overlay",
     "position",
     "show_speed",
@@ -13,9 +14,10 @@ const overlaySettingsFields = [
     "show_distanc_per_stroke",
     "auto_level",
     "rotation_offset",
+    "active_tab",
 ] as const;
 
-export class OverlaySettings {
+export class PersistantState {
     show_overlay: boolean = $state(true);
     position: OverlayPosition = $state<OverlayPosition>("top");
     show_speed: boolean = $state(true);
@@ -26,9 +28,10 @@ export class OverlaySettings {
     show_distanc_per_stroke: boolean = $state(true);
     auto_level: boolean = $state(false);
     rotation_offset: number = $state(0);
+    active_tab: AppTab = $state<AppTab>("camera");
 
     updateFromJson(json: Record<string, unknown>): boolean {
-        if (!hasRequiredFields(json, overlaySettingsFields)) {
+        if (!hasRequiredFields(json, persistantStateFields)) {
             return false;
         }
 
@@ -38,19 +41,12 @@ export class OverlaySettings {
     }
 
     toJSONstring(): string {
-        return JSON.stringify({
-            show_overlay: this.show_overlay,
-            position: this.position,
-            show_speed: this.show_speed,
-            show_split_time: this.show_split_time,
-            show_schlagzahl: this.show_schlagzahl,
-            show_fahrtzeit: this.show_fahrtzeit,
-            show_distanz: this.show_distanz,
-            show_distanc_per_stroke: this.show_distanc_per_stroke,
-            auto_level: this.auto_level,
-            rotation_offset: this.rotation_offset,
-        });
+        const state = Object.fromEntries(
+            persistantStateFields.map((field) => [field, this[field]])
+        );
+
+        return JSON.stringify(state);
     }
 }
 
-export const overlay_settings = new OverlaySettings();
+export const persistant_state = new PersistantState();

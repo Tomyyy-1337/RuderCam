@@ -1,4 +1,4 @@
-{#if !frontend_state.session_is_active}
+{#if !temporary_state.session_is_active}
     <button class="green {variant}" onclick={startSession}>
         Fahrt starten
     </button>
@@ -11,7 +11,7 @@
 <script lang="ts">
     import { fahrtenbuch, FahrtenbuchStore, Session } from "../classes/fahrtenbuchStore";
     import { activeSession } from "../classes/active_session_store.svelte";
-    import { frontend_state } from "../classes/frontend_state_store.svelte";
+    import { temporary_state } from "../classes/temporary_state_store.svelte";
     
     type SessionButtonVariant = 'primary' | 'overlay'
 
@@ -22,7 +22,7 @@
     } = $props();
 
     function startSession(): void {
-        frontend_state.session_is_active = true;
+        temporary_state.session_is_active = true;
         const currentTime = new Date().toISOString();
         activeSession.distance_traveled_km = 0;
         activeSession.average_speed_kmh = 0;
@@ -38,7 +38,7 @@
     }
 
     async function endSession(): Promise<void> {
-        frontend_state.session_is_active = false;
+        temporary_state.session_is_active = false;
 
         const response = await fetch('/api/stop_session', {
             method: 'POST',

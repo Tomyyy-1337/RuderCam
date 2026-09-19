@@ -62,7 +62,7 @@
     import { createFullscreenTapController } from "../components/fullscreenTap";
     import Overlay from "./overlay.svelte";
     import { MediaMTXWebRTCReader } from "./reader";
-    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
+    import { persistant_state } from "../classes/persistant_state_store.svelte";
     import { highFrequencyUpdate } from "../classes/high_frequency_update_store.svelte";
 
     let videoShell: HTMLDivElement | null = null;
@@ -106,7 +106,7 @@
         },
     });
 
-    let effectiveRotation = $derived(overlay_settings.auto_level ? highFrequencyUpdate.roll - overlay_settings.rotation_offset : -overlay_settings.rotation_offset);
+    let effectiveRotation = $derived(persistant_state.auto_level ? highFrequencyUpdate.roll - persistant_state.rotation_offset : -persistant_state.rotation_offset);
 
     onMount(() => {
         setupVideoWatchdog();
@@ -235,7 +235,7 @@
         }
 
         const rotationDirection = deltaY < 0 ? 1 : -1;
-        overlay_settings.rotation_offset += (start.isLeftSide ? -rotationDirection : rotationDirection) * ROTATION_STEP;
+        persistant_state.rotation_offset += (start.isLeftSide ? -rotationDirection : rotationDirection) * ROTATION_STEP;
         suppressNextTap = true;
     }
 

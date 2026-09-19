@@ -1,12 +1,12 @@
 <section>
     <div id="Akkustand">
-        {#if frontend_state.is_connected}
+        {#if temporary_state.is_connected}
             <BatteryStatusIcon value={battery_percentage} />
         {/if}
     </div>
     <h2>Ruder Cam Beta</h2>
     <div id="Satelien">
-        {#if frontend_state.is_connected}
+        {#if temporary_state.is_connected}
             <SateliteIcon value={satellite_count} />
         {/if}
     </div>
@@ -16,7 +16,7 @@
     import BatteryStatusIcon from "../icons/batteryStatusIcon.svelte";
     import SateliteIcon from "../icons/sateliteIcon.svelte";
     import { deviceStatus } from "../classes/device_status_store.svelte";
-    import { frontend_state } from "../classes/frontend_state_store.svelte";
+    import { temporary_state } from "../classes/temporary_state_store.svelte";
 
     let battery_percentage = $derived(deviceStatus.battery_percentage);
     let satellite_count = $derived(deviceStatus.satellite_count);

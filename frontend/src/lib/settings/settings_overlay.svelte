@@ -1,13 +1,13 @@
 <SettingsCard title="Overlay Aktivieren/Deaktivieren" description="Overlay in der Vollbildansicht ein- oder ausblenden.">
-    <select id="overlay-show-overlay" name="overlay-show-overlay" bind:value={overlay_settings.show_overlay}>
+    <select id="overlay-show-overlay" name="overlay-show-overlay" bind:value={persistant_state.show_overlay}>
         <option value={true}>Overlay anzeigen</option>
         <option value={false}>Overlay ausblenden</option>
     </select>
 </SettingsCard>
 
-{#if overlay_settings.show_overlay}
+{#if persistant_state.show_overlay}
 <SettingsCard title="Overlay Position" description="Position des Overlays in der Vollbildansicht.">
-    <select id="overlay-position" name="overlay-position" bind:value={overlay_settings.position}>
+    <select id="overlay-position" name="overlay-position" bind:value={persistant_state.position}>
         <option value="top">Overlay Oben</option>
         <option value="bottom">Overlay Unten</option>
     </select>
@@ -15,33 +15,33 @@
 
 <SettingsCard title="Overlay Elemente" description="Verwalten welche Elemente im Overlay angezeigt werden sollen.">
 
-    <label class:inactive={!overlay_settings.show_speed} class="toggle-card">
-        <input id="overlay-show-speed" name="overlay-show-speed" type="checkbox" bind:checked={overlay_settings.show_speed} />
+    <label class:inactive={!persistant_state.show_speed} class="toggle-card">
+        <input id="overlay-show-speed" name="overlay-show-speed" type="checkbox" bind:checked={persistant_state.show_speed} />
         <span>Geschwindigkeit (km/h)</span>
     </label>
 
-    <label class:inactive={!overlay_settings.show_split_time} class="toggle-card">
-        <input id="overlay-show-split-time" name="overlay-show-split-time" type="checkbox" bind:checked={overlay_settings.show_split_time} />
+    <label class:inactive={!persistant_state.show_split_time} class="toggle-card">
+        <input id="overlay-show-split-time" name="overlay-show-split-time" type="checkbox" bind:checked={persistant_state.show_split_time} />
         <span>500m Split</span>
     </label>
 
-    <label class:inactive={!overlay_settings.show_schlagzahl} class="toggle-card">
-        <input id="overlay-show-schlagzahl" name="overlay-show-schlagzahl" type="checkbox" bind:checked={overlay_settings.show_schlagzahl} />
+    <label class:inactive={!persistant_state.show_schlagzahl} class="toggle-card">
+        <input id="overlay-show-schlagzahl" name="overlay-show-schlagzahl" type="checkbox" bind:checked={persistant_state.show_schlagzahl} />
         <span>Schlagzahl</span>
     </label>
 
-    <label class:inactive={!overlay_settings.show_distanc_per_stroke} class="toggle-card">
-        <input id="overlay-show-distance-per-stroke" name="overlay-show-distance-per-stroke" type="checkbox" bind:checked={overlay_settings.show_distanc_per_stroke} />
+    <label class:inactive={!persistant_state.show_distanc_per_stroke} class="toggle-card">
+        <input id="overlay-show-distance-per-stroke" name="overlay-show-distance-per-stroke" type="checkbox" bind:checked={persistant_state.show_distanc_per_stroke} />
         <span>Distanz pro Schlag</span>
     </label>
     
-    <label class:inactive={!overlay_settings.show_distanz} class="toggle-card">
-        <input id="overlay-show-distanz" name="overlay-show-distanz" type="checkbox" bind:checked={overlay_settings.show_distanz} />
+    <label class:inactive={!persistant_state.show_distanz} class="toggle-card">
+        <input id="overlay-show-distanz" name="overlay-show-distanz" type="checkbox" bind:checked={persistant_state.show_distanz} />
         <span>Distanz</span>
     </label>
 
-    <label class:inactive={!overlay_settings.show_fahrtzeit} class="toggle-card">
-        <input id="overlay-show-fahrtzeit" name="overlay-show-fahrtzeit" type="checkbox" bind:checked={overlay_settings.show_fahrtzeit} />
+    <label class:inactive={!persistant_state.show_fahrtzeit} class="toggle-card">
+        <input id="overlay-show-fahrtzeit" name="overlay-show-fahrtzeit" type="checkbox" bind:checked={persistant_state.show_fahrtzeit} />
         <span>Fahrtzeit</span>
     </label>
 
@@ -49,7 +49,7 @@
 {/if}
 
 <script lang="ts">
-    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
+    import { persistant_state } from "../classes/persistant_state_store.svelte";
     import SettingsCard from "./settings_card.svelte";
 </script>
 

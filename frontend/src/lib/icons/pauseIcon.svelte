@@ -1,6 +1,6 @@
 <div class="pause-icon {style}" role="status" aria-live="polite" aria-label={label}>
     <svg viewBox="0 0 24 24" aria-hidden="true">
-        {#if frontend_state.session_is_active}
+        {#if temporary_state.session_is_active}
             {#if paused}
                 <rect x="7" y="5" width="3" height="14" rx="1.2" />
                 <rect x="14" y="5" width="3" height="14" rx="1.2" />
@@ -15,12 +15,12 @@
 </div>
 
 <script lang="ts">
-    import { frontend_state } from "../classes/frontend_state_store.svelte";
+    import { temporary_state } from "../classes/temporary_state_store.svelte";
 
     let { paused }: { paused: boolean } = $props();
 
-    let style = $derived(frontend_state.session_is_active ? (paused ? "paused" : "running") : "inactive");
-    let label = $derived(frontend_state.session_is_active ? (paused ? "Session paused" : "Session running") : "Session inactive");
+    let style = $derived(temporary_state.session_is_active ? (paused ? "paused" : "running") : "inactive");
+    let label = $derived(temporary_state.session_is_active ? (paused ? "Session paused" : "Session running") : "Session inactive");
 </script>
 
 <style>

@@ -28,15 +28,15 @@
 </SettingsCard>
 
 <SettingsCard title="Bildausrichtung" description="Das Kamerabild automatisch ausrichten oder manuell drehen.">
-    <label class:inactive={!overlay_settings.auto_level} class="toggle-card">
-        <input id="camera-auto-level" name="camera-auto-level" type="checkbox" bind:checked={overlay_settings.auto_level} />
+    <label class:inactive={!persistant_state.auto_level} class="toggle-card">
+        <input id="camera-auto-level" name="camera-auto-level" type="checkbox" bind:checked={persistant_state.auto_level} />
         <span>Auto-Level</span>
     </label>
 
     <div class="rotation-slider">
         <div class="slider-header">
             <label for="camera-rotation-offset">Drehwinkel</label>
-            <output for="camera-rotation-offset">{overlay_settings.rotation_offset}°</output>
+            <output for="camera-rotation-offset">{persistant_state.rotation_offset}°</output>
         </div>
         <input
             id="camera-rotation-offset"
@@ -45,7 +45,7 @@
             min="-10"
             max="10"
             step="0.5"
-            bind:value={overlay_settings.rotation_offset}
+            bind:value={persistant_state.rotation_offset}
         />
         <div class="rotation-legend" aria-hidden="true">
             <span>-10°</span>
@@ -123,7 +123,7 @@
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
     import SettingsCard from "./settings_card.svelte";
-    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
+    import { persistant_state } from "../classes/persistant_state_store.svelte";
     import { app_config } from "../classes/app_config.svelte";
 
     type DialogTone = "info" | "warning" | "danger";

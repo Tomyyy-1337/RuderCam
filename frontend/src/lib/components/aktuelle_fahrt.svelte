@@ -22,11 +22,11 @@
 <script lang="ts">
     import ToggleSessionButton from "./toggleSessionButton.svelte";
     import { activeSession } from "../classes/active_session_store.svelte";
-    import { frontend_state } from "../classes/frontend_state_store.svelte";
+    import { temporary_state } from "../classes/temporary_state_store.svelte";
 
-    let duration_secs = $derived(frontend_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) % 60)).padStart(2,'0') : '--');
-    let duration_mins = $derived(frontend_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) / 60)).padStart(2,'0') : '--');
-    let distance_traveled_km = $derived(frontend_state.session_is_active ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
+    let duration_secs = $derived(temporary_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) % 60)).padStart(2,'0') : '--');
+    let duration_mins = $derived(temporary_state.session_is_active ? String(Math.floor(Math.round(activeSession.duration_secs) / 60)).padStart(2,'0') : '--');
+    let distance_traveled_km = $derived(temporary_state.session_is_active ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
 </script>
 
 <style>

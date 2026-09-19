@@ -1,5 +1,5 @@
-{#if overlay_settings.show_overlay}
-<div class="overlay {overlay_settings.position}">
+{#if persistant_state.show_overlay}
+<div class="overlay {persistant_state.position}">
     <OverlayCard {visibleCards} />
 
     <div class="controls">
@@ -20,13 +20,13 @@
     import PauseIcon from "../icons/pauseIcon.svelte";
     import SateliteIcon from "../icons/sateliteIcon.svelte";
     import ToggleSessionButton from "../components/toggleSessionButton.svelte";
-    import { overlay_settings } from "../classes/overlay_settings_store.svelte";
+    import { persistant_state } from "../classes/persistant_state_store.svelte";
     import { deviceStatus } from "../classes/device_status_store.svelte";
     import { activeSession } from "../classes/active_session_store.svelte";
-    import { frontend_state } from "../classes/frontend_state_store.svelte";
+    import { temporary_state } from "../classes/temporary_state_store.svelte";
 
-    let fahrtzeit = $derived(frontend_state.session_is_active ? Math.floor(activeSession.duration_secs / 60) + ":" + String(Math.floor(activeSession.duration_secs % 60)).padStart(2,'0') : '--:--');
-    let distanz = $derived(frontend_state.session_is_active ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
+    let fahrtzeit = $derived(temporary_state.session_is_active ? Math.floor(activeSession.duration_secs / 60) + ":" + String(Math.floor(activeSession.duration_secs % 60)).padStart(2,'0') : '--:--');
+    let distanz = $derived(temporary_state.session_is_active ? activeSession.distance_traveled_km.toFixed(2) : '--.--');
     let battery_percentage = $derived(deviceStatus.battery_percentage);
     let satellite_count = $derived(deviceStatus.satellite_count);
     let speed_kmh = $derived(deviceStatus.speed_kmh.toFixed(1));
@@ -38,12 +38,12 @@
     let time_per_500m_formatted = $derived(time_per_500m_s > 0 ? Math.floor(time_per_500m_s / 60) + ":" + String(Math.floor(time_per_500m_s % 60)).padStart(2,'0') : '0:00');
 
     let visibleCards = $derived([
-        ...(overlay_settings.show_speed ? [{ id: 'speed', label: 'Geschwindigkeit', unit: 'km/h', value: speed_kmh }] : []),
-        ...(overlay_settings.show_split_time ? [{ id: 'split', label: 'Split', unit: '500m', value: time_per_500m_formatted }] : []),
-        ...(overlay_settings.show_schlagzahl ? [{ id: 'schlagzahl', label: 'Schlagzahl', unit: 'bpm', value: schlagzahl }] : []),
-        ...(overlay_settings.show_distanc_per_stroke ? [{ id: 'distanz_per_schlag', label: 'Distanz/Schlag', unit: 'm', value: distance_per_stroke_m }] : []),
-        ...(frontend_state.session_is_active && overlay_settings.show_distanz ? [{ id: 'distanz', label: 'Distanz', unit: 'km', value: distanz }] : []),
-        ...(frontend_state.session_is_active && overlay_settings.show_fahrtzeit ? [{ id: 'fahrtzeit', label: 'Fahrtzeit', unit: '', value: fahrtzeit }] : [])
+        ...(persistant_state.show_speed ? [{ id: 'speed', label: 'Geschwindigkeit', unit: 'km/h', value: speed_kmh }] : []),
+        ...(persistant_state.show_split_time ? [{ id: 'split', label: 'Split', unit: '500m', value: time_per_500m_formatted }] : []),
+        ...(persistant_state.show_schlagzahl ? [{ id: 'schlagzahl', label: 'Schlagzahl', unit: 'bpm', value: schlagzahl }] : []),
+        ...(persistant_state.show_distanc_per_stroke ? [{ id: 'distanz_per_schlag', label: 'Distanz/Schlag', unit: 'm', value: distance_per_stroke_m }] : []),
+        ...(temporary_state.session_is_active && persistant_state.show_distanz ? [{ id: 'distanz', label: 'Distanz', unit: 'km', value: distanz }] : []),
+        ...(temporary_state.session_is_active && persistant_state.show_fahrtzeit ? [{ id: 'fahrtzeit', label: 'Fahrtzeit', unit: '', value: fahrtzeit }] : [])
     ]);
 
 </script>

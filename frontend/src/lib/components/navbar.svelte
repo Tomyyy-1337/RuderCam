@@ -1,17 +1,17 @@
 <nav
     aria-label="Navigation"
     class="tabbar"
-    class:camera-active={frontend_state.active_tab === 'camera'}
-    class:sessions-active={frontend_state.active_tab === 'sessions'}
-    class:settings-active={frontend_state.active_tab === 'settings'}
+    class:camera-active={persistant_state.active_tab === 'camera'}
+    class:sessions-active={persistant_state.active_tab === 'sessions'}
+    class:settings-active={persistant_state.active_tab === 'settings'}
 >
     <div class="tabbar_indicator" aria-hidden="true"></div>
     <button
         type="button"
         onclick={(event) => selectTab('camera', event)}
         class="tab"
-        class:active={frontend_state.active_tab === 'camera'}
-        aria-pressed={frontend_state.active_tab === 'camera'}
+        class:active={persistant_state.active_tab === 'camera'}
+        aria-pressed={persistant_state.active_tab === 'camera'}
     >
         <span class="tab_label">Kamera</span>
     </button>
@@ -19,8 +19,8 @@
         type="button"
         onclick={(event) => selectTab('sessions', event)}
         class="tab"
-        class:active={frontend_state.active_tab === 'sessions'}
-        aria-pressed={frontend_state.active_tab === 'sessions'}
+        class:active={persistant_state.active_tab === 'sessions'}
+        aria-pressed={persistant_state.active_tab === 'sessions'}
     >
         <span class="tab_label">Fahrtenbuch</span>
     </button>
@@ -28,15 +28,15 @@
         type="button"
         onclick={(event) => selectTab('settings', event)}
         class="tab"
-        class:active={frontend_state.active_tab === 'settings'}
-        aria-pressed={frontend_state.active_tab === 'settings'}
+        class:active={persistant_state.active_tab === 'settings'}
+        aria-pressed={persistant_state.active_tab === 'settings'}
     >
         <span class="tab_label">Settings</span>
     </button>
 </nav>
 
 <script lang="ts">
-    import { frontend_state, type AppTab } from "../classes/frontend_state_store.svelte";
+    import { persistant_state, type AppTab } from "../classes/persistant_state_store.svelte";
 
     function selectTab(nextTab: AppTab, event?: MouseEvent): void {
         event?.preventDefault();
@@ -46,11 +46,11 @@
             document.activeElement.blur();
         }
 
-        if (nextTab === frontend_state.active_tab) {
+        if (nextTab === persistant_state.active_tab) {
             return;
         }
 
-        frontend_state.active_tab = nextTab;
+        persistant_state.active_tab = nextTab;
         window.history.pushState({ activeTab: nextTab }, "", window.location.href);
     }
 </script>

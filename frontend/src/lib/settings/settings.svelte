@@ -7,7 +7,7 @@
         <SettingsOverlay />
     </AccordionSection>
 
-    {#if frontend_state.is_connected}
+    {#if temporary_state.is_connected}
         <AccordionSection
             title="Kamera"
             description="Einstellungen für Fokus und Belichtungsmessung"
@@ -60,7 +60,7 @@
     import SettingsDeveloper from "./settings_developer.svelte";
     import SettingsUpdate from "./settings_update.svelte";
     import { app_config } from "../classes/app_config.svelte";
-    import { frontend_state } from "../classes/frontend_state_store.svelte";
+    import { temporary_state } from "../classes/temporary_state_store.svelte";
 
     onMount(async () => {
         await app_config.fetch();
