@@ -1,3 +1,4 @@
+import { decode } from "@msgpack/msgpack";
 import { hasRequiredFields } from "./json_helpers";
 
 const deviceStatusFields = [
@@ -13,14 +14,17 @@ export class DeviceStatus {
     schlagzahl: number = $state(0);
     satellite_count: number = $state(0);
 
-    updateFromJson(json: Record<string, unknown>): boolean {
-        if (!hasRequiredFields(json, deviceStatusFields)) {
+    updateFromMsgpack(data: Uint8Array): boolean {
+        try {
+            let record = decode(data) as Record<string, unknown>;
+            if (!hasRequiredFields(record, deviceStatusFields)) {
+                return false;
+            }
+            Object.assign(this, record);
+            return true;
+        } catch {
             return false;
         }
-
-        Object.assign(this, json);
-        
-        return true;
     }
 }
 

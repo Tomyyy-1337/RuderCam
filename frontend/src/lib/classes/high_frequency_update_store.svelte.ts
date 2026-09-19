@@ -1,3 +1,4 @@
+import { decode } from "@msgpack/msgpack";
 import { hasRequiredFields } from "./json_helpers";
 
 const highFrequencyUpdateFields = ["roll"];
@@ -5,14 +6,17 @@ const highFrequencyUpdateFields = ["roll"];
 export class HighFrequencyUpdate {
     roll = $state(0);
 
-    updateFromJson(json: Record<string, unknown>): boolean {
-        if (!hasRequiredFields(json, highFrequencyUpdateFields)) {
+    updateFromMsgpack(data: Uint8Array): boolean {
+        try {
+            let record = decode(data) as Record<string, unknown>;
+            if (!hasRequiredFields(record, highFrequencyUpdateFields)) {
+                return false;
+            }
+            Object.assign(this, record);
+            return true;
+        } catch {
             return false;
         }
-
-        Object.assign(this, json);
-        
-        return true;
     }
 }
 

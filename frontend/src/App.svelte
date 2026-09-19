@@ -79,6 +79,7 @@
     function connectWebSocket(): void {
         try {
             socket = new WebSocket(`ws://${window.location.host}/ws`);
+            socket.binaryType = "arraybuffer";
             socket.addEventListener("message", socketEventListener);
             socket.addEventListener("close", socketCloseListener);
         } catch (error) {
@@ -87,15 +88,13 @@
         }
     }
 
-    function socketEventListener(event: MessageEvent<string>): void {
-        const payload = JSON.parse(event.data);
+    function socketEventListener(event: MessageEvent<ArrayBuffer>): void {
+        const payload = new Uint8Array(event.data);
         temporary_state.is_connected = true;
-        deviceStatus.updateFromJson(payload);
-        highFrequencyUpdate.updateFromJson(payload);
-        if (activeSession.updateFromJson(payload)) {
-            if (!temporary_state.session_is_active || Math.abs(Date.parse(payload.client_time) - Date.now()) > 2000) {
-                temporary_state.session_is_active = true;
-            }
+        deviceStatus.updateFromMsgpack(payload);
+        highFrequencyUpdate.updateFromMsgpack(payload);
+        if (activeSession.updateFromMsgpack(payload)) {
+            temporary_state.session_is_active = true;
             scheduleSessionActivityTimeout();
         }
     }

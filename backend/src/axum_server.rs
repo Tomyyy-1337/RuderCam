@@ -264,11 +264,17 @@ async fn handle_socket(
         timer.tick().await;
 
         // Send high-frequency update data to the frontend every 50ms
-        let json_data = serde_json::to_string(&*HIGH_FREQUENCY_UPDATE).unwrap();
-        if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
+        let rmp_data = rmp_serde::to_vec_named(&*HIGH_FREQUENCY_UPDATE).unwrap();
+        if socket.send(axum::extract::ws::Message::Binary(rmp_data.into())).await.is_err() {
             INTERNAL_STATE.modify(|state| state.client_disconnected());
             break;
         }
+
+        // let json_data = serde_json::to_string(&*HIGH_FREQUENCY_UPDATE).unwrap();
+        // if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
+        //     INTERNAL_STATE.modify(|state| state.client_disconnected());
+        //     break;
+        // }
         
         // Skip sending the shared state and session summary for 19 out of 20 ticks (every 50ms)
         if conter % 20 != 0 {
@@ -276,21 +282,33 @@ async fn handle_socket(
         }
 
         // Send the current shared state to the frontend every second
-        let json_data = serde_json::to_string(&*SHARED_STATE).unwrap();
-        if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
+        let rmp_data = rmp_serde::to_vec_named(&*SHARED_STATE).unwrap();
+        if socket.send(axum::extract::ws::Message::Binary(rmp_data.into())).await.is_err() {
             INTERNAL_STATE.modify(|state| state.client_disconnected());
             break;
         }
 
+        // let json_data = serde_json::to_string(&*SHARED_STATE).unwrap();
+        // if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
+        //     INTERNAL_STATE.modify(|state| state.client_disconnected());
+        //     break;
+        // }
+
         // Send running session summary if a session is active
         if let Some(current_session) = &*CURRENT_SESSION {
             let session_summary = current_session.get_summary();
-            let json_data = serde_json::to_string(&session_summary).unwrap();
-            
-            if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
+
+            let rmp_data = rmp_serde::to_vec_named(&session_summary).unwrap();
+            if socket.send(axum::extract::ws::Message::Binary(rmp_data.into())).await.is_err() {
                 INTERNAL_STATE.modify(|state| state.client_disconnected());
                 break;
             }
+            // let json_data = serde_json::to_string(&session_summary).unwrap();
+            
+            // if socket.send(axum::extract::ws::Message::Text(json_data.into())).await.is_err() {
+            //     INTERNAL_STATE.modify(|state| state.client_disconnected());
+            //     break;
+            // }
         }
     }
 }
