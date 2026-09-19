@@ -130,7 +130,7 @@ async fn read_accelerometer_task() {
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     // Has to be even length
-    let mut orientation_history = [0.0f32; 60];
+    let mut orientation_history = [0.0f32; 20];
     let mut orientation_index = 0;
 
     let mut bpm_processor = bpm_peak::BpmPeak::default();

@@ -271,7 +271,7 @@ async fn handle_socket(
         }
         
         // Skip sending the shared state and session summary for 19 out of 20 ticks (every 50ms)
-        if conter != 0 {
+        if conter % 20 != 0 {
             continue;
         }
 

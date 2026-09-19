@@ -10,7 +10,7 @@ const activeSessionFields = [
 export class ActiveSession {
     distance_traveled_km: number = $state(0);
     duration_secs: number = $state(0);
-    pausiert: boolean = $state(true);
+    pausiert: boolean = $state(false);
     schlag_count: number = $state(0);
 
     updateFromJson(json: Record<string, unknown>): boolean {
