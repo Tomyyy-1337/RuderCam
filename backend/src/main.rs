@@ -129,7 +129,6 @@ async fn read_accelerometer_task() {
     let mut timer = tokio::time::interval(tokio::time::Duration::from_millis(50));
     timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-    // Has to be even length
     let mut orientation_history = [0.0f32; 20];
     let mut orientation_index = 0;
 
