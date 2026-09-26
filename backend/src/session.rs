@@ -75,12 +75,13 @@ impl ActiveSession {
     }
 
     pub fn update_bpm_data(&mut self, increment: u32) {
+        // Update time spent active - out of place but fits here
+        let last_timestamp = self.last_bpm_update;
+        self.last_bpm_update = std::time::Instant::now();
+        
         if !self.pausiert {
             self.schlag_count += increment;
 
-            // Update time spent active - out of place but fits here
-            let last_timestamp = self.last_bpm_update;
-            self.last_bpm_update = std::time::Instant::now();
             self.active_duration += self.last_bpm_update.duration_since(last_timestamp);
         }
     }

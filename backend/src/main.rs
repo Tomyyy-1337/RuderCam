@@ -155,7 +155,15 @@ async fn read_accelerometer_task() {
 
         // every 500ms 
         if loop_counter % 10 == 0 {
-            SHARED_STATE.modify(|state| state.set_schlagzahl(bpm_processor.get_current_schläge_pro_minute()));
+            SHARED_STATE.modify(|state| {
+                let schlagzahl = if SHARED_STATE.speed_kmh >= 2.0 {
+                    bpm_processor.get_current_schläge_pro_minute()
+                } else {
+                    0.0
+                };
+                state.set_schlagzahl(schlagzahl);
+            });
+            
             CURRENT_SESSION.modify_option(|session| session.update_bpm_data(bpm_processor.get_incremental_schläge()));
         }
     }

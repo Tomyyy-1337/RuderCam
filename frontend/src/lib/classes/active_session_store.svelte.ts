@@ -1,7 +1,7 @@
 export class ActiveSession {
     distance_traveled_km: number = $state(0);
     duration_secs: number = $state(0);
-    pausiert: boolean = $state(false);
+    pausiert: boolean = $state(true);
     schlag_count: number = $state(0);
 
     updateFromMsgpack(record: Record<string, unknown>): void {
