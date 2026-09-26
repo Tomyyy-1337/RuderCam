@@ -12,21 +12,6 @@ lazy_static!(
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9!@#$%^&*()_+\-=?]*$").expect("Failed to compile password regex");
 );
 
-#[derive(serde::Deserialize)]
-struct WifiPasswordMessage {
-    password: String,
-}
-
-#[derive(serde::Deserialize)]
-struct WifiSSIDMessage {
-    ssid: String,
-}
-
-#[derive(serde::Deserialize)]
-struct UpdateShutdownTimerMessage {
-    auto_shutdown_time: u64,
-}
-
 pub async fn start_server() {
     let app = Router::new()
         .route("/api/set_wifi_ssid", post(update_wifi_ssid))
@@ -173,6 +158,11 @@ async fn stop_session_handler() -> Result<Json<FinishedSession>, axum::http::Sta
     Ok(Json(finished_session))
 }
 
+#[derive(serde::Deserialize)]
+struct UpdateShutdownTimerMessage {
+    auto_shutdown_time: u64,
+}
+
 async fn update_shutdown_timer(
     Json(payload): Json<UpdateShutdownTimerMessage>,
 ) -> axum::http::StatusCode {
@@ -182,6 +172,11 @@ async fn update_shutdown_timer(
     I2C_INTERFACE.write_config_to_eeprom().await;
         
     axum::http::StatusCode::OK
+}
+
+#[derive(serde::Deserialize)]
+struct WifiSSIDMessage {
+    ssid: String,
 }
 
 async fn update_wifi_ssid(
@@ -199,6 +194,11 @@ async fn update_wifi_ssid(
     I2C_INTERFACE.write_config_to_eeprom().await;
 
     axum::http::StatusCode::OK
+}
+
+#[derive(serde::Deserialize)]
+struct WifiPasswordMessage {
+    password: String,
 }
 
 async fn update_wifi_password(
