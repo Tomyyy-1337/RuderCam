@@ -58,8 +58,6 @@ impl ActiveSession {
 
     pub fn add_gps_data(&mut self, data: GPSPositionalData) {
         self.pausiert = data.speed_kmh < 2.0;
-        self.last_gps_position = Some(data);
-        
         if self.pausiert {
             return;
         }
@@ -67,6 +65,7 @@ impl ActiveSession {
         if let Some(last_position) = &self.last_gps_position {
             self.distance_traveled_km += Self::calculate_distance(last_position.lat, last_position.lon, data.lat, data.lon)
         };
+        self.last_gps_position = Some(data);
         
         if self.last_history_update.elapsed() >= std::time::Duration::from_secs(15) {
             self.gps_position_history.push(data);

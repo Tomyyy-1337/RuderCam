@@ -115,7 +115,7 @@ async fn read_gps_task() {
                 }
             }
             gps_interface::GPSMessage::RMC (data @ GPSPositionalData { speed_kmh, .. }) => {
-                if SHARED_STATE.satellite_count >= 4 {
+                if SHARED_STATE.satellite_count >= 5 {
                     SHARED_STATE.modify(|state| state.set_velocity(speed_kmh));
                     CURRENT_SESSION.modify_option(|session| session.add_gps_data(data));
                 }
