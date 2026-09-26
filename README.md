@@ -32,8 +32,9 @@ npm run build
 ```bash
 sudo apt update
 sudo apt install libudev-dev pkg-config ffmpeg -y
-wget https://github.com/bluenviron/mediamtx/releases/download/v1.17.0/mediamtx_v1.17.0_linux_arm64.tar.gz
-tar -xvzf mediamtx_v1.17.0_linux_arm64.tar.gz
+wget https://github.com/bluenviron/mediamtx/releases/download/v1.21.1/mediamtx_v1.21.1_linux_arm64.tar.gz
+tar -xvzf mediamtx_v1.21.1_linux_arm64.tar.gz
+rm mediamtx_v1.21.1_linux_arm64.tar.gz
 mkdir tmp
 ```
 
@@ -59,7 +60,6 @@ paths:
 hotspot only:
 ```
 webrtcIPsFromInterfaces: false
-webrtcIPsFromInterfacesList: []
 webrtcAdditionalHosts: [192.168.50.1]
 ```
 

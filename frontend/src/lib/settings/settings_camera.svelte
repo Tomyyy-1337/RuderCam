@@ -122,10 +122,9 @@
     <select id="camera-bitrate" name="camera-bitrate" bind:value={app_config.bitrate} onchange={saveBitrate}>
         <option value={1600000}>1,6MB/s</option>
         <option value={2400000}>2,4MB/s</option>
-        <option value={3200000}>3,2MB/s</option>
-        <option value={4000000}>4,0MB/s (Standard)</option>
+        <option value={3200000}>3,2MB/s (Standard)</option>
+        <option value={4000000}>4,0MB/s</option>
         <option value={8000000}>8,0MB/s</option>
-        <option value={12000000}>12,0MB/s</option>
     </select>
 
     <p class="hint">

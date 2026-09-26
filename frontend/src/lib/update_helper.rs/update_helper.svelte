@@ -5,7 +5,7 @@
 {#if is_loading}
     <p class="status">Versionen werden geladen...</p>
 {:else if !internet_connected}
-    <p>Um eine neue Version herunter zu laden verbinden sie ihr Smartphone mit dem Internet. Um ein Update zu installieren, verbinden sie ihr Smartphone mit der Kamera.</p>
+    <p>Um eine neue Version herunter zu laden verbinden sie ihr Smartphone mit dem Internet.</p>
 {:else if releases.length === 0}
     <p class="status">Keine Versionen verfügbar.</p>
 {:else}

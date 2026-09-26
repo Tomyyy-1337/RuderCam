@@ -77,7 +77,7 @@ impl Config {
             auto_shutdown_time: 30, // default to 30 minutes
             focus_mode: FocusMode::Fixed,
             metering_mode: Metering::Average,
-            bitrate: 4000000, 
+            bitrate: 3200000, 
             exposure_compenstion: 0.0,
             hdr_enabled: true,
             focal_length: 28,
@@ -90,7 +90,7 @@ impl Config {
         self.auto_shutdown_time = 30;
         self.focus_mode = FocusMode::Fixed;
         self.metering_mode = Metering::Average;
-        self.bitrate = 4000000;
+        self.bitrate = 3200000;
         self.exposure_compenstion = 0.0;
         self.hdr_enabled = true;
         self.focal_length = 28;
