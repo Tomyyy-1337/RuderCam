@@ -66,6 +66,7 @@ pub struct Config {
     pub bitrate: u32,
     pub exposure_compenstion: f32,
     pub hdr_enabled: bool,
+    pub focal_length: u8,
 }
 
 impl Config {
@@ -79,6 +80,7 @@ impl Config {
             bitrate: 4000000, 
             exposure_compenstion: 0.0,
             hdr_enabled: true,
+            focal_length: 28,
         }
     }
 
@@ -91,6 +93,7 @@ impl Config {
         self.bitrate = 4000000;
         self.exposure_compenstion = 0.0;
         self.hdr_enabled = true;
+        self.focal_length = 28;
     } 
 }
 

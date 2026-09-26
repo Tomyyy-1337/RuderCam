@@ -49,18 +49,28 @@ impl CameraInterface {
         }
     }
 
+    fn focal_length_to_roi(focal_length: f32) -> String {
+        const BASE_FOCAL_LENGTH: f32 = 28.0;
+
+        let crop = BASE_FOCAL_LENGTH / focal_length;
+        let offset = (1.0 - crop) / 2.0;
+
+        format!("{offset:.6},{offset:.6},{crop:.6},{crop:.6}")
+    }
+
     pub fn start_camera(&mut self) -> io::Result<()> {
         if self.stream_process.is_some() {
             return Ok(());
         }
 
         let cmd = format!(
-            "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --intra 25 --hflip 1 --low-latency 1 {} --bitrate {} --metering {} {} -o - | \
+            "/usr/bin/rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 25 --intra 25 --hflip 1 --low-latency 1 {} --bitrate {} --metering {} {} --roi {} -o - | \
              /usr/bin/ffmpeg -fflags +genpts -flags low_delay -fflags nobuffer -f h264 -i - -c copy -f rtsp -rtsp_transport udp rtsp://127.0.0.1:8554/stream",
             if CONFIG.hdr_enabled { "--hdr".to_string() } else { format!("--ev {}", CONFIG.exposure_compenstion) },
             CONFIG.bitrate,
             CONFIG.metering_mode.to_string(),
-            CONFIG.focus_mode.to_arg()
+            CONFIG.focus_mode.to_arg(),
+            CameraInterface::focal_length_to_roi(CONFIG.focal_length as f32)
         );
 
         #[cfg(target_os = "linux")]

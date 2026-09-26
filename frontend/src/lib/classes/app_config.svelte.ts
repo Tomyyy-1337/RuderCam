@@ -12,6 +12,7 @@ const appConfigFields = [
     "bitrate",
     "exposure_compenstion",
     "hdr_enabled",
+    "focal_length"
 ] as const;
 
 export class AppConfig {
@@ -23,6 +24,7 @@ export class AppConfig {
     bitrate: number = $state(0);
     exposure_compenstion: number = $state(0);
     hdr_enabled: boolean = $state(true);
+    focal_length: number = $state(28);
 
     updateFromJson(json: Record<string, unknown>): boolean {
         if (!hasRequiredFields(json, appConfigFields)) {

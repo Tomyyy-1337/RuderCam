@@ -28,6 +28,7 @@ pub async fn start_server() {
         .route("/api/set_bitrate", post(change_bitrate))
         .route("/api/set_exposure_compensation", post(change_exposure_compensation))
         .route("/api/set_hdr_enabled", post(change_hdr_enabled))
+        .route("/api/set_focal_length", post(change_focal_length))
         .route("/ws", get(websocket_handler))
         .nest_service("/maps", get_service(ServeDir::new("./maps")))    
         .fallback_service(ServeDir::new("./static").precompressed_gzip())
@@ -54,6 +55,20 @@ async fn get_current_firmware_version() -> String {
         Err(_) => "No Version".to_string(),
     };
     version
+}
+
+#[derive(serde::Deserialize)]
+struct FocalLengthMessage {
+    focal_length: u8,
+}
+
+async fn change_focal_length(
+    Json(payload): Json<FocalLengthMessage>,
+) -> StatusCode {
+    CONFIG.modify(|cfg| cfg.focal_length = payload.focal_length);
+    I2C_INTERFACE.write_config_to_eeprom().await;
+    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
+    StatusCode::OK
 }
 
 #[derive(serde::Deserialize)]

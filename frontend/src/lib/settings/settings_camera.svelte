@@ -1,3 +1,11 @@
+<SettingsCard title="Brennweite" description="Die Brennweite der Kamera einstellen.">
+    <select id="camera-focal-length" name="camera-focal-length" bind:value={app_config.focal_length} onchange={saveFocalLength}>
+        <option value={28}>28mm</option>
+        <option value={35}>35mm</option>
+        <option value={42}>42mm</option>
+    </select>
+</SettingsCard>
+
 <SettingsCard title="HDR" description="Aktiviere erhöhten Dynamikumfang für kontrastreiche Szenarien.">
     <label class:inactive={!app_config.hdr_enabled} class="toggle-card">
         <input
@@ -151,6 +159,31 @@
     let dialogMessage = $state("");
     let dialogTone = $state<DialogTone>("info");
     const exposureSteps = [-3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3];
+
+    $effect(() => { 
+        console.log("App config changed:", app_config.focal_length);
+    });
+
+    async function saveFocalLength(): Promise<void> {
+        try {
+            const response = await fetch("/api/set_focal_length", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ focal_length: app_config.focal_length }),
+            });
+
+            console.log("Focal length update response:", response);
+
+            if (!response.ok) {
+                throw new Error("focal length update failed");
+            }
+
+        } catch {
+            openDialog("Speichern fehlgeschlagen", "Die Brennweite konnte nicht gespeichert werden.", "danger");
+        }
+    }
 
     async function saveExposureCompensation(): Promise<void> {
         try {
