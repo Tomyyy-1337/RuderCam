@@ -160,10 +160,6 @@
     let dialogTone = $state<DialogTone>("info");
     const exposureSteps = [-3, -2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5, 3];
 
-    $effect(() => { 
-        console.log("App config changed:", app_config.focal_length);
-    });
-
     async function saveFocalLength(): Promise<void> {
         try {
             const response = await fetch("/api/set_focal_length", {
@@ -173,8 +169,6 @@
                 },
                 body: JSON.stringify({ focal_length: app_config.focal_length }),
             });
-
-            console.log("Focal length update response:", response);
 
             if (!response.ok) {
                 throw new Error("focal length update failed");
