@@ -1,3 +1,22 @@
+<SettingsCard title="HDR" description="Aktiviere erhöhten Dynamikumfang für kontrastreiche Szenarien.">
+    <label class:inactive={!app_config.hdr_enabled} class="toggle-card">
+        <input
+            id="camera-hdr"
+            name="camera-hdr"
+            type="checkbox"
+            bind:checked={app_config.hdr_enabled}
+            onchange={saveHdrEnabled}
+        />
+        <span>HDR aktivieren</span>
+    </label>
+    {#if app_config.hdr_enabled}
+        <p class="hint">
+            Die Belichtungskorrektur ist nicht verfügbar wenn HDR aktiviert ist.
+        </p>
+    {/if}
+</SettingsCard>
+
+{#if !app_config.hdr_enabled}
 <SettingsCard title="Belichtungskorrektur" description="Die Belichtungskorrektur für die Kamera einstellen.">
     <div class="slider-wrap">
         <div class="slider-value" aria-hidden="true">
@@ -27,18 +46,21 @@
     </div>
 </SettingsCard>
 
-<SettingsCard title="HDR" description="Aktiviere erhöhten Dynamikumfang für kontrastreiche Szenarien.">
-    <label class:inactive={!app_config.hdr_enabled} class="toggle-card">
-        <input
-            id="camera-hdr"
-            name="camera-hdr"
-            type="checkbox"
-            bind:checked={app_config.hdr_enabled}
-            onchange={saveHdrEnabled}
-        />
-        <span>HDR aktivieren</span>
-    </label>
+<SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
+    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={app_config.metering_mode} onchange={saveMeteringMode}>
+        <option value="Average">Durchschnitt</option>
+        <option value="Center">Mitte</option>
+    </select>
+
+    <p class="hint">
+        {#if app_config.metering_mode === "Average"}
+            Die Kamera misst die Helligkeit über das gesamte Bild.
+        {:else}
+            Die Kamera gewichtet die Bildmitte stärker.
+        {/if}
+    </p>
 </SettingsCard>
+{/if}
 
 <SettingsCard title="Bildausrichtung" description="Das Kamerabild automatisch ausrichten oder manuell drehen.">
     <label class:inactive={!persistant_state.auto_level} class="toggle-card">
@@ -72,22 +94,6 @@
     </p>
 </SettingsCard>
 
-<SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
-    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={app_config.metering_mode} onchange={saveMeteringMode}>
-        <option value="Average">Durchschnitt</option>
-        <option value="Center">Mitte</option>
-    </select>
-
-    <p class="hint">
-        {#if app_config.metering_mode === "Average"}
-            Die Kamera misst die Helligkeit über das gesamte Bild.
-        {:else}
-            Die Kamera gewichtet die Bildmitte stärker.
-        {/if}
-    </p>
-
-</SettingsCard>
-
 <SettingsCard title="Fokusmodus" description="Autofokus oder festen Fokus für die Kamera auswählen.">
     <select id="camera-focus-mode" name="camera-focus-mode" bind:value={app_config.focus_mode} onchange={saveFocusMode}>
         <option value="Auto">Autofokus</option>
@@ -109,7 +115,7 @@
         <option value={1600000}>1,6MB/s</option>
         <option value={2400000}>2,4MB/s</option>
         <option value={3200000}>3,2MB/s</option>
-        <option value={4000000}>4,0MB/s</option>
+        <option value={4000000}>4,0MB/s (Standard)</option>
         <option value={8000000}>8,0MB/s</option>
         <option value={12000000}>12,0MB/s</option>
     </select>
