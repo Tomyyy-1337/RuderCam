@@ -27,6 +27,19 @@
     </div>
 </SettingsCard>
 
+<SettingsCard title="HDR" description="Aktiviere erhöhten Dynamikumfang für kontrastreiche Szenarien.">
+    <label class:inactive={!app_config.hdr_enabled} class="toggle-card">
+        <input
+            id="camera-hdr"
+            name="camera-hdr"
+            type="checkbox"
+            bind:checked={app_config.hdr_enabled}
+            onchange={saveHdrEnabled}
+        />
+        <span>HDR aktivieren</span>
+    </label>
+</SettingsCard>
+
 <SettingsCard title="Bildausrichtung" description="Das Kamerabild automatisch ausrichten oder manuell drehen.">
     <label class:inactive={!persistant_state.auto_level} class="toggle-card">
         <input id="camera-auto-level" name="camera-auto-level" type="checkbox" bind:checked={persistant_state.auto_level} />
@@ -149,6 +162,25 @@
 
         } catch {
             openDialog("Speichern fehlgeschlagen", "Die Belichtungskorrektur konnte nicht gespeichert werden.", "danger");
+        }
+    }
+
+    async function saveHdrEnabled(): Promise<void> {
+        try {
+            const response = await fetch("/api/set_hdr_enabled", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ hdr_enabled: app_config.hdr_enabled }),
+            });
+
+            if (!response.ok) {
+                throw new Error("HDR update failed");
+            }
+
+        } catch {
+            openDialog("Speichern fehlgeschlagen", "HDR konnte nicht gespeichert werden.", "danger");
         }
     }
 

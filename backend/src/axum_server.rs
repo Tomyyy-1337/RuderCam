@@ -42,6 +42,7 @@ pub async fn start_server() {
         .route("/api/get_firmware_version", get(get_current_firmware_version))
         .route("/api/set_bitrate", post(change_bitrate))
         .route("/api/set_exposure_compensation", post(change_exposure_compensation))
+        .route("/api/set_hdr_enabled", post(change_hdr_enabled))
         .route("/ws", get(websocket_handler))
         .nest_service("/maps", get_service(ServeDir::new("./maps")))    
         .fallback_service(ServeDir::new("./static").precompressed_gzip())
@@ -79,6 +80,20 @@ async fn change_exposure_compensation(
     Json(payload): Json<ExposureCompensationMessage>,
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.exposure_compenstion = payload.exposure_compensation);
+    I2C_INTERFACE.write_config_to_eeprom().await;
+    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
+    StatusCode::OK
+}
+
+#[derive(serde::Deserialize)]
+struct HdrEnabledMessage {
+    hdr_enabled: bool,
+}
+
+async fn change_hdr_enabled(
+    Json(payload): Json<HdrEnabledMessage>,
+) -> StatusCode {
+    CONFIG.modify(|cfg| cfg.hdr_enabled = payload.hdr_enabled);
     I2C_INTERFACE.write_config_to_eeprom().await;
     CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
     StatusCode::OK

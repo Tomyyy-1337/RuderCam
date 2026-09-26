@@ -64,7 +64,8 @@ pub struct Config {
     pub focus_mode: FocusMode,
     pub metering_mode: Metering,
     pub bitrate: u32,
-    pub exposure_compenstion: f32
+    pub exposure_compenstion: f32,
+    pub hdr_enabled: bool,
 }
 
 impl Config {
@@ -75,8 +76,9 @@ impl Config {
             auto_shutdown_time: 30, // default to 30 minutes
             focus_mode: FocusMode::Fixed,
             metering_mode: Metering::Average,
-            bitrate: 1600000, 
+            bitrate: 4000000, 
             exposure_compenstion: 0.0,
+            hdr_enabled: true,
         }
     }
 
@@ -86,8 +88,9 @@ impl Config {
         self.auto_shutdown_time = 30;
         self.focus_mode = FocusMode::Fixed;
         self.metering_mode = Metering::Average;
-        self.bitrate = 1600000;
+        self.bitrate = 4000000;
         self.exposure_compenstion = 0.0;
+        self.hdr_enabled = true;
     } 
 }
 

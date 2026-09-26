@@ -215,7 +215,7 @@
     .overlay-panel {
         display: grid;
         grid-template-rows: auto 1fr;
-        width: min(100%, 72rem);
+        width: min(100%, 60rem);
         height: 100%;
         box-sizing: border-box;
         margin: 0 auto;
