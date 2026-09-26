@@ -14,7 +14,8 @@ fn main() {
             let app = axum::Router::new()
                 .route("/api/update", axum::routing::post(update_handler))
                 .route("/api/current_version", axum::routing::get(current_version_handler))
-                .fallback_service(tower_http::services::ServeDir::new("./static"));
+                .fallback_service(tower_http::services::ServeDir::new("./static"))
+                .layer(tower_http::cors::CorsLayer::permissive());
 
             let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 4000));
             println!("Update service running on http://127.0.0.1:4000/");

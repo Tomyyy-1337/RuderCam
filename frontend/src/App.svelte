@@ -39,6 +39,7 @@
 
     let socket: WebSocket | null = null;
     let sessionActivityTimeout: number | null = null;
+    let reconnectTimeout: number | null = null;
 
     onMount(() => {
         const theme = (localStorage.getItem("theme") as Theme | null) ?? "dark";
@@ -68,6 +69,7 @@
 
         return () => {
             clearSessionActivityTimeout();
+            clearReconnectTimeout();
             socket?.close();
             window.removeEventListener("popstate", handlePopState);
         };
@@ -81,6 +83,7 @@
         try {
             socket = new WebSocket(`ws://${window.location.host}/ws`);
             socket.binaryType = "arraybuffer";
+            socket.addEventListener("open", socketOpenListener);
             socket.addEventListener("message", socketEventListener);
             socket.addEventListener("close", socketCloseListener);
         } catch (error) {
@@ -89,14 +92,26 @@
         }
     }
 
+    function socketOpenListener(): void {
+        temporary_state.is_connected = true;
+        clearReconnectTimeout();
+    }
+
     function socketEventListener(event: MessageEvent<ArrayBuffer>): void {
         let record = decode(event.data) as Record<string, unknown>
-        temporary_state.is_connected = true;
-        deviceStatus.updateFromMsgpack(record);
-        highFrequencyUpdate.updateFromMsgpack(record);
-        if (activeSession.updateFromMsgpack(record)) {
+
+        if ("HighFrequencyUpdate" in record) {
+            const highFrequencyUpdateRecord = record["HighFrequencyUpdate"] as Record<string, unknown>;
+            highFrequencyUpdate.updateFromMsgpack(highFrequencyUpdateRecord);
+        } else if ("SharedState" in record) {
+            const sharedStateUpdate = record["SharedState"] as Record<string, unknown>;
+            deviceStatus.updateFromMsgpack(sharedStateUpdate);
+        } else if ("Session" in record) {
+            const sessionUpdate = record["Session"] as Record<string, unknown>;
+            activeSession.updateFromMsgpack(sessionUpdate)
             temporary_state.session_is_active = true;
             scheduleSessionActivityTimeout();
+            
         }
     }
 
@@ -126,9 +141,21 @@
     }
 
     function scheduleReconnect(): void {
-        window.setTimeout(() => {
+        if (reconnectTimeout !== null) {
+            return;
+        }
+
+        reconnectTimeout = window.setTimeout(() => {
+            reconnectTimeout = null;
             console.log("Attempting to reconnect WebSocket...");
             connectWebSocket();
-        }, 5000);
+        }, 2000);
+    }
+
+    function clearReconnectTimeout(): void {
+        if (reconnectTimeout !== null) {
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = null;
+        }
     }
 </script>

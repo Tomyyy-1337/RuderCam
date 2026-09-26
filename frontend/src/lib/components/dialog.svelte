@@ -28,9 +28,11 @@
                 {#if showCancel}
                     <button class="secondary" onclick={handleCancel}>{cancelLabel}</button>
                 {/if}
-                <button class:danger-action={tone === 'danger'} onclick={handleConfirm}>
-                    {confirmLabel}
-                </button>
+                {#if showConfirm}
+                    <button class:danger-action={tone === 'danger'} onclick={handleConfirm}>
+                        {confirmLabel}
+                    </button>
+                {/if}
             </div>
         </div>
     </div>
@@ -78,6 +80,8 @@
         confirmLabel = 'OK',
         cancelLabel = 'Abbrechen',
         showCancel = true,
+        showConfirm = true,
+        dismissible = true,
         tone = 'info',
         onConfirm,
         onCancel,
@@ -88,6 +92,8 @@
         confirmLabel?: string;
         cancelLabel?: string;
         showCancel?: boolean;
+        showConfirm?: boolean;
+        dismissible?: boolean;
         tone?: Tone;
         onConfirm?: () => void | Promise<void>;
         onCancel?: () => void | Promise<void>;
@@ -117,20 +123,20 @@
     }
 
     function handleBackdropClick(event: MouseEvent): void {
-        if (event.target === event.currentTarget) {
+        if (dismissible && event.target === event.currentTarget) {
             close();
         }
     }
 
     function handleBackdropKeydown(event: KeyboardEvent): void {
-        if ((event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) {
+        if (dismissible && (event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget) {
             event.preventDefault();
             close();
         }
     }
 
     function handleWindowKeydown(event: KeyboardEvent): void {
-        if (event.key === 'Escape' && open) {
+        if (dismissible && event.key === 'Escape' && open) {
             close();
         }
     }

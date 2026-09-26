@@ -6,7 +6,7 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 
 use std::{net::SocketAddr, time::Duration};
 
-use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, HIGH_FREQUENCY_UPDATE, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, pi_interface, session::{ActiveSession, FinishedSession}, shared::Config};
+use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, HIGH_FREQUENCY_UPDATE, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, pi_interface, session::{ActiveSession, FinishedSession, SessionInfo}, shared::{Config, DeviceState, HighFrequencyUpdate}};
 
 lazy_static!(
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9!@#$%^&*()_+\-=?]*$").expect("Failed to compile password regex");
@@ -252,6 +252,13 @@ async fn websocket_handler(
     ws.on_upgrade(|socket| handle_socket(socket))
 }
 
+#[derive(serde::Serialize)]
+enum WebSocketMessage<'a> {
+    HighFrequencyUpdate(&'a HighFrequencyUpdate),
+    SharedState(&'a DeviceState),
+    Session(&'a SessionInfo),
+}
+
 async fn handle_socket(
     mut socket: WebSocket, 
 ) {
@@ -262,31 +269,30 @@ async fn handle_socket(
 
     for conter in 0usize.. {
         timer.tick().await;
-
+            
         // Send high-frequency update data to the frontend every 50ms
-        let rmp_data = rmp_serde::to_vec_named(&*HIGH_FREQUENCY_UPDATE).unwrap();
-        if socket.send(axum::extract::ws::Message::Binary(rmp_data.into())).await.is_err() {
+        let message = WebSocketMessage::HighFrequencyUpdate(&*HIGH_FREQUENCY_UPDATE);
+        if socket.send(axum::extract::ws::Message::Binary(rmp_serde::to_vec_named(&message).unwrap().into())).await.is_err() {
             INTERNAL_STATE.modify(|state| state.client_disconnected());
             break;
         }
         
-        // Skip sending the shared state and session summary for 19 out of 20 ticks (every 50ms)
         if conter % 20 != 0 {
             continue;
         }
 
         // Send the current shared state to the frontend every second
-        let rmp_data = rmp_serde::to_vec_named(&*SHARED_STATE).unwrap();
-        if socket.send(axum::extract::ws::Message::Binary(rmp_data.into())).await.is_err() {
+        let message = WebSocketMessage::SharedState(&*SHARED_STATE);
+        if socket.send(axum::extract::ws::Message::Binary(rmp_serde::to_vec_named(&message).unwrap().into())).await.is_err() {
             INTERNAL_STATE.modify(|state| state.client_disconnected());
             break;
         }
-
+        
         // Send running session summary if a session is active
         if let Some(current_session) = &*CURRENT_SESSION {
             let session_summary = current_session.get_summary();
 
-            let rmp_data = rmp_serde::to_vec_named(&session_summary).unwrap();
+            let rmp_data = rmp_serde::to_vec_named(&WebSocketMessage::Session(&session_summary)).unwrap();
             if socket.send(axum::extract::ws::Message::Binary(rmp_data.into())).await.is_err() {
                 INTERNAL_STATE.modify(|state| state.client_disconnected());
                 break;

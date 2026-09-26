@@ -9,6 +9,8 @@ pub struct ActiveSession {
     gps_position_history: Vec<GPSPositionalData>,
     last_history_update: std::time::Instant,
     schlag_count: u32,
+    active_duration: std::time::Duration,
+    last_bpm_update: std::time::Instant,
 }
 
 #[derive(serde::Serialize)]
@@ -36,31 +38,50 @@ impl ActiveSession {
             start_time: std::time::Instant::now(),
             distance_traveled_km: 0.0,
             last_gps_position: None,
-            pausiert: false,
+            pausiert: true,
             gps_position_history: Vec::new(),
             last_history_update: std::time::Instant::now(),
             schlag_count: 0,
+            active_duration: std::time::Duration::new(0, 0),
+            last_bpm_update: std::time::Instant::now(),
         }
     }
 
     pub fn get_summary(&self) -> SessionInfo {
         SessionInfo {
             distance_traveled_km: self.distance_traveled_km,
-            duration_secs: self.start_time.elapsed().as_secs_f32(),
+            duration_secs: self.active_duration.as_secs_f32(),
             pausiert: self.pausiert,
             schlag_count: self.schlag_count,
         }
     }
 
     pub fn add_gps_data(&mut self, data: GPSPositionalData) {
+        self.pausiert = data.speed_kmh < 2.0;
+        self.last_gps_position = Some(data);
+        
+        if self.pausiert {
+            return;
+        }
+        
         if let Some(last_position) = &self.last_gps_position {
             self.distance_traveled_km += Self::calculate_distance(last_position.lat, last_position.lon, data.lat, data.lon)
         };
-        self.last_gps_position = Some(data);
-
-        if self.last_history_update.elapsed() >= std::time::Duration::from_secs(30) {
+        
+        if self.last_history_update.elapsed() >= std::time::Duration::from_secs(15) {
             self.gps_position_history.push(data);
             self.last_history_update = std::time::Instant::now();
+        }
+    }
+
+    pub fn update_bpm_data(&mut self, increment: u32) {
+        if !self.pausiert {
+            self.schlag_count += increment;
+
+            // Update time spent active - out of place but fits here
+            let last_timestamp = self.last_bpm_update;
+            self.last_bpm_update = std::time::Instant::now();
+            self.active_duration += self.last_bpm_update.duration_since(last_timestamp);
         }
     }
 
@@ -73,10 +94,6 @@ impl ActiveSession {
         (r * c) as f32 
     }
 
-    pub fn update_bpm_data(&mut self, schläge_gesamt: u32) {
-        self.schlag_count += schläge_gesamt;
-    }
-
     pub fn finish(self) -> FinishedSession {
         let duration_secs = self.start_time.elapsed().as_secs_f32();
         let average_speed_kmh = self.distance_traveled_km / (duration_secs / 3600.0);
@@ -85,7 +102,7 @@ impl ActiveSession {
         FinishedSession {
             average_bpm,
             client_time: self.client_time,
-            duration_secs,
+            duration_secs: self.active_duration.as_secs_f32(),
             distance_traveled_km: self.distance_traveled_km,
             average_speed_kmh,
             gps_positions: self.gps_position_history,

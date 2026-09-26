@@ -5,11 +5,11 @@ const PEAK_HISTORY: Duration = Duration::from_secs(60);
 const FILTER_ALPHA: f32 = 0.4;
 const BASELINE_ALPHA: f32 = 0.02;
 const NOISE_ALPHA: f32 = 0.05;
-// The expected rowing range is 10-60 strokes per minute.
-const MIN_PEAK_DISTANCE: Duration = Duration::from_secs(1);
-const NOISE_MULTIPLIER: f32 = 1.2;
+const MIN_PEAK_DISTANCE: Duration = Duration::from_millis(1500);
+const ENTER_THRESHOLD_MULTIPLIER: f32 = 1.5;
+const EXIT_THRESHOLD_MULTIPLIER: f32 = 0.7;
 const MIN_SIGNAL_AMPLITUDE: f32 = 0.5;
-const POLARITY_CONFIRMATION_SAMPLES: u8 = 1;
+const POLARITY_CONFIRMATION_SAMPLES: u8 = 2;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AccelerationPhase {
@@ -71,19 +71,22 @@ impl BpmPeak {
 
         let deviation = filtered - baseline;
         self.noise += NOISE_ALPHA * (deviation.abs() - self.noise);
-        let threshold = (self.noise * NOISE_MULTIPLIER).max(MIN_SIGNAL_AMPLITUDE);
+        let enter_threshold = (self.noise * ENTER_THRESHOLD_MULTIPLIER).max(MIN_SIGNAL_AMPLITUDE);
+        let exit_threshold = (self.noise * EXIT_THRESHOLD_MULTIPLIER).max(MIN_SIGNAL_AMPLITUDE);
 
-        let detected_phase = if deviation > threshold {
+        let detected_phase = if deviation > enter_threshold {
             AccelerationPhase::Positive
-        } else if deviation < -threshold {
+        } else if deviation < -enter_threshold {
             AccelerationPhase::Negative
-        } else {
+        } else if deviation.abs() <= exit_threshold {
             AccelerationPhase::Unknown
+        } else {
+            self.phase
         };
 
         if detected_phase == AccelerationPhase::Unknown {
-            // Brief zero crossings are common in a weak signal. Do not discard
-            // a pending polarity change because of one such sample.
+            self.pending_phase = AccelerationPhase::Unknown;
+            self.pending_samples = 0;
         } else if detected_phase == self.pending_phase {
             self.pending_samples = self.pending_samples.saturating_add(1);
         } else {
