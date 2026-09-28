@@ -98,20 +98,16 @@
     }
 
     function socketEventListener(event: MessageEvent<ArrayBuffer>): void {
-        let record = decode(event.data) as Record<string, unknown>
+        let record = decode(event.data) as Record<string, Record<string, unknown>>;
 
         if ("HighFrequencyUpdate" in record) {
-            const highFrequencyUpdateRecord = record["HighFrequencyUpdate"] as Record<string, unknown>;
-            highFrequencyUpdate.updateFromMsgpack(highFrequencyUpdateRecord);
+            highFrequencyUpdate.updateFromMsgpack(record["HighFrequencyUpdate"]);
         } else if ("SharedState" in record) {
-            const sharedStateUpdate = record["SharedState"] as Record<string, unknown>;
-            deviceStatus.updateFromMsgpack(sharedStateUpdate);
+            deviceStatus.updateFromMsgpack(record["SharedState"]);
         } else if ("Session" in record) {
-            const sessionUpdate = record["Session"] as Record<string, unknown>;
-            activeSession.updateFromMsgpack(sessionUpdate)
+            activeSession.updateFromMsgpack(record["Session"])
             temporary_state.session_is_active = true;
-            scheduleSessionActivityTimeout();
-            
+            scheduleSessionActivityTimeout();   
         }
     }
 
