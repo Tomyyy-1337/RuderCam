@@ -4,7 +4,7 @@ export class DeviceStatus {
     schlagzahl: number = $state(0);
     satellite_count: number = $state(0);
 
-    updateFromMsgpack(record: Record<string, unknown>): void {
+    updateFromRecord(record: Record<string, unknown>): void {
         Object.assign(this, record);
     }
 }

@@ -101,11 +101,11 @@
         let record = decode(event.data) as Record<string, Record<string, unknown>>;
 
         if ("HighFrequencyUpdate" in record) {
-            highFrequencyUpdate.updateFromMsgpack(record["HighFrequencyUpdate"]);
+            highFrequencyUpdate.updateFromRecord(record["HighFrequencyUpdate"]);
         } else if ("SharedState" in record) {
-            deviceStatus.updateFromMsgpack(record["SharedState"]);
+            deviceStatus.updateFromRecord(record["SharedState"]);
         } else if ("Session" in record) {
-            activeSession.updateFromMsgpack(record["Session"])
+            activeSession.updateFromRecord(record["Session"])
             temporary_state.session_is_active = true;
             scheduleSessionActivityTimeout();   
         }

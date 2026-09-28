@@ -4,7 +4,7 @@ export class ActiveSession {
     pausiert: boolean = $state(true);
     schlag_count: number = $state(0);
 
-    updateFromMsgpack(record: Record<string, unknown>): void {
+    updateFromRecord(record: Record<string, unknown>): void {
         Object.assign(this, record);
     }
 }
