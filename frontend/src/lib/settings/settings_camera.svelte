@@ -1,84 +1,107 @@
-<SettingsCard title="Brennweite" description="Die Brennweite der Kamera einstellen.">
-    <select id="camera-focal-length" name="camera-focal-length" bind:value={app_config.focal_length} onchange={saveFocalLength}>
-        <option value={28}>28mm</option>
-        <option value={35}>35mm</option>
-        <option value={42}>42mm</option>
-    </select>
-</SettingsCard>
+<div class="camera-panel">
+    <div class="control-grid">
+        <label class="control-field">
+            <span class="control-label">Brennweite</span>
+            <select id="camera-focal-length" name="camera-focal-length" bind:value={app_config.focal_length} onchange={saveFocalLength}>
+                <option value={28}>28 mm</option>
+                <option value={35}>35 mm</option>
+                <option value={42}>42 mm</option>
+            </select>
+        </label>
 
-<SettingsCard title="HDR" description="Aktiviere erhöhten Dynamikumfang für kontrastreiche Szenarien.">
-    <label class:inactive={!app_config.hdr_enabled} class="toggle-card">
-        <input
-            id="camera-hdr"
-            name="camera-hdr"
-            type="checkbox"
-            bind:checked={app_config.hdr_enabled}
-            onchange={saveHdrEnabled}
-        />
-        <span>HDR aktivieren</span>
-    </label>
-    {#if app_config.hdr_enabled}
-        <p class="hint">
-            Die Belichtungskorrektur ist nicht verfügbar wenn HDR aktiviert ist.
-        </p>
-    {/if}
-</SettingsCard>
+        <label class="control-field">
+            <span class="control-label">Fokus</span>
+            <select id="camera-focus-mode" name="camera-focus-mode" bind:value={app_config.focus_mode} onchange={saveFocusMode}>
+                <option value="Auto">Auto</option>
+                <option value="Fixed">Fest</option>
+            </select>
+        </label>
 
-{#if !app_config.hdr_enabled}
-<SettingsCard title="Belichtungskorrektur" description="Die Belichtungskorrektur für die Kamera einstellen.">
-    <div class="slider-wrap">
-        <div class="slider-value" aria-hidden="true">
-            {app_config.exposure_compenstion >= 0 ? "+" : ""}{app_config.exposure_compenstion.toFixed(1)} EV
-        </div>
-        <input
-            id="camera-exposure-compensation"
-            name="camera-exposure-compensation"
-            type="range"
-            min="-3"
-            max="3"
-            step="0.5"
-            bind:value={app_config.exposure_compenstion}
-            onchange={saveExposureCompensation}
-            aria-label="Belichtungskorrektur"
-        />
-        <div class="slider-legend" aria-hidden="true">
-            {#each exposureSteps as value, index}
-                <span class:major={index % 2 === 0} class="slider-step">
-                    <i></i>
-                    {#if index % 2 === 0}
-                        <b>{value > 0 ? "+" : ""}{value}</b>
-                    {/if}
-                </span>
-            {/each}
-        </div>
+        <label class="control-field">
+            <span class="control-label">Messung</span>
+            <select id="camera-metering-mode" name="camera-metering-mode" bind:value={app_config.metering_mode} onchange={saveMeteringMode}>
+                <option value="Average">Gesamtbild</option>
+                <option value="Center">Mitte</option>
+            </select>
+        </label>
+
+        <label class="control-field">
+            <span class="control-label">Stream</span>
+            <select id="camera-bitrate" name="camera-bitrate" bind:value={app_config.bitrate} onchange={saveBitrate}>
+                <option value={1600000}>1,6 MB/s</option>
+                <option value={2400000}>2,4 MB/s</option>
+                <option value={3200000}>3,2 MB/s</option>
+                <option value={4000000}>4,0 MB/s</option>
+                <option value={8000000}>8,0 MB/s</option>
+            </select>
+        </label>
     </div>
-</SettingsCard>
 
-<SettingsCard title="Belichtungsmessung" description="Belichtungsmessung für die Kamera auswählen.">
-    <select id="camera-metering-mode" name="camera-metering-mode" bind:value={app_config.metering_mode} onchange={saveMeteringMode}>
-        <option value="Average">Durchschnitt</option>
-        <option value="Center">Mitte</option>
-    </select>
+    <div class="toggle-row">
+        <label class:inactive={!app_config.hdr_enabled} class="toggle-control">
+            <span class="toggle-copy">
+                <span class="control-label">HDR</span>
+                <small>{app_config.hdr_enabled ? "Aktiv" : "Aus"}</small>
+            </span>
+            <input
+                id="camera-hdr"
+                name="camera-hdr"
+                type="checkbox"
+                bind:checked={app_config.hdr_enabled}
+                onchange={saveHdrEnabled}
+            />
+            <span class="switch" aria-hidden="true"></span>
+        </label>
 
-    <p class="hint">
-        {#if app_config.metering_mode === "Average"}
-            Die Kamera misst die Helligkeit über das gesamte Bild.
-        {:else}
-            Die Kamera gewichtet die Bildmitte stärker.
-        {/if}
-    </p>
-</SettingsCard>
-{/if}
+        <label class:inactive={!persistant_state.auto_level} class="toggle-control">
+            <span class="toggle-copy">
+                <span class="control-label">Auto-Level</span>
+                <small>{persistant_state.auto_level ? "Aktiv" : "Aus"}</small>
+            </span>
+            <input id="camera-auto-level" name="camera-auto-level" type="checkbox" bind:checked={persistant_state.auto_level} />
+            <span class="switch" aria-hidden="true"></span>
+        </label>
+    </div>
 
-<SettingsCard title="Bildausrichtung" description="Das Kamerabild automatisch ausrichten oder manuell drehen.">
-    <label class:inactive={!persistant_state.auto_level} class="toggle-card">
-        <input id="camera-auto-level" name="camera-auto-level" type="checkbox" bind:checked={persistant_state.auto_level} />
-        <span>Auto-Level</span>
-    </label>
+    {#if !app_config.hdr_enabled}
+        <section class="control-block exposure-slot exposure-control">
+            <div class="control-heading">
+                <span class="control-label">Belichtung</span>
+                <output for="camera-exposure-compensation">
+                    {app_config.exposure_compenstion >= 0 ? "+" : ""}{app_config.exposure_compenstion.toFixed(1)} EV
+                </output>
+            </div>
+            <div class="slider-wrap">
+                <input
+                    id="camera-exposure-compensation"
+                    name="camera-exposure-compensation"
+                    type="range"
+                    min="-3"
+                    max="3"
+                    step="0.5"
+                    bind:value={app_config.exposure_compenstion}
+                    onchange={saveExposureCompensation}
+                    aria-label="Belichtungskorrektur"
+                />
+                <div class="slider-legend" aria-hidden="true">
+                    {#each exposureSteps as value, index}
+                        <span class:major={index % 2 === 0} class="slider-step">
+                            <i></i>
+                            {#if index % 2 === 0}
+                                <b>{value > 0 ? "+" : ""}{value}</b>
+                            {/if}
+                        </span>
+                    {/each}
+                </div>
+            </div>
+        </section>
+    {:else}
+        <p class="exposure-slot status-note">Belichtung ist bei HDR nicht verfügbar.</p>
+    {/if}
 
-    <div class="rotation-slider">
-        <div class="slider-header">
-            <label for="camera-rotation-offset">Drehwinkel</label>
+    <section class="control-block rotation-control">
+        <div class="control-heading">
+            <label for="camera-rotation-offset" class="control-label">Drehwinkel</label>
             <output for="camera-rotation-offset">{persistant_state.rotation_offset}°</output>
         </div>
         <input
@@ -95,46 +118,8 @@
             <span>0°</span>
             <span>10°</span>
         </div>
-    </div>
-
-    <p class="hint">
-        Der Drehwinkel hat auch im Automatikmodus Einfluss auf die Bildausrichtung.
-    </p>
-</SettingsCard>
-
-<SettingsCard title="Fokusmodus" description="Autofokus oder festen Fokus für die Kamera auswählen.">
-    <select id="camera-focus-mode" name="camera-focus-mode" bind:value={app_config.focus_mode} onchange={saveFocusMode}>
-        <option value="Auto">Autofokus</option>
-        <option value="Fixed">Fester Fokus</option>
-    </select>
-
-    <p class="hint">
-        {#if app_config.focus_mode === "Auto"}
-            Die Kamera passt den Fokus automatisch an.
-        {:else}
-            Die Kamera bleibt auf Hyperfokalpunkt eingestellt. Nahe Objekte können unscharf erscheinen.
-        {/if}
-    </p>
-</SettingsCard>
-
-<SettingsCard title="Bitrate" description="Die Bitrate für den Livestream einstellen.">
-
-    <select id="camera-bitrate" name="camera-bitrate" bind:value={app_config.bitrate} onchange={saveBitrate}>
-        <option value={1600000}>1,6MB/s</option>
-        <option value={2400000}>2,4MB/s</option>
-        <option value={3200000}>3,2MB/s (Standard)</option>
-        <option value={4000000}>4,0MB/s</option>
-        <option value={8000000}>8,0MB/s</option>
-    </select>
-
-    <p class="hint">
-        Höhere Bitraten führen zu besserer Bildqualität aber können zu Verbindungsproblemen bei schlechter Netzwerkverbindung führen.
-    </p>
-    <p class="hint">
-        Niedrigere Bitraten schonen die Bandbreite, verschlechtern jedoch die Bildqualität.
-    </p>
-    
-</SettingsCard>
+    </section>
+</div>
 
 <Dialog
     bind:open={dialogOpen}
@@ -147,7 +132,6 @@
 
 <script lang="ts">
     import Dialog from "../components/dialog.svelte";
-    import SettingsCard from "./settings_card.svelte";
     import { persistant_state } from "../classes/persistant_state_store.svelte";
     import { app_config } from "../classes/app_config.svelte";
 
@@ -282,98 +266,174 @@
 </script>
 
 <style>
-    .hint {
-        margin: 0.7rem 0 0;
-        color: color-mix(in srgb, var(--text) 70%, transparent);
-        font-size: 0.92rem;
-        line-height: 1.45;
+    .camera-panel {
+        --camera-line: color-mix(in srgb, var(--text) 16%, transparent);
+        display: grid;
+        gap: 0.5rem;
+        padding: 0.65rem;
+        color: var(--text);
+        background: linear-gradient(145deg, color-mix(in srgb, var(--section-background) 88%, #263442), var(--background));
+        border: 1px solid var(--camera-line);
+        border-radius: 0.9rem;
+        box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.2);
     }
 
-    .toggle-card {
+    .control-heading,
+    .rotation-legend {
         display: flex;
         align-items: center;
+        justify-content: space-between;
+    }
+
+    .control-label,
+    .status-note {
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .control-grid,
+    .toggle-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .control-field,
+    .toggle-control,
+    .control-block {
+        min-width: 0;
+        box-sizing: border-box;
+        border: 1px solid var(--camera-line);
+        background: color-mix(in srgb, var(--section-background) 72%, transparent);
+        border-radius: 0.65rem;
+    }
+
+    .control-field {
+        display: grid;
+        gap: 0.25rem;
+        padding: 0.45rem 0.5rem 0.5rem;
+    }
+
+    .control-label {
+        color: color-mix(in srgb, var(--text) 62%, transparent);
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .control-field select {
         width: 100%;
-        margin: 0.1rem;
-        padding: 0.9rem 1rem;
-        border-radius: 0.9rem;
-        background: rgba(255, 255, 255, 0.06);
-        border: 2px solid #0061c8;
-        color: var(--text);
+        height: 1.9rem;
+        min-width: 0;
+        margin: 0;
+        padding: 0.25rem 1.6rem 0.25rem 0.4rem;
+        border-color: color-mix(in srgb, var(--text) 14%, transparent);
+        border-radius: 0.4rem;
+        background-color: color-mix(in srgb, var(--background) 70%, var(--section-background));
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .toggle-control {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 3.05rem;
+        gap: 0.4rem;
+        padding: 0.45rem 0.55rem;
         cursor: pointer;
         user-select: none;
-        gap: 0.75rem;
-        box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
-        outline: none;
     }
 
-    .toggle-card input {
+    .toggle-control.inactive {
+        background: color-mix(in srgb, var(--background) 48%, transparent);
+    }
+
+    .toggle-copy {
+        display: grid;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+
+    .toggle-copy small {
+        color: color-mix(in srgb, var(--text) 52%, transparent);
+        font-size: 0.68rem;
+        line-height: 1;
+    }
+
+    .toggle-control input {
         position: absolute;
+        width: 1px;
+        height: 1px;
         opacity: 0;
-        pointer-events: none;
-        width: 0;
-        height: 0;
+    }
+
+    .switch {
+        position: relative;
+        flex: 0 0 auto;
+        width: 2rem;
+        height: 1.15rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text) 18%, var(--background));
+        transition: background-color 160ms ease;
+    }
+
+    .switch::after {
+        position: absolute;
+        top: 0.18rem;
+        left: 0.18rem;
+        width: 0.79rem;
+        height: 0.79rem;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--text) 78%, transparent);
+        content: "";
+        transition: transform 160ms ease, background-color 160ms ease;
+    }
+
+    .toggle-control input:checked + .switch {
+        background: color-mix(in srgb, var(--button-color) 78%, #1e91ff);
+    }
+
+    .toggle-control input:checked + .switch::after {
+        background: var(--text);
+        transform: translateX(0.85rem);
+    }
+
+    .toggle-control input:focus-visible + .switch {
+        outline: 2px solid var(--button-color);
+        outline-offset: 2px;
+    }
+
+    .control-block {
         margin: 0;
-        padding: 0;
+        padding: 0.5rem 0.6rem 0.45rem;
     }
 
-    .toggle-card span {
-        flex: 1;
-        font-weight: 600;
-        letter-spacing: 0.01em;
+    .exposure-slot {
+        height: 4.9rem;
+        box-sizing: border-box;
     }
 
-    .toggle-card.inactive {
-        background: rgba(255, 255, 255, 0.03);
-        border-color: rgba(255, 255, 255, 0.05);
-        opacity: 0.55;
+    .control-heading {
+        margin-bottom: 0.2rem;
     }
 
-    .rotation-slider {
-        margin-top: 1rem;
-    }
-
-    .slider-header,
-    .rotation-legend {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .slider-header {
-        margin-bottom: 0.35rem;
+    output {
         color: var(--text);
-        font-weight: 600;
-    }
-
-    .slider-header output {
-        color: color-mix(in srgb, var(--text) 72%, transparent);
+        font-size: 0.78rem;
         font-variant-numeric: tabular-nums;
-    }
-
-    .rotation-slider input[type="range"] {
-        width: 100%;
-        accent-color: var(--button-color);
-        cursor: pointer;
-    }
-
-    .rotation-legend {
-        color: color-mix(in srgb, var(--text) 62%, transparent);
-        font-size: 0.75rem;
-        font-variant-numeric: tabular-nums;
+        font-weight: 700;
     }
 
     .slider-wrap {
         position: relative;
-        width: calc(100% + 1.5rem);
-        margin: 0 -0.75rem;
-        padding: 0 0.75rem;
-        box-sizing: border-box;
     }
 
     input[type="range"] {
         width: 100%;
-        height: 1.5rem;
+        height: 1.35rem;
         margin: 0;
         padding: 0;
         appearance: none;
@@ -384,96 +444,122 @@
     }
 
     input[type="range"]::-webkit-slider-runnable-track {
-        height: 0.45rem;
+        height: 0.35rem;
         border-radius: 999px;
         background: color-mix(in srgb, var(--text) 18%, var(--section-background));
         box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
     }
 
     input[type="range"]::-moz-range-track {
-        height: 0.45rem;
+        height: 0.35rem;
         border-radius: 999px;
         background: color-mix(in srgb, var(--text) 18%, var(--section-background));
         box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 12%, transparent);
     }
 
     input[type="range"]::-moz-range-progress {
-        height: 0.45rem;
+        height: 0.35rem;
         border-radius: 999px;
-        background: color-mix(in srgb, var(--text) 18%, var(--section-background));
+        background: var(--button-color);
     }
 
     input[type="range"]::-webkit-slider-thumb {
-        width: 1.25rem;
-        height: 1.25rem;
-        margin-top: -0.4rem;
+        width: 1.05rem;
+        height: 1.05rem;
+        margin-top: -0.35rem;
         appearance: none;
         -webkit-appearance: none;
         border: 3px solid var(--section-background);
         border-radius: 50%;
         background: var(--button-color);
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--button-color) 70%, white 30%), 0 3px 10px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--button-color) 70%, white 30%);
     }
 
     input[type="range"]::-moz-range-thumb {
-        width: 1rem;
-        height: 1rem;
+        width: 0.8rem;
+        height: 0.8rem;
         border: 3px solid var(--section-background);
         border-radius: 50%;
         background: var(--button-color);
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--button-color) 70%, white 30%), 0 3px 10px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--button-color) 70%, white 30%);
     }
 
     input[type="range"]:focus-visible {
         outline: 2px solid color-mix(in srgb, var(--button-color) 88%, white 12%);
-        outline-offset: 4px;
+        outline-offset: 3px;
         border-radius: 0.4rem;
-    }
-
-    .slider-value {
-        display: block;
-        margin: 0 0 0.25rem;
-        color: var(--text);
-        font-size: 1.8rem;
-        font-weight: 700;
-        line-height: 1.1;
-        text-align: center;
-        letter-spacing: 0.02em;
-        pointer-events: none;
     }
 
     .slider-legend {
         display: grid;
         grid-template-columns: repeat(13, minmax(0, 1fr));
-        height: 1.65rem;
-        margin-top: 0.1rem;
-        color: color-mix(in srgb, var(--text) 62%, transparent);
+        height: 1.15rem;
+        color: color-mix(in srgb, var(--text) 56%, transparent);
     }
 
     .slider-step {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.2rem;
+        gap: 0.15rem;
         min-width: 0;
-        font-size: 0.7rem;
+        font-size: 0.57rem;
         line-height: 1;
     }
 
     .slider-step i {
         display: block;
         width: 1px;
-        height: 0.3rem;
+        height: 0.25rem;
         background: color-mix(in srgb, var(--text) 35%, transparent);
     }
 
     .slider-step.major i {
-        height: 0.5rem;
+        height: 0.4rem;
         background: color-mix(in srgb, var(--text) 62%, transparent);
     }
 
     .slider-step b {
         font-weight: 600;
         white-space: nowrap;
+    }
+
+    .rotation-control {
+        padding-bottom: 0.35rem;
+    }
+
+    .rotation-legend {
+        color: color-mix(in srgb, var(--text) 56%, transparent);
+        font-size: 0.62rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .status-note {
+        display: flex;
+        align-items: center;
+        min-height: 4.9rem;
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0.5rem 0.6rem;
+        color: color-mix(in srgb, var(--text) 58%, transparent);
+        border: 1px dashed var(--camera-line);
+        border-radius: 0.65rem;
+        font-size: 0.6rem;
+        letter-spacing: 0.06em;
+        text-transform: none;
+    }
+
+    @media (max-width: 360px) {
+        .camera-panel {
+            padding: 0.5rem;
+        }
+
+        .control-field {
+            padding-inline: 0.4rem;
+        }
+
+        .control-field select {
+            font-size: 0.76rem;
+        }
     }
 </style>

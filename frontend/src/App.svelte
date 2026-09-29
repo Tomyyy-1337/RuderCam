@@ -5,6 +5,7 @@
     {#if persistant_state.active_tab === "camera"}
         {#if temporary_state.is_connected}
             <Livestream />
+            <SettingsCameraWrapper />
             <Fahrt />
         {:else}
             <NotConnected />
@@ -36,10 +37,16 @@
     import type { AppTab } from "./lib/classes/persistant_state_store.svelte";
     import { setTheme, type Theme } from "./lib/classes/themeStore.svelte";
     import { decode } from "@msgpack/msgpack";
+    import SettingsCameraWrapper from "./lib/settings/settings_camera_wrapper.svelte";
+    import { app_config } from "./lib/classes/app_config.svelte";
 
     let socket: WebSocket | null = null;
     let sessionActivityTimeout: number | null = null;
     let reconnectTimeout: number | null = null;
+
+    onMount(async () => {
+        await app_config.fetch();
+    });
 
     onMount(() => {
         const theme = (localStorage.getItem("theme") as Theme | null) ?? "dark";

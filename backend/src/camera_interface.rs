@@ -10,11 +10,11 @@ pub enum Metering {
     Average,
 }
 
-impl std::fmt::Display for Metering {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {    
+impl Metering {
+    fn name(&self) -> &str {
         match self {
-            Metering::Center => write!(f, "centre"),
-            Metering::Average => write!(f, "matrix"),
+            Metering::Center => "centre",
+            Metering::Average => "matrix",
         }
     }
 }
@@ -25,11 +25,11 @@ pub enum FocusMode {
     Fixed,
 }
 
-impl std::fmt::Display for FocusMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl FocusMode {
+    fn name(&self) -> &str {
         match self {
-            FocusMode::Auto => write!(f, "auto"),
-            FocusMode::Fixed => write!(f, "manual"),
+            FocusMode::Auto => "auto",
+            FocusMode::Fixed => "manual",
         }
     }
 }
@@ -49,8 +49,8 @@ fn focal_length_to_roi(focal_length: f32) -> String {
 pub struct CameraConfig {
     pub rpiCameraHDR: bool,
     pub rpiCameraEV: f32,
-    pub rpiCameraMetering: String,
-    pub rpiCameraAfMode: String,
+    pub rpiCameraMetering: &'static str,
+    pub rpiCameraAfMode: &'static str,
     pub rpiCameraROI: String,
     pub rpiCameraBitrate: u32,
     pub rpiCameraFPS: f32,
@@ -65,8 +65,8 @@ pub async fn update_camera_config() -> Result<(), Box<dyn std::error::Error>> {
     let config = CameraConfig {
         rpiCameraHDR: CONFIG.hdr_enabled,
         rpiCameraEV: CONFIG.exposure_compenstion,
-        rpiCameraMetering: CONFIG.metering_mode.to_string(),
-        rpiCameraAfMode: CONFIG.focus_mode.to_string(),
+        rpiCameraMetering: CONFIG.metering_mode.name(),
+        rpiCameraAfMode: CONFIG.focus_mode.name(),
         rpiCameraROI: roi,
         rpiCameraBitrate: CONFIG.bitrate,
         rpiCameraFPS: 25.0,
