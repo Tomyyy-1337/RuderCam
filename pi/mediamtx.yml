@@ -711,14 +711,14 @@ pathDefaults:
   # Region of interest, in format x,y,width,height (all normalized between 0 and 1).
   rpiCameraROI:
   # Whether to enable HDR on Raspberry Camera 3.
-  rpiCameraHDR: false
+  rpiCameraHDR: true
   # Tuning file.
   rpiCameraTuningFile:
   # Sensor mode, in format [width]:[height]:[bit-depth]:[packing]
   # bit-depth and packing are optional.
   rpiCameraMode:
   # frames per second.
-  rpiCameraFPS: 30
+  rpiCameraFPS: 25
   # Autofocus mode (auto, manual or continuous).
   rpiCameraAfMode: continuous
   # Autofocus range (normal, macro or full).
@@ -748,16 +748,16 @@ pathDefaults:
   # * mjpeg when stream is secondary
   rpiCameraCodec: auto
   # Period between IDR frames (when codec is hardwareH264 or softwareH264).
-  rpiCameraIDRPeriod: 60
+  rpiCameraIDRPeriod: 25
   # Bitrate (when codec is hardwareH264 or softwareH264).
-  rpiCameraBitrate: 5000000
+  rpiCameraBitrate: 3200000
   # H264 profile (auto, baseline, main or high).
   # When is "auto", it defaults to:
   # * main when codec is hardwareH264
   # * baseline when codec is softwareH264
-  rpiCameraH264Profile: baseline
+  rpiCameraH264Profile: auto
   # H264 level (4.0, 4.1 or 4.2).
-  rpiCameraH264Level: "4.1"
+  rpiCameraH264Level: "4.0"
   # M-JPEG quality (0-100).
   rpiCameraMJPEGQuality: 60
 
@@ -887,7 +887,7 @@ paths:
     rpiCameraFPS: 25
     rpiCameraIDRPeriod: 25
     rpiCameraHFlip: true
-    rpiCameraHDR: false 
+    rpiCameraHDR: true 
     rpiCameraEV: 0     
     rpiCameraMetering: centre  
     rpiCameraAfMode: continuous  

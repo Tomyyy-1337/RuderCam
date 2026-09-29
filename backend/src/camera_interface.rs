@@ -53,8 +53,6 @@ pub struct CameraConfig {
     pub rpiCameraAfMode: &'static str,
     pub rpiCameraROI: String,
     pub rpiCameraBitrate: u32,
-    pub rpiCameraFPS: f32,
-    pub rpiCameraIDRPeriod: u32,
 }
 
 pub async fn update_camera_config() -> Result<(), Box<dyn std::error::Error>> {
@@ -69,8 +67,6 @@ pub async fn update_camera_config() -> Result<(), Box<dyn std::error::Error>> {
         rpiCameraAfMode: CONFIG.focus_mode.name(),
         rpiCameraROI: roi,
         rpiCameraBitrate: CONFIG.bitrate,
-        rpiCameraFPS: 25.0,
-        rpiCameraIDRPeriod: 25,
     };
     internal_update_camera_config(&client, &config).await?;
     Ok(())
