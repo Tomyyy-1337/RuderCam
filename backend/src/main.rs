@@ -9,7 +9,7 @@ mod hotspot;
 mod camera_interface;
 mod bpm_peak;
 
-use crate::{camera_interface::CameraInterface, gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, HighFrequencyUpdate, InternalState}}; 
+use crate::{gps_interface::GPSPositionalData, hotspot::Hotspot, i2c_interface::I2CInterface, session::ActiveSession, shared::{Config, DeviceState, Global, HighFrequencyUpdate, InternalState}}; 
 
 use futures::stream::StreamExt;
 use tokio::{pin, runtime::LocalOptions, task};
@@ -22,7 +22,6 @@ static SHARED_STATE: Global<DeviceState> = Global::new(DeviceState::default());
 static HIGH_FREQUENCY_UPDATE: Global<HighFrequencyUpdate> = Global::new(HighFrequencyUpdate::default());
 static INTERNAL_STATE: Global<InternalState> = Global::new(InternalState::new());
 static I2C_INTERFACE: I2CInterface = I2CInterface::new_uninitialized();
-static CAMERA_INTERFACE: Global<CameraInterface> = Global::new(CameraInterface::new());
 
 static CURRENT_SESSION: Global<Option<ActiveSession>> = Global::new(None); 
 
@@ -37,6 +36,8 @@ fn main() {
         .build_local(LocalOptions::default())
         .unwrap()
         .block_on(async {
+
+            task::spawn_local(initialize_camera_settings());
             task::spawn_local(read_accelerometer_task());
             task::spawn_local(read_battery_task());
             task::spawn_local(read_gps_task());
@@ -45,6 +46,11 @@ fn main() {
 
             futures::future::pending::<()>().await;
         });
+}
+
+/// Update media mtx camera settings by applying the current configuration.
+async fn initialize_camera_settings() {
+    let _ = camera_interface::update_camera_config().await;
 }
 
 /// Initialize the I2C interface, load the configuration from EEPROM and initialize the internal state.
@@ -72,9 +78,6 @@ fn initialize_statics() {
     
     #[cfg(target_os = "linux")]
     Hotspot::initialize(&CONFIG.ssid, &CONFIG.password);
-    
-    #[cfg(target_os = "linux")]
-    let _ = CAMERA_INTERFACE.modify(|camera| camera.start_camera());
     
     INTERNAL_STATE.modify(|state| {
         state.set_last_connection_time(std::time::Instant::now());

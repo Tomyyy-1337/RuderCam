@@ -6,7 +6,7 @@ use tower_http::{cors::CorsLayer, services::ServeDir};
 
 use std::{net::SocketAddr, time::Duration};
 
-use crate::{CAMERA_INTERFACE, CONFIG, CURRENT_SESSION, HIGH_FREQUENCY_UPDATE, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{FocusMode, Metering}, pi_interface, session::{ActiveSession, FinishedSession, SessionInfo}, shared::{Config, DeviceState, HighFrequencyUpdate}};
+use crate::{CONFIG, CURRENT_SESSION, HIGH_FREQUENCY_UPDATE, I2C_INTERFACE, INTERNAL_STATE, SHARED_STATE, camera_interface::{self, FocusMode, Metering}, pi_interface, session::{ActiveSession, FinishedSession, SessionInfo}, shared::{Config, DeviceState, HighFrequencyUpdate}};
 
 lazy_static!(
     static ref PASSWORD_REGEX: Regex = Regex::new(r"^[a-zA-Z0-9!@#$%^&*()_+\-=?]*$").expect("Failed to compile password regex");
@@ -67,8 +67,10 @@ async fn change_focal_length(
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.focal_length = payload.focal_length);
     I2C_INTERFACE.write_config_to_eeprom().await;
-    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
-    StatusCode::OK
+    match camera_interface::update_camera_config().await {
+        Ok(()) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -81,8 +83,10 @@ async fn change_exposure_compensation(
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.exposure_compenstion = payload.exposure_compensation);
     I2C_INTERFACE.write_config_to_eeprom().await;
-    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
-    StatusCode::OK
+    match camera_interface::update_camera_config().await {
+        Ok(()) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -95,8 +99,10 @@ async fn change_hdr_enabled(
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.hdr_enabled = payload.hdr_enabled);
     I2C_INTERFACE.write_config_to_eeprom().await;
-    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
-    StatusCode::OK
+    match camera_interface::update_camera_config().await {
+        Ok(()) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -108,9 +114,11 @@ async fn change_bitrate(
     Json(payload): Json<BitrateMessage>,
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.bitrate = payload.bitrate);
-    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
     I2C_INTERFACE.write_config_to_eeprom().await;
-    StatusCode::OK
+    match camera_interface::update_camera_config().await {
+        Ok(()) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -123,8 +131,10 @@ async fn change_metering_mode(
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.metering_mode = payload.metering_mode);
     I2C_INTERFACE.write_config_to_eeprom().await;
-    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
-    StatusCode::OK
+    match camera_interface::update_camera_config().await {
+        Ok(()) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -137,8 +147,10 @@ async fn change_focus_mode(
 ) -> StatusCode {
     CONFIG.modify(|cfg| cfg.focus_mode = payload.focus_mode);
     I2C_INTERFACE.write_config_to_eeprom().await;
-    CAMERA_INTERFACE.modify(|camera| camera.restart_camera());
-    StatusCode::OK
+    match camera_interface::update_camera_config().await {
+        Ok(()) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 #[derive(serde::Deserialize)]
