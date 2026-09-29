@@ -25,7 +25,7 @@ readTimeout: 10s
 writeTimeout: 10s
 # Size of the queue of outgoing packets.
 # A higher value allows to increase throughput, a lower value allows to save RAM.
-writeQueueSize: 512
+writeQueueSize: 128
 # Maximum size of outgoing UDP payloads.
 # It defaults to the maximum packet size on ethernet (1500) minus IPv6 and UDP headers (48).
 # This can be decreased to avoid fragmentation on networks with a low MTU.
@@ -755,7 +755,7 @@ pathDefaults:
   # When is "auto", it defaults to:
   # * main when codec is hardwareH264
   # * baseline when codec is softwareH264
-  rpiCameraH264Profile: auto
+  rpiCameraH264Profile: baseline
   # H264 level (4.0, 4.1 or 4.2).
   rpiCameraH264Level: "4.1"
   # M-JPEG quality (0-100).
@@ -887,10 +887,10 @@ paths:
     rpiCameraFPS: 25
     rpiCameraIDRPeriod: 25
     rpiCameraHFlip: true
-    rpiCameraHDR: false  # or true if CONFIG.hdr_enabled
-    rpiCameraEV: 0       # your CONFIG.exposure_compenstion
-    rpiCameraMetering: centre  # your CONFIG.metering_mode
-    rpiCameraAfMode: continuous  # your CONFIG.focus_mode
-    rpiCameraROI: "0,0,1,1"  # derived from CONFIG.focal_length
-    rpiCameraBitrate: 5000000  # your CONFIG.bitrate
+    rpiCameraHDR: false 
+    rpiCameraEV: 0     
+    rpiCameraMetering: centre  
+    rpiCameraAfMode: continuous  
+    rpiCameraROI: "0,0,1,1" 
+    rpiCameraBitrate: 3200000  
     rpiCameraCodec: hardwareH264
