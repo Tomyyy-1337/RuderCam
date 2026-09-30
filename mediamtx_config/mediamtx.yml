@@ -746,7 +746,7 @@ pathDefaults:
   # * hardwareH264 when stream is primary and hardware encoder is available
   # * softwareH264 when stream is primary and hardware encoder is not available
   # * mjpeg when stream is secondary
-  rpiCameraCodec: auto
+  rpiCameraCodec: hardwareH264
   # Period between IDR frames (when codec is hardwareH264 or softwareH264).
   rpiCameraIDRPeriod: 25
   # Bitrate (when codec is hardwareH264 or softwareH264).
@@ -755,7 +755,7 @@ pathDefaults:
   # When is "auto", it defaults to:
   # * main when codec is hardwareH264
   # * baseline when codec is softwareH264
-  rpiCameraH264Profile: main
+  rpiCameraH264Profile: high
   # H264 level (4.0, 4.1 or 4.2).
   rpiCameraH264Level: "4.0"
   # M-JPEG quality (0-100).
