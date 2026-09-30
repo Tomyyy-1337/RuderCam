@@ -894,5 +894,5 @@ paths:
     rpiCameraROI: "0,0,1,1" 
     rpiCameraBitrate: 3200000  
     rpiCameraCodec: hardwareH264
-    rpiCameraH264Profile: main
+    rpiCameraH264Profile: high
     rpiCameraH264Level: "4.0"

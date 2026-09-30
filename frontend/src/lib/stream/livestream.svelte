@@ -72,8 +72,6 @@
     let playRetryTimer: number | null = null;
     let healthTimer: number | null = null;
     let reconnectGeneration = 0;
-    let sourceRestartInFlight: Promise<void> | null = null;
-    let lastSourceRestartAt = 0;
 
     let reconnectAttempts = 0;
     let lastProgressAt = 0;
@@ -89,7 +87,6 @@
     const FREEZE_NO_PROGRESS_MS = 1400;
     const WAITING_TIMEOUT_MS = 1000;
     const STABLE_RECOVERY_MS = 2500;
-    const SOURCE_RESTART_COOLDOWN_MS = 5000;
 
     let fullscreen = $state(false);
     let showIOSInstallHint = $state(false);
@@ -519,72 +516,6 @@
         }, delay);
     }
 
-    function restartSourceAndReconnect(delay = 1000, reason = "source-restart") {
-        reconnectGeneration++;
-
-        const generation = reconnectGeneration;
-
-        if (retryTimer !== null) {
-            clearTimeout(retryTimer);
-            retryTimer = null;
-        }
-
-        if (playRetryTimer !== null) {
-            clearTimeout(playRetryTimer);
-            playRetryTimer = null;
-        }
-
-        waitingSince = null;
-        destroyReader();
-        resetVideo();
-
-        console.warn("[WebRTC] restarting camera source", { reason });
-
-        restartCameraSource().finally(() => {
-            if (generation !== reconnectGeneration) {
-                return;
-            }
-
-            retryTimer = window.setTimeout(() => {
-                retryTimer = null;
-
-                if (generation !== reconnectGeneration || document.visibilityState !== "visible") {
-                    return;
-                }
-
-                connectReader(generation);
-            }, delay);
-        });
-    }
-
-    function restartCameraSource(): Promise<void> {
-        if (sourceRestartInFlight !== null) {
-            return sourceRestartInFlight;
-        }
-
-        const now = performance.now();
-
-        if (now - lastSourceRestartAt < SOURCE_RESTART_COOLDOWN_MS) {
-            return Promise.resolve();
-        }
-
-        lastSourceRestartAt = now;
-        sourceRestartInFlight = fetch("/api/restart_stream", { method: "POST" })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`source restart failed (${response.status})`);
-                }
-            })
-            .catch((err: unknown) => {
-                console.warn("[WebRTC] camera source restart failed:", err);
-            })
-            .finally(() => {
-                sourceRestartInFlight = null;
-            });
-
-        return sourceRestartInFlight;
-    }
-
     async function connectReader(expectedGeneration = reconnectGeneration): Promise<void> {
         if (expectedGeneration !== reconnectGeneration) {
             return;
@@ -635,7 +566,7 @@
                         lowered.includes("video decoder stalled") ||
                         lowered.includes("video packet loss too high")
                     ) {
-                        restartSourceAndReconnect(1000, "reader-health");
+                        hardReconnect(nextReconnectDelay(500), "reader-health");
                         return;
                     }
 
