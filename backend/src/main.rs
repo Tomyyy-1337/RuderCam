@@ -48,11 +48,6 @@ fn main() {
         });
 }
 
-/// Update media mtx camera settings by applying the current configuration.
-async fn initialize_camera_settings() {
-    let _ = camera_interface::update_camera_config().await;
-}
-
 /// Initialize the I2C interface, load the configuration from EEPROM and initialize the internal state.
 /// This function must be called before any other operation that accesses the 
 /// I2C interface, the configuration or the internal state, otherwise it will lead to undefined behavior.
@@ -82,6 +77,16 @@ fn initialize_statics() {
     INTERNAL_STATE.modify(|state| {
         state.set_last_connection_time(std::time::Instant::now());
     });
+}
+
+/// Update media mtx camera settings by applying the current configuration.
+async fn initialize_camera_settings() {
+    loop {
+        match camera_interface::update_camera_config().await {
+            Ok(_) => return,
+            Err(_) => tokio::time::sleep(tokio::time::Duration::from_secs(1)).await,
+        };
+    } 
 }
 
 /// Periodically check if a keep-alive signal has been received from the frontend and 
