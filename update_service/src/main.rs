@@ -82,12 +82,22 @@ async fn modify_sd_card(f: impl AsyncFnOnce() -> Result<(),io::Error>) -> Result
         .arg("backend.service")
         .status().await;
 
+    let _ = tokio::process::Command::new("systemctl")
+        .arg("stop")
+        .arg("mediamtx.service")
+        .status().await;
+
     tokio::process::Command::new("rm")
         .arg("-rf")
         .arg("/home/pi/treiber/static")
         .status().await?;
 
     f().await?;
+
+    tokio::process::Command::new("mv")
+        .arg("/home/pi/treiber/mediamtx.yml")
+        .arg("/home/pi/mediamtx.yml")
+        .status().await?;
 
     tokio::process::Command::new("chmod")
         .arg("+x")
@@ -97,6 +107,12 @@ async fn modify_sd_card(f: impl AsyncFnOnce() -> Result<(),io::Error>) -> Result
     tokio::process::Command::new("systemctl")
         .arg("start")
         .arg("backend.service")
+        .status().await?;
+
+
+    tokio::process::Command::new("systemctl")
+        .arg("start")
+        .arg("mediamtx.service")
         .status().await?;
 
     Ok(())

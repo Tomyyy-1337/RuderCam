@@ -16,6 +16,7 @@ const BUILD_STATE_DIR: &str = ".build-state";
 pub const STATIC_DIR: &str = "../backend/static";
 pub const BACKEND_CODE_PATH: &str = "../backend";
 pub const BACKEND_BIN_PATH: &str = "./backend_bin";
+pub const MEDIAMTX_PATH: &str = "../mediamtx_config/mediamtx.yml";
 
 pub fn read_version_number() -> io::Result<String> {
     Ok(std::fs::read_to_string(VERSION_PATH)?

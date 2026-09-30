@@ -6,7 +6,7 @@ use std::{
 
 use sha2::{Digest, Sha256};
 
-use crate::events::AppEvent;
+use crate::{events::AppEvent, pipeline::MEDIAMTX_PATH};
 
 use super::{BACKEND_BIN_PATH, BACKEND_CODE_PATH, STATIC_DIR, read_version_number};
 
@@ -35,6 +35,12 @@ pub fn calculate_hash(tx: &Sender<AppEvent>) -> io::Result<Vec<u8>> {
             "\x1b[90mHashed\x1b[0m \x1b[33m{file}\x1b[0m"
         )));
     }
+
+    let media_mtx_hash = Sha256::digest(&std::fs::read(MEDIAMTX_PATH)?);
+    combined_hash = xor_hashes(&combined_hash, &media_mtx_hash);
+    let _ = tx.send(AppEvent::Output(format!(
+        "\x1b[90mHashed\x1b[0m \x1b[33mmediamtx.yml\x1b[0m"
+    )));
 
     Ok(combined_hash)
 }

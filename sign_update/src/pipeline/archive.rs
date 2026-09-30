@@ -4,7 +4,7 @@ use tar::{Builder, Header};
 
 use crate::events::AppEvent;
 
-use super::{BACKEND_BIN_PATH, BACKEND_CODE_PATH, STATIC_DIR};
+use super::{BACKEND_BIN_PATH, BACKEND_CODE_PATH, STATIC_DIR, MEDIAMTX_PATH};
 
 pub fn create_archive(
     tx: &Sender<AppEvent>,
@@ -22,6 +22,10 @@ pub fn create_archive(
     archive.append_file(
         "server",
         &mut File::open(Path::new(BACKEND_CODE_PATH).join(BACKEND_BIN_PATH))?,
+    )?;
+    archive.append_file(
+        "mediamtx.yml",
+        &mut File::open(MEDIAMTX_PATH)?,
     )?;
 
     let mut version_header = Header::new_gnu();
