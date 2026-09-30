@@ -27,6 +27,9 @@ interface VideoStatsSnapshot {
     jitterBufferEmittedCount: number;
     framesDecoded: number;
     bytesReceived: number;
+    packetsReceived: number;
+    packetsLost: number;
+    packetsDiscarded: number;
 }
 
 class MediaMTXWebRTCReader {
@@ -50,9 +53,13 @@ class MediaMTXWebRTCReader {
     // Reconnect immediately on critical interval latency.
     static #CRITICAL_LATENCY_THRESHOLD = 1.7;
 
-    // If no decode/network progress is observed while connected, reconnect quickly.
-    static #NO_PROGRESS_DURATION = 1500;
+    // If packets arrive but decoding does not advance, the decoder is usually waiting for
+    // a clean keyframe after packet loss. Reconnect before the jitter buffer grows stale.
+    static #NO_DECODE_PROGRESS_DURATION = 2200;
     static #MIN_PROGRESS_BYTES = 1024;
+    static #SEVERE_LOST_PACKETS = 20;
+    static #SEVERE_DISCARDED_PACKETS = 20;
+    static #SEVERE_PACKET_LOSS_RATE = 0.12;
 
     #conf: ReaderConfig;
     #state: ReaderState = 'running';
@@ -66,7 +73,7 @@ class MediaMTXWebRTCReader {
 
     #lastVideoStats: VideoStatsSnapshot | null = null;
     #highLatencySince: number | null = null;
-    #noProgressSince: number | null = null;
+    #noDecodeProgressSince: number | null = null;
     #errorHandled = false;
 
     constructor(conf: ReaderConfig) {
@@ -85,14 +92,7 @@ class MediaMTXWebRTCReader {
             this.#disconnectTimeout = null;
         }
 
-        if (this.#pc !== null) {
-            this.#pc.onicecandidate = null;
-            this.#pc.onconnectionstatechange = null;
-            this.#pc.ontrack = null;
-            this.#pc.ondatachannel = null;
-            this.#pc.close();
-            this.#pc = null;
-        }
+        this.#closePeerConnection();
 
         if (this.#sessionUrl !== null) {
             const sessionUrl = this.#sessionUrl;
@@ -110,6 +110,27 @@ class MediaMTXWebRTCReader {
         }
 
         this.#pendingControllers.clear();
+    }
+
+    #closePeerConnection() {
+        if (this.#pc === null) {
+            return;
+        }
+
+        this.#pc.onicecandidate = null;
+        this.#pc.onconnectionstatechange = null;
+        this.#pc.ontrack = null;
+        this.#pc.ondatachannel = null;
+
+        for (const receiver of this.#pc.getReceivers()) {
+            if (receiver.track !== null) {
+                receiver.track.onended = null;
+                receiver.track.stop();
+            }
+        }
+
+        this.#pc.close();
+        this.#pc = null;
     }
 
     #deleteSessionBestEffort(sessionUrl: string) {
@@ -259,6 +280,9 @@ class MediaMTXWebRTCReader {
                         jitterBufferEmittedCount: typeof emittedCount === 'number' ? emittedCount : 0,
                         framesDecoded: typeof report.framesDecoded === 'number' ? report.framesDecoded : 0,
                         bytesReceived: typeof report.bytesReceived === 'number' ? report.bytesReceived : 0,
+                        packetsReceived: typeof report.packetsReceived === 'number' ? report.packetsReceived : 0,
+                        packetsLost: typeof report.packetsLost === 'number' ? report.packetsLost : 0,
+                        packetsDiscarded: typeof report.packetsDiscarded === 'number' ? report.packetsDiscarded : 0,
                     };
 
                     const previousSnapshot = this.#lastVideoStats;
@@ -276,6 +300,12 @@ class MediaMTXWebRTCReader {
                         currentSnapshot.framesDecoded - previousSnapshot.framesDecoded;
                     const deltaBytesReceived =
                         currentSnapshot.bytesReceived - previousSnapshot.bytesReceived;
+                    const deltaPacketsReceived =
+                        currentSnapshot.packetsReceived - previousSnapshot.packetsReceived;
+                    const deltaPacketsLost =
+                        currentSnapshot.packetsLost - previousSnapshot.packetsLost;
+                    const deltaPacketsDiscarded =
+                        currentSnapshot.packetsDiscarded - previousSnapshot.packetsDiscarded;
 
                     const intervalJitterBufferDelay =
                         deltaEmittedCount > 0 && deltaJitterBufferDelay >= 0
@@ -284,37 +314,56 @@ class MediaMTXWebRTCReader {
 
                     const hasDecodeProgress = deltaFramesDecoded > 0;
                     const hasNetworkProgress = deltaBytesReceived > MediaMTXWebRTCReader.#MIN_PROGRESS_BYTES;
-                    const hasProgress = hasDecodeProgress || hasNetworkProgress;
 
                     const isConnected = this.#pc?.connectionState === 'connected';
 
-                    if (isConnected && !hasProgress) {
-                        if (this.#noProgressSince === null) {
-                            this.#noProgressSince = performance.now();
+                    if (isConnected && hasNetworkProgress && !hasDecodeProgress) {
+                        if (this.#noDecodeProgressSince === null) {
+                            this.#noDecodeProgressSince = performance.now();
                         }
 
-                        const noProgressDuration = performance.now() - this.#noProgressSince;
+                        const noDecodeProgressDuration = performance.now() - this.#noDecodeProgressSince;
 
-                        if (noProgressDuration >= MediaMTXWebRTCReader.#NO_PROGRESS_DURATION) {
+                        if (
+                            noDecodeProgressDuration >= MediaMTXWebRTCReader.#NO_DECODE_PROGRESS_DURATION
+                        ) {
                             this.#handleError(
-                                `video stalled (${Math.round(noProgressDuration)}ms without progress)`,
+                                `video decoder stalled (${Math.round(noDecodeProgressDuration)}ms without decoded frames)`,
                             );
                             return;
                         }
                     } else {
-                        this.#noProgressSince = null;
+                        this.#noDecodeProgressSince = null;
                     }
+
+                    const packetCount = deltaPacketsReceived + deltaPacketsLost;
+                    const packetLossRate = packetCount > 0 ? deltaPacketsLost / packetCount : 0;
+                    const hasSeverePacketLoss =
+                        deltaPacketsLost >= MediaMTXWebRTCReader.#SEVERE_LOST_PACKETS ||
+                        deltaPacketsDiscarded >= MediaMTXWebRTCReader.#SEVERE_DISCARDED_PACKETS ||
+                        (deltaPacketsLost >= 8 && packetLossRate >= MediaMTXWebRTCReader.#SEVERE_PACKET_LOSS_RATE);
 
                     console.debug('[WebRTC]', {
                         intervalJitterBufferDelay,
                         deltaFramesDecoded,
                         deltaBytesReceived,
+                        deltaPacketsReceived,
+                        deltaPacketsLost,
+                        deltaPacketsDiscarded,
+                        packetLossRate,
                         jitter: report.jitter,
                         packetsLost: report.packetsLost,
                         packetsDiscarded: report.packetsDiscarded,
                         framesDecoded: report.framesDecoded,
                         framesPerSecond: report.framesPerSecond,
                     });
+
+                    if (isConnected && hasSeverePacketLoss) {
+                        this.#handleError(
+                            `video packet loss too high (${deltaPacketsLost} lost, ${deltaPacketsDiscarded} discarded)`,
+                        );
+                        return;
+                    }
 
                     if (
                         intervalJitterBufferDelay !== null &&
@@ -351,7 +400,7 @@ class MediaMTXWebRTCReader {
 
                 if (!videoReportFound) {
                     this.#lastVideoStats = null;
-                    this.#noProgressSince = null;
+                    this.#noDecodeProgressSince = null;
                     this.#highLatencySince = null;
                 }
             } catch (err) {
@@ -377,7 +426,7 @@ class MediaMTXWebRTCReader {
 
         this.#lastVideoStats = null;
         this.#highLatencySince = null;
-        this.#noProgressSince = null;
+        this.#noDecodeProgressSince = null;
     }
 
     #handleError(err: string) {
@@ -394,14 +443,7 @@ class MediaMTXWebRTCReader {
             this.#disconnectTimeout = null;
         }
 
-        if (this.#pc !== null) {
-            this.#pc.onicecandidate = null;
-            this.#pc.onconnectionstatechange = null;
-            this.#pc.ontrack = null;
-            this.#pc.ondatachannel = null;
-            this.#pc.close();
-            this.#pc = null;
-        }
+        this.#closePeerConnection();
 
         this.#offerData = null;
 

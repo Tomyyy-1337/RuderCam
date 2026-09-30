@@ -885,7 +885,7 @@ paths:
     rpiCameraWidth: 1920
     rpiCameraHeight: 1080
     rpiCameraFPS: 25
-    rpiCameraIDRPeriod: 25
+    rpiCameraIDRPeriod: 10
     rpiCameraHFlip: true
     rpiCameraHDR: true 
     rpiCameraEV: 0     
@@ -894,3 +894,5 @@ paths:
     rpiCameraROI: "0,0,1,1" 
     rpiCameraBitrate: 3200000  
     rpiCameraCodec: hardwareH264
+    rpiCameraH264Profile: main
+    rpiCameraH264Level: "4.0"

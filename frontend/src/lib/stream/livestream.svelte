@@ -72,6 +72,8 @@
     let playRetryTimer: number | null = null;
     let healthTimer: number | null = null;
     let reconnectGeneration = 0;
+    let sourceRestartInFlight: Promise<void> | null = null;
+    let lastSourceRestartAt = 0;
 
     let reconnectAttempts = 0;
     let lastProgressAt = 0;
@@ -87,6 +89,7 @@
     const FREEZE_NO_PROGRESS_MS = 1400;
     const WAITING_TIMEOUT_MS = 1000;
     const STABLE_RECOVERY_MS = 2500;
+    const SOURCE_RESTART_COOLDOWN_MS = 5000;
 
     let fullscreen = $state(false);
     let showIOSInstallHint = $state(false);
@@ -311,8 +314,14 @@
         } catch {
         }
 
-        // This is important. Do not just assign another MediaStream.
-        // Completely detach the old media pipeline.
+        const oldStream = videoElement.srcObject;
+
+        if (oldStream instanceof MediaStream) {
+            for (const track of oldStream.getTracks()) {
+                track.stop();
+            }
+        }
+
         videoElement.srcObject = null;
         videoElement.removeAttribute("src");
 
@@ -391,7 +400,12 @@
                 return;
             }
 
-            if (video.srcObject instanceof MediaStream && !video.paused && !video.ended) {
+            if (
+                video.srcObject instanceof MediaStream &&
+                video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+                !video.paused &&
+                !video.ended
+            ) {
                 const now = performance.now();
                 const mediaAge = streamAttachedAt === 0 ? 0 : now - streamAttachedAt;
 
@@ -505,6 +519,72 @@
         }, delay);
     }
 
+    function restartSourceAndReconnect(delay = 1000, reason = "source-restart") {
+        reconnectGeneration++;
+
+        const generation = reconnectGeneration;
+
+        if (retryTimer !== null) {
+            clearTimeout(retryTimer);
+            retryTimer = null;
+        }
+
+        if (playRetryTimer !== null) {
+            clearTimeout(playRetryTimer);
+            playRetryTimer = null;
+        }
+
+        waitingSince = null;
+        destroyReader();
+        resetVideo();
+
+        console.warn("[WebRTC] restarting camera source", { reason });
+
+        restartCameraSource().finally(() => {
+            if (generation !== reconnectGeneration) {
+                return;
+            }
+
+            retryTimer = window.setTimeout(() => {
+                retryTimer = null;
+
+                if (generation !== reconnectGeneration || document.visibilityState !== "visible") {
+                    return;
+                }
+
+                connectReader(generation);
+            }, delay);
+        });
+    }
+
+    function restartCameraSource(): Promise<void> {
+        if (sourceRestartInFlight !== null) {
+            return sourceRestartInFlight;
+        }
+
+        const now = performance.now();
+
+        if (now - lastSourceRestartAt < SOURCE_RESTART_COOLDOWN_MS) {
+            return Promise.resolve();
+        }
+
+        lastSourceRestartAt = now;
+        sourceRestartInFlight = fetch("/api/restart_stream", { method: "POST" })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`source restart failed (${response.status})`);
+                }
+            })
+            .catch((err: unknown) => {
+                console.warn("[WebRTC] camera source restart failed:", err);
+            })
+            .finally(() => {
+                sourceRestartInFlight = null;
+            });
+
+        return sourceRestartInFlight;
+    }
+
     async function connectReader(expectedGeneration = reconnectGeneration): Promise<void> {
         if (expectedGeneration !== reconnectGeneration) {
             return;
@@ -526,6 +606,7 @@
         }
 
         const generation = expectedGeneration;
+        let connectionStream: MediaStream | null = null;
 
         try {
             const newReader = new MediaMTXWebRTCReader({
@@ -548,8 +629,13 @@
                         return;
                     }
 
-                    if (lowered.includes("latency too high") || lowered.includes("video stalled")) {
-                        hardReconnect(nextReconnectDelay(120), "reader-health");
+                    if (
+                        lowered.includes("latency too high") ||
+                        lowered.includes("video stalled") ||
+                        lowered.includes("video decoder stalled") ||
+                        lowered.includes("video packet loss too high")
+                    ) {
+                        restartSourceAndReconnect(1000, "reader-health");
                         return;
                     }
 
@@ -569,25 +655,19 @@
                         return;
                     }
 
-                    // Build our own MediaStream instead of blindly using
-                    // evt.streams[0]. This guarantees that the new connection
-                    // gets its own fresh stream object.
-                    let stream = videoElement.srcObject instanceof MediaStream
-                        ? videoElement.srcObject
-                        : null;
+                    if (connectionStream === null) {
+                        connectionStream = new MediaStream();
+                        videoElement.srcObject = connectionStream;
+                    }
 
-                    if (stream === null || stream.getTracks().some((t) => t.id === track.id) === false) {
-                        stream = new MediaStream();
+                    const eventTracks = evt.streams[0]?.getTracks() ?? [track];
 
-                        for (const existingTrack of evt.streams[0]?.getTracks() ?? []) {
-                            stream.addTrack(existingTrack);
+                    for (const eventTrack of eventTracks) {
+                        if (connectionStream.getTracks().some((existingTrack) => existingTrack.id === eventTrack.id)) {
+                            continue;
                         }
 
-                        if (stream.getTracks().some((t) => t.id === track.id) === false) {
-                            stream.addTrack(track);
-                        }
-
-                        videoElement.srcObject = stream;
+                        connectionStream.addTrack(eventTrack);
                     }
 
                     streamAttachedAt = performance.now();
