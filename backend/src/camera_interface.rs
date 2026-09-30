@@ -28,7 +28,7 @@ pub enum FocusMode {
 impl FocusMode {
     fn name(&self) -> &str {
         match self {
-            FocusMode::Auto => "auto",
+            FocusMode::Auto => "continuous",
             FocusMode::Fixed => "manual",
         }
     }
@@ -56,7 +56,7 @@ pub struct CameraConfig {
 }
 
 pub async fn update_camera_config() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new();
+    let client = Client::builder().build()?;
 
     let roi = focal_length_to_roi(CONFIG.focal_length as f32);
 

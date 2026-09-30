@@ -730,7 +730,7 @@ pathDefaults:
   # Examples: 0 moves the lens to infinity.
   #           0.5 moves the lens to focus on objects 2m away.
   #           2 moves the lens to focus on objects 50cm away.
-  rpiCameraLensPosition: 0.0
+  rpiCameraLensPosition: 0.42
   # Autofocus window, in the form x,y,width,height where the coordinates
   # are given as a proportion of the entire image.
   rpiCameraAfWindow:
@@ -755,7 +755,7 @@ pathDefaults:
   # When is "auto", it defaults to:
   # * main when codec is hardwareH264
   # * baseline when codec is softwareH264
-  rpiCameraH264Profile: auto
+  rpiCameraH264Profile: main
   # H264 level (4.0, 4.1 or 4.2).
   rpiCameraH264Level: "4.0"
   # M-JPEG quality (0-100).

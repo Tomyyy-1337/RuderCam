@@ -333,6 +333,12 @@
         background-color: color-mix(in srgb, var(--background) 70%, var(--section-background));
         font-size: 0.82rem;
         font-weight: 600;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .control-field select:focus {
+        outline: none;
+        box-shadow: none;
     }
 
     .toggle-control {
@@ -488,6 +494,11 @@
         outline: 2px solid color-mix(in srgb, var(--button-color) 88%, white 12%);
         outline-offset: 3px;
         border-radius: 0.4rem;
+    }
+
+    :is(select, input):focus:not(:focus-visible) {
+        outline: none;
+        box-shadow: none;
     }
 
     .slider-legend {
