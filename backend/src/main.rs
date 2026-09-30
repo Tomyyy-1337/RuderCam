@@ -120,6 +120,7 @@ async fn read_gps_task() {
                 SHARED_STATE.modify(|state| state.satellite_count = satellites as u8);
                 if satellites < 5 {
                     SHARED_STATE.modify(|state| state.set_velocity(0.0));
+                    CURRENT_SESSION.modify_option(|session| session.set_pausiert(true));
                 }
             }
             gps_interface::GPSMessage::RMC (data @ GPSPositionalData { speed_kmh, .. }) => {

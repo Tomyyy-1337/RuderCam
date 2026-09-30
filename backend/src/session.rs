@@ -1,4 +1,4 @@
-use crate::{gps_interface::GPSPositionalData};
+use crate::gps_interface::GPSPositionalData;
 
 pub struct ActiveSession {
     client_time: String, // Start time of the session according to the client's clock 
@@ -58,6 +58,7 @@ impl ActiveSession {
 
     pub fn add_gps_data(&mut self, data: GPSPositionalData) {
         self.pausiert = data.speed_kmh < 2.0;
+
         if self.pausiert {
             return;
         }
@@ -71,6 +72,10 @@ impl ActiveSession {
             self.gps_position_history.push(data);
             self.last_history_update = std::time::Instant::now();
         }
+    }
+
+    pub fn set_pausiert(&mut self, pausiert: bool) {
+        self.pausiert = pausiert;
     }
 
     pub fn update_bpm_data(&mut self, increment: u32) {
