@@ -36,6 +36,11 @@ impl DeviceState {
     }
 
     pub fn set_schlagzahl(&mut self, schlagzahl: f32) {
+        if self.satellite_count < 5 || self.speed_kmh < 2.0 {
+            self.schlagzahl = 0.0;
+            return;
+        }
+
         let new_schlagzahl = schlagzahl.round();
         self.schlagzahl = if schlagzahl - new_schlagzahl >= 0.5 {
             new_schlagzahl + 0.5

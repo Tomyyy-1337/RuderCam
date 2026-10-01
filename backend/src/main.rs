@@ -177,11 +177,7 @@ async fn read_accelerometer_task() {
         // every 500ms 
         if loop_counter % 10 == 0 {
             SHARED_STATE.modify(|state| {
-                let schlagzahl = if SHARED_STATE.speed_kmh >= 2.0 {
-                    bpm_processor.get_current_schläge_pro_minute()
-                } else {
-                    0.0
-                };
+                let schlagzahl = bpm_processor.get_current_schläge_pro_minute();
                 state.set_schlagzahl(schlagzahl);
             });
             
@@ -204,7 +200,7 @@ async fn read_battery_task(
         });
 
         #[cfg(target_os = "linux")]
-        if battery_status.battery_level <= 5 {
+        if battery_status.battery_level <= 2 {
             println!("Battery critically low ({}%m, {}V), shutting down...", battery_status.battery_level, battery_status.voltage);
             tokio::time::sleep(std::time::Duration::from_secs(3)).await;
             pi_interface::shutdown();

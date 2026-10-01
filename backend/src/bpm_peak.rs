@@ -1,7 +1,6 @@
 use std::{collections::VecDeque, time::{Duration, Instant}};
 
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(100);
-const PEAK_HISTORY: Duration = Duration::from_secs(60);
 const FILTER_ALPHA: f32 = 0.4;
 const BASELINE_ALPHA: f32 = 0.02;
 const NOISE_ALPHA: f32 = 0.05;
@@ -110,7 +109,7 @@ impl BpmPeak {
             }
         }
 
-        self.remove_old_peaks(now);
+        self.remove_old_peaks();
     }
 
     pub fn get_incremental_schläge(&mut self) -> u32 {
@@ -120,12 +119,23 @@ impl BpmPeak {
     }
 
     pub fn get_current_schläge_pro_minute(&mut self) -> f32 {
-        self.remove_old_peaks(self.next_sample);
-        self.peaks.len() as f32
+        if self.peaks.len() < 3 {
+            return 0.0;
+        }
+        let first = self.peaks[0];
+        let last = self.peaks[2];
+        let duration_secs = last.duration_since(first).as_secs_f32();
+        if duration_secs == 0.0 {
+            return 0.0;
+        } 
+        (self.peaks.len() as f32 / duration_secs) * 60.0 * 2.0
     }
 
-    fn remove_old_peaks(&mut self, now: Instant) {
-        while self.peaks.front().is_some_and(|peak| now.duration_since(*peak) > PEAK_HISTORY) {
+    fn remove_old_peaks(&mut self) {
+        while self.peaks.len() > 3 || self.peaks.front().map_or(false, |&first| {
+            let now = std::time::Instant::now();
+            now.duration_since(first) > std::time::Duration::from_secs(18)
+        }) {
             self.peaks.pop_front();
         }
     }
