@@ -159,7 +159,7 @@ async fn read_accelerometer_task() {
         // every 50ms
         timer.tick().await;
 
-        let (_x,y,z) = I2C_INTERFACE.read_accelerometer_data().await;
+        let (x,y,z) = I2C_INTERFACE.read_accelerometer_data().await;
         
         let roll = (y as f32).atan2(z as f32).to_degrees();
         orientation_history[orientation_index] = roll;
@@ -171,7 +171,7 @@ async fn read_accelerometer_task() {
 
         // every 100ms 
         if loop_counter % 2 == 0 {
-            bpm_processor.add_sample(roll as i16);
+            bpm_processor.add_sample(x);
         }
 
         // every 500ms 
