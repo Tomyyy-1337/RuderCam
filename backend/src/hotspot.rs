@@ -67,12 +67,6 @@ impl Hotspot{
             Self::HOTSPOT_PROFILE_NAME,
         ]).ok();
 
-        let configured_channel = Self::nmcli_output(&[
-            "-g", "802-11-wireless.channel",
-            "connection", "show",
-            Self::HOTSPOT_PROFILE_NAME,
-        ]).ok();
-
         let configured_powersave = Self::nmcli_output(&[
             "-g", "802-11-wireless.powersave",
             "connection", "show",
@@ -81,7 +75,6 @@ impl Hotspot{
 
         configured_ssid.as_deref() == Some(ssid)
             && configured_password.as_deref() == Some(password)
-            && configured_channel.as_deref() == Some("6")
             && configured_powersave.as_deref() == Some("2")
     }
 
@@ -117,8 +110,6 @@ impl Hotspot{
             "ap",
             "802-11-wireless.band",
             "bg",
-            "802-11-wireless.channel",
-            "6",           // pin a fixed, non-auto channel
             "802-11-wireless.powersave",
             "2",           // 2 = disable powersave
             "ipv4.method",

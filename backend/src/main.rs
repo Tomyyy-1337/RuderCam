@@ -41,6 +41,7 @@ fn main() {
             task::spawn_local(read_accelerometer_task());
             task::spawn_local(read_battery_task());
             task::spawn_local(read_gps_task());
+            task::spawn_local(update_active_session_task());
             task::spawn_local(idle_auto_shutdown());
             task::spawn_local(axum_server::start_server());
 
@@ -119,8 +120,7 @@ async fn read_gps_task() {
             gps_interface::GPSMessage::GGA { satellites } => {
                 SHARED_STATE.modify(|state| state.satellite_count = satellites as u8);
                 if satellites < 5 {
-                    SHARED_STATE.modify(|state| state.set_velocity(0.0));
-                    CURRENT_SESSION.modify_option(|session| session.set_pausiert(true));
+                    SHARED_STATE.modify(|state| state.speed_kmh = 0.0);
                 }
             }
             gps_interface::GPSMessage::RMC (data @ GPSPositionalData { speed_kmh, .. }) => {
@@ -130,6 +130,18 @@ async fn read_gps_task() {
                 }
             }
         }
+    }
+}
+
+async fn update_active_session_task() {
+    let mut timer = tokio::time::interval(tokio::time::Duration::from_millis(500));
+    timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+    loop {
+        timer.tick().await;
+        
+        let pausiert =  SHARED_STATE.satellite_count < 5 || SHARED_STATE.speed_kmh < 2.0;
+        CURRENT_SESSION.modify_option(|session| session.update(pausiert));
     }
 }
 

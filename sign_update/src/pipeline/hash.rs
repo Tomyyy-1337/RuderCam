@@ -27,6 +27,12 @@ pub fn calculate_hash(tx: &Sender<AppEvent>) -> io::Result<Vec<u8>> {
     )));
     let mut combined_hash = xor_hashes(&backend_hash, &version_hash);
 
+    let media_mtx_hash = Sha256::digest(&std::fs::read(MEDIAMTX_PATH)?);
+    let _ = tx.send(AppEvent::Output(format!(
+        "\x1b[90mHashed\x1b[0m \x1b[33mmediamtx.yml\x1b[0m"
+    )));
+    combined_hash = xor_hashes(&combined_hash, &media_mtx_hash);
+
     for file in all_files_in_dir(STATIC_DIR)? {
         let raw_data = std::fs::read(&file)?;
         let file_hash = Sha256::digest(&raw_data);
@@ -35,12 +41,6 @@ pub fn calculate_hash(tx: &Sender<AppEvent>) -> io::Result<Vec<u8>> {
             "\x1b[90mHashed\x1b[0m \x1b[33m{file}\x1b[0m"
         )));
     }
-
-    let media_mtx_hash = Sha256::digest(&std::fs::read(MEDIAMTX_PATH)?);
-    combined_hash = xor_hashes(&combined_hash, &media_mtx_hash);
-    let _ = tx.send(AppEvent::Output(format!(
-        "\x1b[90mHashed\x1b[0m \x1b[33mmediamtx.yml\x1b[0m"
-    )));
 
     Ok(combined_hash)
 }

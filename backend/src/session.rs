@@ -1,16 +1,19 @@
+use std::time::Duration;
+
 use crate::gps_interface::GPSPositionalData;
 
 pub struct ActiveSession {
     client_time: String, // Start time of the session according to the client's clock 
     start_time: std::time::Instant,
     distance_traveled_km: f32,
-    last_gps_position: Option<GPSPositionalData>,
+    newest_gps_position: Option<GPSPositionalData>,
+    last_distance_update_gps_position: Option<GPSPositionalData>,
     pausiert: bool,
     gps_position_history: Vec<GPSPositionalData>,
     last_history_update: std::time::Instant,
     schlag_count: u32,
     active_duration: std::time::Duration,
-    last_bpm_update: std::time::Instant,
+    last_time_update: std::time::Instant,
 }
 
 #[derive(serde::Serialize)]
@@ -37,13 +40,14 @@ impl ActiveSession {
             client_time, 
             start_time: std::time::Instant::now(),
             distance_traveled_km: 0.0,
-            last_gps_position: None,
+            newest_gps_position: None,
+            last_distance_update_gps_position: None,
             pausiert: true,
             gps_position_history: Vec::new(),
             last_history_update: std::time::Instant::now(),
             schlag_count: 0,
             active_duration: std::time::Duration::new(0, 0),
-            last_bpm_update: std::time::Instant::now(),
+            last_time_update: std::time::Instant::now(),
         }
     }
 
@@ -56,37 +60,40 @@ impl ActiveSession {
         }
     }
 
+    /// Update the session's active duration and distance traveled based on the current GPS data.
+    pub fn update(&mut self, pausiert: bool) {
+        self.pausiert = pausiert;
+        
+        let last_timestamp = self.last_time_update;
+        self.last_time_update = std::time::Instant::now();
+
+        if !self.pausiert {
+            self.active_duration += self.last_time_update.duration_since(last_timestamp);
+            
+            if let (Some(last_position), Some(current_position)) = (&self.last_distance_update_gps_position, &self.newest_gps_position) {
+                self.distance_traveled_km += Self::calculate_distance(last_position.lat, last_position.lon, current_position.lat, current_position.lon);
+            }
+        }  
+        
+        self.last_distance_update_gps_position = self.newest_gps_position.clone();
+    }
+
     pub fn add_gps_data(&mut self, data: GPSPositionalData) {
-        self.pausiert = data.speed_kmh < 2.0;
+        self.newest_gps_position = Some(data);
 
         if self.pausiert {
             return;
         }
         
-        if let Some(last_position) = &self.last_gps_position {
-            self.distance_traveled_km += Self::calculate_distance(last_position.lat, last_position.lon, data.lat, data.lon)
-        };
-        self.last_gps_position = Some(data);
-        
-        if self.last_history_update.elapsed() >= std::time::Duration::from_secs(15) {
+        if !self.pausiert && self.last_history_update.elapsed() >= Duration::from_secs(10) {
             self.gps_position_history.push(data);
             self.last_history_update = std::time::Instant::now();
         }
     }
 
-    pub fn set_pausiert(&mut self, pausiert: bool) {
-        self.pausiert = pausiert;
-    }
-
     pub fn update_bpm_data(&mut self, increment: u32) {
-        // Update time spent active - out of place but fits here
-        let last_timestamp = self.last_bpm_update;
-        self.last_bpm_update = std::time::Instant::now();
-        
         if !self.pausiert {
             self.schlag_count += increment;
-
-            self.active_duration += self.last_bpm_update.duration_since(last_timestamp);
         }
     }
 

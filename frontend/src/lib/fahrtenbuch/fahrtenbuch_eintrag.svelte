@@ -119,7 +119,7 @@
     let average_splittime_per_500m = $derived((
         Math.floor(average_splittime_per_500m_seconds / 60).toString().padStart(2, '0') +
         ':' +
-        (Math.round(average_splittime_per_500m_seconds % 60)).toString().padStart(2, '0')
+        (Math.floor(average_splittime_per_500m_seconds % 60)).toString().padStart(2, '0')
     ));
     
     let average_speed_kmh = $derived(Number(fahrt.average_speed_kmh ?? 0).toFixed(1));
