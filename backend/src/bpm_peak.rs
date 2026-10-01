@@ -9,6 +9,8 @@ const ENTER_THRESHOLD_MULTIPLIER: f32 = 1.5;
 const EXIT_THRESHOLD_MULTIPLIER: f32 = 0.7;
 const MIN_SIGNAL_AMPLITUDE: f32 = 0.5;
 const POLARITY_CONFIRMATION_SAMPLES: u8 = 2;
+const SCHLAG_HISTORY_DURATION: Duration = Duration::from_secs(30);
+const SCHLAG_HISTORY_ENTRIES: usize = 4;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum AccelerationPhase {
@@ -119,11 +121,11 @@ impl BpmPeak {
     }
 
     pub fn get_current_schläge_pro_minute(&mut self) -> f32 {
-        if self.peaks.len() < 3 {
+        if self.peaks.len() < SCHLAG_HISTORY_ENTRIES {
             return 0.0;
         }
         let first = self.peaks[0];
-        let last = self.peaks[2];
+        let last = self.peaks[SCHLAG_HISTORY_ENTRIES - 1];
         let duration_secs = last.duration_since(first).as_secs_f32();
         if duration_secs == 0.0 {
             return 0.0;
@@ -132,9 +134,9 @@ impl BpmPeak {
     }
 
     fn remove_old_peaks(&mut self) {
-        while self.peaks.len() > 3 || self.peaks.front().map_or(false, |&first| {
+        while self.peaks.len() > SCHLAG_HISTORY_ENTRIES || self.peaks.front().map_or(false, |&first| {
             let now = std::time::Instant::now();
-            now.duration_since(first) > std::time::Duration::from_secs(18)
+            now.duration_since(first) > SCHLAG_HISTORY_DURATION
         }) {
             self.peaks.pop_front();
         }
